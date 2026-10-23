@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Bolinhas</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    height: 100%;
+    background: linear-gradient(160deg, #1a0b2e 0%, #2d1b4e 50%, #120826 100%);
+    font-family: "Segoe UI", system-ui, sans-serif;
+    color: #fff;
+    overflow: hidden;
+    touch-action: none;
+  }
+  #wrap {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 8px;
+  }
+  #hud {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: center;
+    font-size: 15px;
+  }
+  .pill {
+    background: rgba(255,255,255,.08);
+    border: 1px solid rgba(255,255,255,.18);
+    border-radius: 999px;
+    padding: 5px 14px;
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+  .pill b { color: #ffd740; }
+  #stage { position: relative; }
+  canvas {
+    display: block;
+    border-radius: 14px;
+    background: rgba(0,0,0,.35);
+    box-shadow: 0 0 0 2px rgba(255,255,255,.08), 0 18px 50px rgba(0,0,0,.55);
+    max-width: 96vw;
+    max-height: calc(100vh - 110px);
+    cursor: crosshair;
+  }
+  #overlay {
+    position: absolute;
+    inset: 0;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    background: rgba(10,4,24,.82);
+    border-radius: 14px;
+    text-align: center;
+    padding: 20px;
+  }
+  #overlay.show { display: flex; }
+  #overlay h1 { font-size: 34px; background: linear-gradient(90deg,#ff6ec7,#ffd740,#40c4ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  #overlay p { font-size: 16px; opacity: .85; line-height: 1.5; }
+  #overlay .score-line { font-size: 22px; }
+  #overlay .score-line b { color: #ffd740; }
+  button {
+    font: inherit;
+    font-weight: 700;
+    font-size: 17px;
+    padding: 11px 26px;
+    border: none;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #ff6ec7, #b388ff);
+    color: #fff;
+    cursor: pointer;
+    transition: transform .12s, box-shadow .12s;
+    box-shadow: 0 6px 20px rgba(180,90,255,.45);
+  }
+  button:hover { transform: scale(1.06); }
+  #help { font-size: 12px; opacity: .55; text-align: center; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="hud">
+    <span class="pill">⭐ <b id="score">0</b></span>
+    <span class="pill">📈 Nível <b id="level">1</b></span>
+    <span class="pill">🏆 <b id="best">0</b></span>
+  </div>
+  <div id="stage">
+    <canvas id="c"></canvas>
+    <div id="overlay">
+      <h1 id="ov-title">Bolinhas</h1>
+      <p id="ov-msg">Mire com o mouse (ou arraste no toque) e solte para lançar.<span>
+Reúna <b>3 ou mais</b> bolinhas da mesma cor para explodí-las!</span></p>
+      <p class="score-line" id="ov-score"></p>
+      <button id="ov-btn">Jogar</button>
+    </div>
+  </div>
+  <div id="help">🖱️ mouse ou 👆 arrastar para mirar · clique/soltar para lançar · ← → mira · espaço lança · R reinicia</div>
+</div>
+
+<script>
+(() => {
+  const canvas = document.getElementById("c");
+  const ctx = canvas.getContext("2d");
+  const overlay = document.getElementById("overlay");
+  const ovTitle = document.getElementById("ov-title");
+  const ovMsg = document.getElementById("ov-msg");
+  const ovScore = document.getElementById("ov-score");
+  const ovBtn = document.getElementById("ov-btn");
+  const elScore = document.getElementById("score");
+  const elLevel = document.getElementById("level");
+  const elBest = document.getElementById("best");
+
+  // ---- constantes do tabuleiro ----
+  const COLS = 11;
+  const R = 18;                        // raio da bolinha
+  const ROW_H = R * Math.sqrt(3);     // altura entre fileiras
+  const DANGER_ROW = 13;              // fileira >= 13 => game over
+  const W = COLS * 2 * R + R;         // 414
+  const H = DANGER_ROW * ROW_H + 132; // ~537
+  const LAUNCH = { x: W / 2, y: DANGER_ROW * ROW_H + 78 };
+  const DANGER_Y = DANGER_ROW * ROW_H;
+  // ritmo: quantos lançamentos até descer uma fileira (diminui a cada nível, mínimo 3)
+  const shotsForRow = lvl => Math.max(3, 10 - (lvl - 1));
+
+  const BASE_COLORS = ["#ff5a5a", "#ffd740", "#58d155", "#53b8ff"];
+  const EXTRA_COLORS = ["#ff7ae0", "#c792ff"];
+  const ALL_COLORS = BASE_COLORS.concat(EXTRA_COLORS);
+
+  // ---- estado ----
+  let grid, state, score, level, best, shots, aim, proj, cur, next, palette, particles, popTexts;
+  let phase = 0;     // paridade do offset da fileira 0 (alterna a cada nova fileira)
+  let dropT = -1;    // animação da nova fileira caindo (0..1)
+  const isOffset = r => ((r + phase) & 1) === 1;
+  const easeOut = t => 1 - (1 - t) * (1 - t);
+  best = +localStorage.getItem("bolinhas-high") || 0;
+  elBest.textContent = best;
+
+  const rand = n => Math.floor(Math.random() * n);
+  const randColor = () => rand(palette.length); // índice (palette é prefixo de ALL_COLORS)
+
+  function cellPos(r, c) {
+    return {
+      x: R + c * 2 * R + (isOffset(r) ? R : 0),
+      y: R + r * ROW_H
+    };
+  }
+
+  function inGrid(r, c) { return r >= 0 && r < DANGER_ROW && c >= 0 && c < COLS; }
+
+  function neighbors(r, c) {
+    const odd = isOffset(r);
+    return odd
+      ? [[r, c - 1], [r, c + 1], [r - 1, c], [r - 1, c + 1], [r + 1, c], [r + 1, c + 1]]
+      : [[r, c - 1], [r, c + 1], [r - 1, c - 1], [r - 1, c], [r + 1, c - 1], [r + 1, c]];
+  }
+
+  function newGrid() {
+    // grid sempre com DANGER_ROW fileiras (vazias = null)
+    const g = Array.from({ length: DANGER_ROW }, () => Array(COLS).fill(null));
+    for (let r = 0; r < 4; r++)
+      for (let c = 0; c < COLS; c++) g[r][c] = randColor();
+    return g;
+  }
+
+  function reset() {
+    palette = ALL_COLORS.slice(0, 4);
+    grid = newGrid();
+    score = 0; level = 1; shots = 0;
+    phase = 0; dropT = -1;
+    aim = -Math.PI / 2;
+    proj = null;
+    particles = []; popTexts = [];
+    cur = randColor();
+    next = randColor();
+    state = "playing";
+    updateHud();
+    hideOverlay();
+  }
+
+  function updateHud() {
+    elScore.textContent = score;
+    elLevel.textContent = level;
+    elBest.textContent = best;
+  }
+
+  function showOverlay() { overlay.classList.add("show"); }
+  function hideOverlay() { overlay.classList.remove("show"); }
+
+  function gameOver() {
+    state = "over";
+    if (score > best) { best = score; localStorage.setItem("bolinhas-high", best); }
+    updateHud();
+    ovTitle.textContent = "Fim de jogo!";
+    ovMsg.innerHTML = "As bolinhas passaram da linha perigosa! 💥";
+    ovScore.innerHTML = "Pontos: <b>" + score + "</b> · Recorde: <b>" + best + "</b>";
+    ovBtn.textContent = "Jogar de novo";
+    showOverlay();
+  }
+
+  // ---- física da bolinha lançada ----
+  function fire() {
+    if (state !== "playing" || proj) return;
+    proj = { x: LAUNCH.x, y: LAUNCH.y, vx: Math.cos(aim) * 13, vy: Math.sin(aim) * 13, color: cur };
+    cur = next;
+    next = randColor();
+    shots++;
+    if (shots >= shotsForRow(level)) { shots = 0; addTopRow(); }
+  }
+
+  function addTopRow() {
+    const row = [];
+    for (let c = 0; c < COLS; c++) row.push(randColor());
+    phase ^= 1; // nova fileira encaixa sem mexer o alinhamento horizontal das demais
+    grid = [row, ...grid];
+    grid.length = DANGER_ROW; // fileira que "cai" para fora do tabuleiro
+    dropT = 0;
+    level++;
+    updateHud();
+    // aumenta o número de cores conforme o nível
+    const wantColors = Math.min(ALL_COLORS.length, 4 + Math.floor((level - 1) / 3));
+    if (wantColors > palette.length) {
+      palette = ALL_COLORS.slice(0, wantColors);
+    }
+    if (checkDanger()) gameOver();
+  }
+
+  function checkDanger() {
+    for (let c = 0; c < COLS; c++)
+      if (grid[DANGER_ROW - 1][c] !== null) return true;
+    return false;
+  }
+
+  function snapProjectile() {
+    // acha a célula vazia mais próxima que esteja "agarrada" ao tabuleiro
+    let bestCell = null, bestD = Infinity;
+    for (let r = 0; r < grid.length; r++) {
+      for (let c = 0; c < COLS; c++) {
+        if (grid[r][c] !== null) continue;
+        const p = cellPos(r, c);
+        const d = (p.x - proj.x) ** 2 + (p.y - proj.y) ** 2;
+        const stuck = r === 0 || neighbors(r, c).some(([nr, nc]) =>
+          inGrid(nr, nc) && grid[nr][nc] !== null);
+        if (stuck && d < bestD) { bestD = d; bestCell = [r, c]; }
+      }
+    }
+    if (bestCell) {
+      grid[bestCell[0]][bestCell[1]] = proj.color;
+      resolve(bestCell[0], bestCell[1]);
+    }
+    proj = null;
+    if (state === "playing" && checkDanger()) gameOver();
+  }
+
+  function resolve(sr, sc) {
+    // explode 3+ da mesma cor
+    const color = grid[sr][sc];
+    const group = [];
+    const stack = [[sr, sc]];
+    const seen = new Set([sr + "," + sc]);
+    while (stack.length) {
+      const [r, c] = stack.pop();
+      group.push([r, c]);
+      for (const [nr, nc] of neighbors(r, c)) {
+        const k = nr + "," + nc;
+        if (inGrid(nr, nc) && !seen.has(k) && grid[nr][nc] === color) {
+          seen.add(k);
+          stack.push([nr, nc]);
+        }
+      }
+    }
+    if (group.length >= 3) {
+      for (const [r, c] of group) {
+        const p = cellPos(r, c);
+        spawnParticles(p.x, p.y, ALL_COLORS[color]);
+        grid[r][c] = null;
+      }
+      score += group.length * 10;
+      popTexts.push({ x: cellPos(sr, sc).x, y: cellPos(sr, sc).y, text: "+" + group.length * 10, t: 0 });
+      dropFloaters();
+    }
+    updateHud();
+  }
+
+  function dropFloaters() {
+    // bolinhas que ficaram soltas do topo caem
+    const attached = new Set();
+    const stack = [];
+    for (let c = 0; c < COLS; c++) if (grid[0][c] !== null) { attached.add(0 + "," + c); stack.push([0, c]); }
+    while (stack.length) {
+      const [r, c] = stack.pop();
+      for (const [nr, nc] of neighbors(r, c)) {
+        const k = nr + "," + nc;
+        if (inGrid(nr, nc) && !attached.has(k) && grid[nr][nc] !== null) {
+          attached.add(k);
+          stack.push([nr, nc]);
+        }
+      }
+    }
+    for (let r = 0; r < grid.length; r++)
+      for (let c = 0; c < COLS; c++)
+        if (grid[r][c] !== null && !attached.has(r + "," + c)) {
+          const p = cellPos(r, c);
+          spawnParticles(p.x, p.y, ALL_COLORS[grid[r][c]]);
+          grid[r][c] = null;
+          score += 20;
+        }
+  }
+
+  function spawnParticles(x, y, color) {
+    for (let i = 0; i < 6; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const s = 1 + Math.random() * 3;
+      particles.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 1.5, color, t: 30 });
+    }
+  }
+
+  // ---- desenho ----
+  function drawBubble(x, y, radius, color, alpha) {
+    ctx.save();
+    if (alpha !== undefined) ctx.globalAlpha = alpha;
+    const g = ctx.createRadialGradient(x - radius * 0.35, y - radius * 0.4, radius * 0.15, x, y, radius);
+    g.addColorStop(0, "#ffffff");
+    g.addColorStop(0.25, color);
+    g.addColorStop(1, shade(color, -45));
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "rgba(0,0,0,.25)";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function shade(hex, amt) {
+    const n = parseInt(hex.slice(1), 16);
+    let r = (n >> 16) + amt, g = ((n >> 8) & 255) + amt, b = (n & 255) + amt;
+    r = Math.max(0, Math.min(255, r)); g = Math.max(0, Math.min(255, g)); b = Math.max(0, Math.min(255, b));
+    return "rgb(" + r + "," + g + "," + b + ")";
+  }
+
+  function drawAimLine() {
+    if (state !== "playing" || proj) return;
+    let x = LAUNCH.x, y = LAUNCH.y;
+    let dx = Math.cos(aim), dy = Math.sin(aim);
+    const step = 5, pts = [];
+    outer:
+    for (let i = 0; i < 400; i++) {
+      x += dx * step; y += dy * step;
+      if (x < R) { dx = -dx; x = 2 * R - x; }
+      if (x > W - R) { dx = -dx; x = 2 * (W - R) - x; }
+      if (y < R) break;
+      pts.push([x, y]);
+      for (let r = 0; r < grid.length; r++)
+        for (let c = 0; c < COLS; c++)
+          if (grid[r][c] !== null) {
+            const p = cellPos(r, c);
+            if ((p.x - x) ** 2 + (p.y - y) ** 2 < (2 * R * 0.82) ** 2) break outer;
+          }
+    }
+    ctx.save();
+    ctx.strokeStyle = "rgba(255,255,255,.45)";
+    ctx.setLineDash([4, 7]);
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(LAUNCH.x, LAUNCH.y - R - 2);
+    for (const [px, py] of pts) ctx.lineTo(px, py);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+
+    // fundo
+    const bg = ctx.createLinearGradient(0, 0, 0, H);
+    bg.addColorStop(0, "#241245");
+    bg.addColorStop(1, "#150a2e");
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, W, H);
+
+    // linha perigosa
+    ctx.save();
+    ctx.strokeStyle = "rgba(255,80,80,.55)";
+    ctx.setLineDash([10, 8]);
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, DANGER_Y - 2);
+    ctx.lineTo(W, DANGER_Y - 2);
+    ctx.stroke();
+    ctx.restore();
+
+    // bolinhas do tabuleiro (com slide suave quando entra fileira nova)
+    const dropY = dropT >= 0 ? -ROW_H * (1 - easeOut(Math.min(1, dropT))) : 0;
+    for (let r = 0; r < grid.length; r++)
+      for (let c = 0; c < COLS; c++)
+        if (grid[r][c] !== null) {
+          const p = cellPos(r, c);
+          drawBubble(p.x, p.y + dropY, R - 1, ALL_COLORS[grid[r][c]]);
+        }
+
+    // partículas
+    for (const p of particles) drawBubble(p.x, p.y, 4, p.color, Math.min(1, p.t / 20));
+
+    // textos de pontos
+    ctx.save();
+    ctx.font = "bold 16px 'Segoe UI', sans-serif";
+    ctx.textAlign = "center";
+    for (const t of popTexts) {
+      ctx.globalAlpha = Math.max(0, 1 - t.t / 45);
+      ctx.fillStyle = "#ffd740";
+      ctx.fillText(t.text, t.x, t.y - t.t * 0.6);
+    }
+    ctx.restore();
+
+    drawAimLine();
+
+    // lançador
+    ctx.save();
+    ctx.fillStyle = "rgba(255,255,255,.10)";
+    ctx.beginPath();
+    ctx.arc(LAUNCH.x, LAUNCH.y + 6, 34, Math.PI, 0);
+    ctx.fill();
+    ctx.strokeStyle = "rgba(255,255,255,.3)";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.restore();
+
+    if (proj) drawBubble(proj.x, proj.y, R - 1, ALL_COLORS[proj.color]);
+    else if (state === "playing") drawBubble(LAUNCH.x, LAUNCH.y - 8, R - 1, ALL_COLORS[cur]);
+
+    // próxima bolinha
+    ctx.save();
+    ctx.font = "11px 'Segoe UI', sans-serif";
+    ctx.fillStyle = "rgba(255,255,255,.6)";
+    ctx.textAlign = "center";
+    ctx.fillText("próxima", W - 34, H - 38);
+    ctx.restore();
+    drawBubble(W - 34, H - 22, 12, ALL_COLORS[next]);
+  }
+
+  // ---- loop ----
+  function step() {
+    if (proj) {
+      proj.x += proj.vx;
+      proj.y += proj.vy;
+      if (proj.x < R) { proj.x = 2 * R - proj.x; proj.vx = -proj.vx; }
+      if (proj.x > W - R) { proj.x = 2 * (W - R) - proj.x; proj.vx = -proj.vx; }
+      let hit = proj.y - R <= 0;
+      if (!hit)
+        outer:
+        for (let r = 0; r < grid.length; r++)
+          for (let c = 0; c < COLS; c++)
+            if (grid[r][c] !== null) {
+              const p = cellPos(r, c);
+              if ((p.x - proj.x) ** 2 + (p.y - proj.y) ** 2 < (2 * R * 0.82) ** 2) { hit = true; break outer; }
+            }
+      if (hit) snapProjectile();
+    }
+    if (dropT >= 0) {
+      dropT += 1 / 18; // ~300ms
+      if (dropT >= 1) dropT = -1;
+    }
+    for (const p of particles) { p.x += p.vx; p.y += p.vy; p.vy += 0.12; p.t--; }
+    particles = particles.filter(p => p.t > 0);
+    for (const t of popTexts) t.t++;
+    popTexts = popTexts.filter(t => t.t < 45);
+    draw();
+    requestAnimationFrame(step);
+  }
+
+  // ---- controles ----
+  function aimAt(clientX, clientY) {
+    const rect = canvas.getBoundingClientRect();
+    const mx = (clientX - rect.left) * (W / rect.width);
+    const my = (clientY - rect.top) * (H / rect.height);
+    let a = Math.atan2(my - LAUNCH.y, mx - LAUNCH.x);
+    // clamp: só pode mirar pra cima (±80°)
+    const min = -Math.PI / 2 - Math.PI * 80 / 180;
+    const max = -Math.PI / 2 + Math.PI * 80 / 180;
+    aim = Math.max(min, Math.min(max, a));
+  }
+
+  canvas.addEventListener("mousemove", e => aimAt(e.clientX, e.clientY));
+  canvas.addEventListener("click", e => { aimAt(e.clientX, e.clientY); fire(); });
+  canvas.addEventListener("touchstart", e => { e.preventDefault(); const t = e.touches[0]; aimAt(t.clientX, t.clientY); }, { passive: false });
+  canvas.addEventListener("touchmove", e => { e.preventDefault(); const t = e.touches[0]; aimAt(t.clientX, t.clientY); }, { passive: false });
+  canvas.addEventListener("touchend", e => { e.preventDefault(); fire(); }, { passive: false });
+
+  document.addEventListener("keydown", e => {
+    if (e.key === "ArrowLeft") aim = Math.max(-Math.PI / 2 - Math.PI * 80 / 180, aim - 0.05);
+    else if (e.key === "ArrowRight") aim = Math.min(-Math.PI / 2 + Math.PI * 80 / 180, aim + 0.05);
+    else if (e.key === " " || e.key === "Enter") { e.preventDefault(); fire(); }
+    else if (e.key === "r" || e.key === "R") reset();
+  });
+
+  ovBtn.addEventListener("click", reset);
+
+  // ---- init ----
+  canvas.width = W;
+  canvas.height = H;
+  palette = ALL_COLORS.slice(0, 4);
+  grid = newGrid();
+  particles = []; popTexts = [];
+  cur = 0; next = 0; aim = -Math.PI / 2; proj = null;
+  reset();
+  // tela inicial
+  state = "menu";
+  ovTitle.textContent = "Bolinhas";
+  ovMsg.innerHTML = 'Mire com o <b>mouse</b> (ou arraste no toque) e solte para lançar.<br>Reúna <b>3+</b> bolinhas da mesma cor para explodir!<br><span style="opacity:.7">Cuidado: a cada nível uma fileira nova desce do topo 👀</span>';
+  ovScore.innerHTML = "Recorde: <b>" + best + "</b>";
+  ovBtn.textContent = "Jogar";
+  showOverlay();
+  step();
+})();
+</script>
+</body>
+</html>

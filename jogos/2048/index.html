@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>2048 🔢</title>
+  <style>
+    :root {
+      --bg: #120821;
+      --primary: #a855f7;
+      --accent: #e879f9;
+      --panel: rgba(168, 85, 247, 0.12);
+      --border: rgba(168, 85, 247, 0.6);
+      --cell: min(20vw, 100px);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: radial-gradient(800px 400px at 50% -20%, #3b1a6e 0%, var(--bg) 60%);
+      color: #f5f0ff;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      gap: 14px;
+      padding: 16px;
+      user-select: none;
+    }
+    h1 {
+      font-size: 1.8rem;
+      background: linear-gradient(90deg, #34d399, #38bdf8, var(--accent));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    #top {
+      display: flex;
+      gap: 12px;
+      align-items: stretch;
+    }
+    .panel {
+      background: var(--panel);
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      padding: 8px 14px;
+      text-align: center;
+      min-width: 90px;
+    }
+    .panel .label {
+      font-size: 0.7rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #b9a8d9;
+      font-weight: 700;
+    }
+    .panel .value {
+      font-size: 1.4rem;
+      font-weight: 800;
+      color: var(--accent);
+    }
+    #board {
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(4, var(--cell));
+      grid-template-rows: repeat(4, var(--cell));
+      gap: calc(var(--cell) * 0.08);
+      background: var(--panel);
+      border: 3px solid var(--primary);
+      border-radius: 12px;
+      padding: calc(var(--cell) * 0.08);
+      box-shadow: 0 10px 30px rgba(139, 47, 240, 0.4);
+      touch-action: none;
+      overflow: hidden;
+    }
+    .tile {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: var(--cell);
+      height: var(--cell);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: calc(var(--cell) * 0.34);
+      background: rgba(168, 85, 247, 0.06);
+      color: #ffffff;
+      transition: left 0.12s ease, top 0.12s ease;
+      will-change: left, top;
+      z-index: 1;
+    }
+    .tile .inner {
+      width: 100%;
+      height: 100%;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .tile.new .inner { animation: pop 0.18s ease; }
+    .tile.merged .inner { animation: merge 0.22s ease; }
+    @keyframes pop {
+      0% { transform: scale(0); }
+      100% { transform: scale(1); }
+    }
+    @keyframes merge {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.22); }
+      100% { transform: scale(1); }
+    }
+    .tile.g2    { background: #fde68a; color: #78350f; }
+    .tile.g4    { background: #fbbf24; color: #78350f; }
+    .tile.g8    { background: #fb923c; color: #fff; }
+    .tile.g16   { background: #f97316; color: #fff; }
+    .tile.g32   { background: #fb7185; color: #fff; }
+    .tile.g64   { background: #f43f5e; color: #fff; }
+    .tile.g128  { background: #e879f9; color: #fff; box-shadow: 0 0 12px rgba(232, 121, 249, 0.55); }
+    .tile.g256  { background: #d946ef; color: #fff; box-shadow: 0 0 14px rgba(217, 70, 239, 0.6); }
+    .tile.g512  { background: #c026d3; color: #fff; box-shadow: 0 0 16px rgba(192, 38, 211, 0.65); }
+    .tile.g1024 { background: #a21caf; color: #fff; box-shadow: 0 0 18px rgba(162, 28, 172, 0.7); font-size: calc(var(--cell) * 0.28); }
+    .tile.g2048 { background: #facc15; color: #713f12; box-shadow: 0 0 22px rgba(250, 204, 21, 0.8); font-size: calc(var(--cell) * 0.28); }
+    .tile.gbig  { background: #64748b; color: #fff; font-size: calc(var(--cell) * 0.22); }
+    #hint { color: #b9a8d9; font-size: 0.9rem; text-align: center; max-width: 460px; }
+    #btns { display: flex; gap: 10px; }
+    button {
+      font-size: 1rem;
+      font-weight: 700;
+      padding: 10px 18px;
+      border-radius: 10px;
+      border: 2px solid var(--primary);
+      background: rgba(168, 85, 247, 0.15);
+      color: #f5f0ff;
+      cursor: pointer;
+    }
+    button:active { background: var(--primary); }
+    /* Overlay (victory / game over) */
+    #overlay {
+      position: absolute;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 10px;
+      background: rgba(10, 4, 20, 0.85);
+      border-radius: 10px;
+      text-align: center;
+      padding: 16px;
+      z-index: 5;
+    }
+    #overlay.show { display: flex; }
+    #overlay h2 { font-size: 1.6rem; color: var(--accent); }
+    #overlay p { color: #d9cdf0; margin-bottom: 6px; }
+    #overlay .row { display: flex; gap: 10px; }
+  </style>
+</head>
+<body>
+  <h1>🔢 2048</h1>
+  <div id="top">
+    <div class="panel">
+      <div class="label">Pontos</div>
+      <div class="value" id="score">0</div>
+    </div>
+    <div class="panel">
+      <div class="label">Recorde</div>
+      <div class="value" id="high">0</div>
+    </div>
+  </div>
+  <div id="board">
+    <div id="overlay">
+      <h2 id="overlayTitle"></h2>
+      <p id="overlayText"></p>
+      <div class="row">
+        <button id="overlayNew">🔄 Novo jogo</button>
+        <button id="overlayKeep" style="display:none">▶ Continuar</button>
+      </div>
+    </div>
+  </div>
+  <div id="btns">
+    <button id="btnNew">🔄 Novo jogo</button>
+  </div>
+  <p id="hint">Setas ou WASD para mover · deslize o dedo no tabuleiro no celular · combine tiles iguais para chegar a 2048!</p>
+
+  <script>
+    const SIZE = 4;
+    const board = document.getElementById("board");
+    const scoreEl = document.getElementById("score");
+    const highEl = document.getElementById("high");
+    const overlay = document.getElementById("overlay");
+    const overlayTitle = document.getElementById("overlayTitle");
+    const overlayText = document.getElementById("overlayText");
+
+    const HIGH_KEY = "2048-high";
+    let highScore = Number(localStorage.getItem(HIGH_KEY) || 0);
+    highEl.textContent = highScore;
+
+    let tiles;   // [{ id, x, y, value, mergedFrom, isNew }]
+    let score = 0;
+    let over = false;
+    let won = false;
+    let keepPlaying = false;
+    let tileId = 0;
+
+    // posições exatas em CSS (padding + x*(cell + gap))
+    function posOf(x, y) {
+      const step = "calc(var(--cell) * 1.08)";
+      const pad = "calc(var(--cell) * 0.08)";
+      return {
+        left: "calc(" + pad + " + " + x + " * " + step + ")",
+        top: "calc(" + pad + " + " + y + " * " + step + ")",
+      };
+    }
+
+    function tileClass(value) {
+      if (value <= 2048) return "g" + value;
+      return "gbig";
+    }
+
+    function addTile(value, x, y, opts = {}) {
+      const t = { id: ++tileId, value, x, y, isNew: opts.isNew, mergedFrom: null };
+      tiles.push(t);
+      return t;
+    }
+
+    function spawnRandom() {
+      const empty = [];
+      for (let i = 0; i < SIZE * SIZE; i++) {
+        if (!tiles.some(t => t.y * SIZE + t.x === i)) empty.push(i);
+      }
+      if (!empty.length) return;
+      const idx = empty[Math.floor(Math.random() * empty.length)];
+      const x = idx % SIZE, y = Math.floor(idx / SIZE);
+      addTile(Math.random() < 0.9 ? 2 : 4, x, y, { isNew: true });
+    }
+
+    function render() {
+      // remove tiles que não existem mais
+      const dom = new Map();
+      for (const el of board.querySelectorAll(".tile")) dom.set(el.dataset.id, el);
+      for (const el of dom.values()) board.removeChild(el);
+
+      for (const t of tiles) {
+        const el = document.createElement("div");
+        el.className = "tile " + tileClass(t.value) + (t.isNew ? " new" : "") + (t.mergedFrom ? " merged" : "");
+        el.dataset.id = t.id;
+        const p = posOf(t.x, t.y);
+        el.style.left = p.left;
+        el.style.top = p.top;
+        const inner = document.createElement("div");
+        inner.className = "inner";
+        inner.textContent = t.value;
+        el.appendChild(inner);
+        board.appendChild(el);
+        t.isNew = false;
+        t.mergedFrom = false;
+      }
+      scoreEl.textContent = score;
+      highEl.textContent = highScore;
+    }
+
+    function move(dx, dy) {
+      if (over) return false;
+      // linhas ordenadas da borda de destino para o lado oposto
+      const lines = [];
+      for (let start = 0; start < SIZE; start++) {
+        const indices = [];
+        for (let i = 0; i < SIZE; i++) {
+          if (dy !== 0) indices.push((dy > 0 ? SIZE - 1 - i : i) * SIZE + start);
+          else indices.push(start * SIZE + (dx > 0 ? SIZE - 1 - i : i));
+        }
+        lines.push(indices);
+      }
+      let moved = false;
+      let gained = 0;
+      for (const line of lines) {
+        const cells = tiles
+          .filter(t => line.includes(t.y * SIZE + t.x))
+          .sort((a, b) => line.indexOf(a.y * SIZE + a.x) - line.indexOf(b.y * SIZE + b.x));
+        let slot = 0;
+        let prev = null;
+        for (const t of cells) {
+          const targetIdx = line[slot];
+          const tx = targetIdx % SIZE, ty = Math.floor(targetIdx / SIZE);
+          if (prev && prev.value === t.value && !prev.mergedThisMove) {
+            // mescla em cima do tile anterior (que já está no slot-1)
+            const prevIdx = line[slot - 1];
+            t.x = prevIdx % SIZE; t.y = Math.floor(prevIdx / SIZE);
+            prev.value *= 2;
+            prev.mergedThisMove = true;
+            prev.mergedFrom = true;
+            gained += prev.value;
+            moved = true;
+            tiles = tiles.filter(x => x !== t);
+            prev = null;
+          } else {
+            if (t.x !== tx || t.y !== ty) moved = true;
+            t.x = tx; t.y = ty;
+            slot++;
+            prev = t;
+          }
+        }
+      }
+      for (const t of tiles) { delete t.mergedThisMove; }
+      if (moved) {
+        score += gained;
+        if (score > highScore) {
+          highScore = score;
+          localStorage.setItem(HIGH_KEY, highScore);
+        }
+      }
+      return moved;
+    }
+
+    function canMove() {
+      const grid = Array(SIZE * SIZE).fill(0);
+      for (const t of tiles) grid[t.y * SIZE + t.x] = t.value;
+      for (let i = 0; i < SIZE * SIZE; i++) {
+        if (grid[i] === 0) return true;
+        const x = i % SIZE, y = Math.floor(i / SIZE);
+        if (x + 1 < SIZE && grid[i + 1] === grid[i]) return true;
+        if (y + 1 < SIZE && grid[i + SIZE] === grid[i]) return true;
+      }
+      return false;
+    }
+
+    function checkWin() {
+      if (!won && tiles.some(t => t.value >= 2048)) {
+        won = true;
+        showOverlay(
+          "🏆 2048!",
+          "Você venceu! Quer continuar subindo o placar?",
+          true
+        );
+      }
+    }
+
+    function checkOver() {
+      if (!canMove()) {
+        over = true;
+        showOverlay(
+          "🏁 Fim de jogo!",
+          "Pontuação: " + score,
+          false
+        );
+      }
+    }
+
+    function showOverlay(title, text, showKeep) {
+      overlayTitle.textContent = title;
+      overlayText.textContent = text;
+      document.getElementById("overlayKeep").style.display = showKeep ? "" : "none";
+      overlay.classList.add("show");
+    }
+
+    function hideOverlay() {
+      overlay.classList.remove("show");
+    }
+
+    function step(dx, dy) {
+      if (over || (won && !keepPlaying && overlay.classList.contains("show"))) return;
+      if (move(dx, dy)) {
+        spawnRandom();
+        render();
+        checkWin();
+        checkOver();
+      }
+    }
+
+    function reset() {
+      tiles = [];
+      tileId = 0;
+      score = 0;
+      over = false;
+      won = false;
+      keepPlaying = false;
+      spawnRandom();
+      spawnRandom();
+      hideOverlay();
+      render();
+    }
+
+    // Teclado
+    document.addEventListener("keydown", (e) => {
+      const map = {
+        ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0],
+        w: [0, -1], s: [0, 1], a: [-1, 0], d: [1, 0],
+        W: [0, -1], S: [0, 1], A: [-1, 0], D: [1, 0],
+      };
+      if (map[e.key]) {
+        e.preventDefault();
+        step(...map[e.key]);
+      } else if (e.key === "r" || e.key === "R") {
+        reset();
+      }
+    });
+
+    // Toque / swipe
+    let touchStart = null;
+    board.addEventListener("touchstart", (e) => {
+      if (e.touches.length === 1) {
+        touchStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      }
+    }, { passive: true });
+    board.addEventListener("touchend", (e) => {
+      if (!touchStart) return;
+      const dx = e.changedTouches[0].clientX - touchStart.x;
+      const dy = e.changedTouches[0].clientY - touchStart.y;
+      touchStart = null;
+      const absX = Math.abs(dx), absY = Math.abs(dy);
+      if (Math.max(absX, absY) < 24) return; // toque curto
+      if (absX > absY) step(dx > 0 ? 1 : -1, 0);
+      else step(0, dy > 0 ? 1 : -1);
+    });
+
+    // Mouse drag (para testar no desktop)
+    let mouseStart = null;
+    board.addEventListener("mousedown", (e) => {
+      mouseStart = { x: e.clientX, y: e.clientY };
+    });
+    document.addEventListener("mouseup", (e) => {
+      if (!mouseStart) return;
+      const dx = e.clientX - mouseStart.x;
+      const dy = e.clientY - mouseStart.y;
+      mouseStart = null;
+      const absX = Math.abs(dx), absY = Math.abs(dy);
+      if (Math.max(absX, absY) < 24) return;
+      if (absX > absY) step(dx > 0 ? 1 : -1, 0);
+      else step(0, dy > 0 ? 1 : -1);
+    });
+
+    document.getElementById("btnNew").addEventListener("click", reset);
+    document.getElementById("overlayNew").addEventListener("click", reset);
+    document.getElementById("overlayKeep").addEventListener("click", () => {
+      keepPlaying = true;
+      hideOverlay();
+    });
+
+    reset();
+  </script>
+</body>
+</html>

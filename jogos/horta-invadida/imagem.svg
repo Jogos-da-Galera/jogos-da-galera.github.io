@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 300">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1a1040"/>
+      <stop offset="1" stop-color="#3d2b6b"/>
+    </linearGradient>
+    <linearGradient id="grass" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#6ab04c"/>
+      <stop offset="1" stop-color="#badc58"/>
+    </linearGradient>
+  </defs>
+  <rect width="480" height="300" fill="url(#bg)" rx="12"/>
+  <text x="240" y="48" text-anchor="middle" font-family="Arial, sans-serif" font-size="30" font-weight="bold" fill="#badc58">HORTA INVADIDA</text>
+
+  <!-- fila de bichinhos -->
+  <text x="120" y="120" text-anchor="middle" font-size="34">🐌</text>
+  <text x="180" y="120" text-anchor="middle" font-size="34">🐌</text>
+  <text x="240" y="120" text-anchor="middle" font-size="34">🐌</text>
+  <text x="300" y="120" text-anchor="middle" font-size="34">🐌</text>
+  <text x="360" y="120" text-anchor="middle" font-size="34">🐌</text>
+
+  <text x="140" y="160" text-anchor="middle" font-size="34">🦗</text>
+  <text x="200" y="160" text-anchor="middle" font-size="34">🦗</text>
+  <text x="260" y="160" text-anchor="middle" font-size="34">🦗</text>
+  <text x="320" y="160" text-anchor="middle" font-size="34">🦗</text>
+
+  <text x="170" y="200" text-anchor="middle" font-size="34">🐜</text>
+  <text x="230" y="200" text-anchor="middle" font-size="34">🐜</text>
+  <text x="290" y="200" text-anchor="middle" font-size="34">🐜</text>
+
+  <!-- gotinhas de baba caindo -->
+  <ellipse cx="240" cy="222" rx="5" ry="7" fill="#ff9800"/>
+  <ellipse cx="180" cy="235" rx="5" ry="7" fill="#ff9800"/>
+  <ellipse cx="300" cy="238" rx="5" ry="7" fill="#ff9800"/>
+
+  <!-- chão da horta -->
+  <rect x="0" y="252" width="480" height="48" fill="url(#grass)"/>
+  <text x="70" y="285" text-anchor="middle" font-size="26">🥬</text>
+  <text x="410" y="285" text-anchor="middle" font-size="26">🥬</text>
+
+  <!-- fazendeiro -->
+  <g transform="translate(216, 226)">
+    <rect x="8" y="18" width="24" height="20" fill="#3f51b5"/>
+    <circle cx="20" cy="12" r="8" fill="#ffcc80"/>
+    <rect x="4" y="5" width="32" height="5" fill="#e6b84f"/>
+    <rect x="11" y="-4" width="18" height="9" fill="#e6b84f"/>
+    <rect x="16" y="-18" width="7" height="13" fill="#8d6e63"/>
+  </g>
+  <!-- sementinha subindo -->
+  <ellipse cx="240" cy="208" rx="4" ry="7" fill="#cddc39"/>
+</svg>

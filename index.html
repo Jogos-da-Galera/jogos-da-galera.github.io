@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Jogos da Galera</title>
+  <link rel="stylesheet" href="app.css" />
+</head>
+<body>
+  <!-- ===== Página inicial ===== -->
+  <section id="page-home" class="page">
+    <header class="home-header">
+      <h1 class="logo">🎮 Jogos da Galera</h1>
+      <p class="tagline">Jogos clássicos e novos, 100% gratuitos e sem propagandas</p>
+    </header>
+
+    <div class="filters">
+      <input
+        type="search"
+        id="filter-name"
+        class="filter-input"
+        placeholder="Buscar jogo por nome..."
+        aria-label="Buscar jogo por nome"
+      />
+      <div id="filter-categories" class="category-chips"></div>
+    </div>
+
+    <main id="games-grid" class="games-grid" aria-live="polite"></main>
+    <p id="empty-state" class="empty-state hidden">Nenhum jogo encontrado 😢</p>
+  </section>
+
+  <!-- ===== Página do jogo ===== -->
+  <section id="page-game" class="page hidden">
+    <header class="bar">
+      <a href="#/" class="back-btn">← Voltar</a>
+      <h1 id="game-title" class="bar-title"></h1>
+      <span></span>
+    </header>
+    <div class="game-page">
+      <img id="game-image" class="game-image" alt="" />
+      <div class="game-info">
+        <h2 id="game-name"></h2>
+        <div id="game-categories" class="category-chips"></div>
+        <p id="game-description" class="description"></p>
+        <a id="play-btn" class="play-btn" href="#">▶ Jogar</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Página de jogo (iframe) ===== -->
+  <section id="page-play" class="page hidden">
+    <header class="bar bar-fixed">
+      <a href="#/" class="back-btn">← Voltar</a>
+      <h1 class="bar-title">🎮 Jogos da Galera</h1>
+      <span></span>
+    </header>
+    <iframe id="game-frame" class="game-frame" title="Área do jogo"
+      sandbox="allow-scripts allow-pointer-lock allow-same-origin"></iframe>
+  </section>
+
+  <script src="app.js"></script>
+</body>
+</html>

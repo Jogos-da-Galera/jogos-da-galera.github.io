@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 300" width="480" height="300">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="30%" r="90%">
+      <stop offset="0%" stop-color="#3b1a6e"/>
+      <stop offset="100%" stop-color="#120821"/>
+    </radialGradient>
+    <linearGradient id="pieceGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#e879f9"/>
+      <stop offset="100%" stop-color="#a855f7"/>
+    </linearGradient>
+  </defs>
+
+  <!-- fundo -->
+  <rect width="480" height="300" fill="url(#bg)"/>
+
+  <!-- tabuleiro -->
+  <rect x="170" y="20" width="140" height="260" rx="10" fill="#140a26" stroke="#a855f7" stroke-width="3"/>
+  <g stroke="#a855f7" stroke-opacity="0.12" stroke-width="1">
+    <line x1="204" y1="20" x2="204" y2="280"/>
+    <line x1="238" y1="20" x2="238" y2="280"/>
+    <line x1="272" y1="20" x2="272" y2="280"/>
+    <line x1="170" y1="54" x2="310" y2="54"/>
+    <line x1="170" y1="88" x2="310" y2="88"/>
+    <line x1="170" y1="122" x2="310" y2="122"/>
+    <line x1="170" y1="156" x2="310" y2="156"/>
+    <line x1="170" y1="190" x2="310" y2="190"/>
+    <line x1="170" y1="224" x2="310" y2="224"/>
+    <line x1="170" y1="258" x2="310" y2="258"/>
+  </g>
+
+  <!-- peça T caindo -->
+  <g>
+    <rect x="206" y="70" width="30" height="30" rx="4" fill="#c084fc"/>
+    <rect x="240" y="70" width="30" height="30" rx="4" fill="#c084fc"/>
+    <rect x="223" y="70" width="30" height="30" rx="4" fill="#e879f9"/>
+  </g>
+
+  <!-- pilha de blocos coloridos no fundo -->
+  <g>
+    <rect x="170" y="246" width="34" height="34" rx="4" fill="#38bdf8"/>
+    <rect x="204" y="246" width="34" height="34" rx="4" fill="#facc15"/>
+    <rect x="238" y="246" width="34" height="34" rx="4" fill="#34d399"/>
+    <rect x="272" y="246" width="38" height="34" rx="4" fill="#f87171"/>
+    <rect x="170" y="212" width="34" height="34" rx="4" fill="#fb923c"/>
+    <rect x="204" y="212" width="34" height="34" rx="4" fill="#60a5fa"/>
+    <rect x="238" y="212" width="34" height="34" rx="4" fill="#c084fc"/>
+    <rect x="170" y="178" width="34" height="34" rx="4" fill="#34d399"/>
+    <rect x="204" y="178" width="34" height="34" rx="4" fill="#f87171"/>
+  </g>
+
+  <!-- brilhos -->
+  <circle cx="70" cy="60" r="4" fill="#e879f9" opacity="0.7"/>
+  <circle cx="410" cy="90" r="3" fill="#38bdf8" opacity="0.7"/>
+  <circle cx="60" cy="220" r="3" fill="#facc15" opacity="0.6"/>
+  <circle cx="420" cy="240" r="4" fill="#34d399" opacity="0.6"/>
+
+  <!-- título -->
+  <text x="240" y="150" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="42" font-weight="800" fill="url(#pieceGrad)" letter-spacing="4">TETRIS</text>
+  <text x="240" y="180" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="16" fill="#b9a8d9">O clássico dos blocos</text>
+</svg>

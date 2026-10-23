@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Memória de Emojis</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  :root {
+    --bg: #12082b;
+    --bg2: #1d0f3f;
+    --roxo: #7c3aed;
+    --roxo-claro: #a78bfa;
+    --verde: #34d399;
+    --rosa: #f472b6;
+    --texto: #ede9fe;
+  }
+
+  html, body { height: 100%; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: radial-gradient(1200px 600px at 50% -10%, #2b1465 0%, var(--bg2) 45%, var(--bg) 100%);
+    color: var(--texto);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 16px;
+    user-select: none;
+  }
+
+  h1 {
+    font-size: clamp(1.5rem, 5vw, 2.2rem);
+    margin-bottom: 4px;
+    background: linear-gradient(90deg, var(--rosa), var(--roxo-claro), var(--verde));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .sub { color: #b8a8e8; font-size: 0.95rem; margin-bottom: 14px; text-align: center; }
+
+  /* ---- Placar ---- */
+  .placar {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .placar .caixa {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(167, 139, 250, 0.35);
+    border-radius: 12px;
+    padding: 8px 16px;
+    text-align: center;
+    min-width: 76px;
+  }
+
+  .placar .rotulo { font-size: 0.7rem; color: #b8a8e8; text-transform: uppercase; letter-spacing: 1px; }
+  .placar .valor { font-size: 1.2rem; font-weight: 700; color: var(--roxo-claro); }
+
+  /* ---- Seletor de tema ---- */
+  .temas {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  .tema {
+    font: inherit;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #b8a8e8;
+    background: rgba(255, 255, 255, 0.05);
+    border: 2px solid rgba(167, 139, 250, 0.3);
+    border-radius: 999px;
+    padding: 7px 16px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .tema:hover { color: var(--texto); border-color: var(--roxo-claro); }
+
+  .tema.ativa {
+    color: #fff;
+    background: linear-gradient(135deg, var(--roxo), #5b21b6);
+    border-color: var(--roxo-claro);
+  }
+
+  /* ---- Tabuleiro ---- */
+  #tabuleiro {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    width: min(92vw, 420px);
+    perspective: 900px;
+  }
+
+  .carta {
+    position: relative;
+    aspect-ratio: 1;
+    border-radius: 14px;
+    cursor: pointer;
+    transform-style: preserve-3d;
+    transition: transform 0.35s ease;
+  }
+
+  .carta.virada { transform: rotateY(180deg); }
+
+  .carta .face {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 14px;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+
+  .carta .verso {
+    background: linear-gradient(135deg, var(--roxo) 0%, #4c1d95 100%);
+    border: 2px solid var(--roxo-claro);
+    font-size: clamp(1.4rem, 5vw, 2rem);
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  .carta .frente {
+    background: linear-gradient(135deg, #2b1465 0%, #1d0f3f 100%);
+    border: 2px solid rgba(167, 139, 250, 0.5);
+    font-size: clamp(2rem, 9vw, 3.2rem);
+    transform: rotateY(180deg);
+  }
+
+  .carta.pareada .frente {
+    border-color: var(--verde);
+    background: linear-gradient(135deg, rgba(52, 211, 153, 0.25) 0%, #1d0f3f 100%);
+    animation: pular 0.4s ease;
+  }
+
+  @keyframes pular {
+    0%   { transform: rotateY(180deg) scale(1); }
+    50%  { transform: rotateY(180deg) scale(1.15); }
+    100% { transform: rotateY(180deg) scale(1); }
+  }
+
+  /* ---- Botões ---- */
+  .acoes { margin-top: 16px; display: flex; gap: 10px; }
+
+  .btn {
+    font: inherit;
+    font-weight: 600;
+    color: var(--texto);
+    background: linear-gradient(135deg, var(--roxo), #5b21b6);
+    border: none;
+    border-radius: 12px;
+    padding: 10px 22px;
+    cursor: pointer;
+    transition: transform 0.1s ease, filter 0.15s ease;
+  }
+
+  .btn:hover { filter: brightness(1.15); }
+  .btn:active { transform: scale(0.96); }
+
+  /* ---- Overlay de vitória ---- */
+  #overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(18, 8, 43, 0.85);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+  }
+
+  #overlay.mostra { display: flex; }
+
+  #overlay .card {
+    background: linear-gradient(160deg, #2b1465, #170a33);
+    border: 2px solid var(--roxo-claro);
+    border-radius: 20px;
+    padding: 32px 40px;
+    text-align: center;
+    animation: surgir 0.4s ease;
+  }
+
+  @keyframes surgir {
+    from { opacity: 0; transform: scale(0.8); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+
+  #overlay .trofeu { font-size: 3.5rem; }
+  #overlay h2 { margin: 8px 0 4px; color: var(--roxo-claro); }
+  #overlay p { color: #b8a8e8; margin-bottom: 6px; }
+  #overlay .recorde { color: var(--verde); font-weight: 700; margin-bottom: 14px; }
+</style>
+</head>
+<body>
+
+<h1>🧠 Memória de Emojis</h1>
+<p class="sub">Vire dois cartões e encontre os 8 pares!</p>
+
+<div class="temas" id="temas"></div>
+
+<div class="placar">
+  <div class="caixa">
+    <div class="rotulo">Pares</div>
+    <div class="valor" id="pares">0/8</div>
+  </div>
+  <div class="caixa">
+    <div class="rotulo">Tentativas</div>
+    <div class="valor" id="tentativas">0</div>
+  </div>
+  <div class="caixa">
+    <div class="rotulo">Recorde</div>
+    <div class="valor" id="recorde">—</div>
+  </div>
+</div>
+
+<div id="tabuleiro"></div>
+
+<div class="acoes">
+  <button class="btn" id="btn-reiniciar">🔄 Reiniciar</button>
+</div>
+
+<div id="overlay">
+  <div class="card">
+    <div class="trofeu">🏆</div>
+    <h2>Você encontrou todos!</h2>
+    <p id="resultado"></p>
+    <p class="recorde" id="novo-recorde"></p>
+    <button class="btn" id="btn-jogar">Jogar de novo</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  var DECKS = {
+    'emojis': {
+      nome: 'Emojis',
+      icone: '😊',
+      emojis: ['🚀', '🌈', '🍕', '⚽', '🎸', '🍩', '💎', '⚡']
+    },
+    'dinosaurios': {
+      nome: 'Dinossauros',
+      icone: '🦖',
+      emojis: ['🦕', '🦖', '🐉', '🐲', '🦎', '🐊', '🐢', '🦴']
+    },
+    'animais': {
+      nome: 'Animais',
+      icone: '🐼',
+      emojis: ['🐶', '🦊', '🐸', '🦁', '🐼', '🐙', '🦉', '🐝']
+    },
+    'profissoes': {
+      nome: 'Profissões',
+      icone: '👩‍⚕️',
+      emojis: ['👩‍⚕️', '👨‍🍳', '👩‍🏫', '👮', '🕵️', '👨‍🔬', '👩‍🚀', '🧑‍🚒']
+    }
+  };
+
+  var HIGH_KEY = 'memoria-emojis-high';
+  var DECK_KEY = 'memoria-emojis-deck';
+  var deckAtual = localStorage.getItem(DECK_KEY) && DECKS[localStorage.getItem(DECK_KEY)]
+    ? localStorage.getItem(DECK_KEY) : 'emojis';
+
+  var tabuleiroEl = document.getElementById('tabuleiro');
+  var temasEl = document.getElementById('temas');
+  var paresEl = document.getElementById('pares');
+  var tentativasEl = document.getElementById('tentativas');
+  var recordeEl = document.getElementById('recorde');
+  var overlay = document.getElementById('overlay');
+  var resultado = document.getElementById('resultado');
+  var novoRecorde = document.getElementById('novo-recorde');
+
+  var embaralhados = [];
+  var primeiro = null;
+  var bloqueado = false;
+  var tentativas = 0;
+  var paresEncontrados = 0;
+
+  function lerRecorde() {
+    try { return parseInt(localStorage.getItem(HIGH_KEY), 10) || null; }
+    catch (e) { return null; }
+  }
+
+  function atualizarPlacar() {
+    paresEl.textContent = paresEncontrados + '/8';
+    tentativasEl.textContent = tentativas;
+    var r = lerRecorde();
+    recordeEl.textContent = r === null ? '—' : r;
+  }
+
+  function embaralhar(arr) {
+    for (var i = arr.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
+    }
+    return arr;
+  }
+
+  function criarTemaChips() {
+    temasEl.innerHTML = '';
+    Object.keys(DECKS).forEach(function (id) {
+      var chip = document.createElement('button');
+      chip.className = 'tema' + (id === deckAtual ? ' ativa' : '');
+      chip.textContent = DECKS[id].icone + ' ' + DECKS[id].nome;
+      chip.addEventListener('click', function () {
+        if (id === deckAtual) return;
+        deckAtual = id;
+        try { localStorage.setItem(DECK_KEY, id); } catch (e) {}
+        criarTemaChips();
+        iniciar();
+      });
+      temasEl.appendChild(chip);
+    });
+  }
+
+  function iniciar() {
+    overlay.classList.remove('mostra');
+    var emojisDoDeck = DECKS[deckAtual].emojis;
+    embaralhados = embaralhar(emojisDoDeck.slice()).concat([]);
+    // cada emoji aparece 2 vezes
+    var par = embaralhados.concat(embaralhados);
+    embaralhados = embaralhar(par);
+
+    primeiro = null;
+    bloqueado = false;
+    tentativas = 0;
+    paresEncontrados = 0;
+    atualizarPlacar();
+
+    tabuleiroEl.innerHTML = '';
+    for (var i = 0; i < embaralhados.length; i++) {
+      (function (idx) {
+        var carta = document.createElement('div');
+        carta.className = 'carta';
+        carta.dataset.emoji = embaralhados[idx];
+        carta.innerHTML =
+          '<div class="face frente">' + embaralhados[idx] + '</div>' +
+          '<div class="face verso">❓</div>';
+        carta.addEventListener('click', function () { virar(carta, idx); });
+        tabuleiroEl.appendChild(carta);
+      })(i);
+    }
+  }
+
+  function virar(carta, idx) {
+    if (bloqueado) return;
+    if (carta.classList.contains('virada')) return;
+
+    carta.classList.add('virada');
+
+    if (!primeiro) {
+      primeiro = { el: carta, idx: idx };
+      return;
+    }
+
+    // segundo cartão
+    tentativas++;
+    var par1 = primeiro;
+    primeiro = null;
+    bloqueado = true;
+
+    if (par1.el.dataset.emoji === carta.dataset.emoji) {
+      paresEncontrados++;
+      atualizarPlacar();
+      setTimeout(function () {
+        par1.el.classList.add('pareada');
+        carta.classList.add('pareada');
+        par1.el.style.pointerEvents = 'none';
+        carta.style.pointerEvents = 'none';
+        bloqueado = false;
+        checarFim();
+      }, 350);
+    } else {
+      atualizarPlacar();
+      setTimeout(function () {
+        par1.el.classList.remove('virada');
+        carta.classList.remove('virada');
+        bloqueado = false;
+      }, 800);
+    }
+  }
+
+  function checarFim() {
+    if (paresEncontrados < 8) return;
+
+    var recorde = lerRecorde();
+    var bateu = recorde === null || tentativas < recorde;
+    if (bateu) {
+      try { localStorage.setItem(HIGH_KEY, String(tentativas)); } catch (e) {}
+    }
+    atualizarPlacar();
+
+    resultado.textContent = 'Você encontrou os 8 pares em ' + tentativas + ' tentativas.';
+    novoRecorde.textContent = bateu ? '🎉 Novo recorde!' : '🏅 Recorde: ' + Math.min(tentativas, recorde);
+    overlay.classList.add('mostra');
+  }
+
+  document.getElementById('btn-reiniciar').addEventListener('click', iniciar);
+  document.getElementById('btn-jogar').addEventListener('click', iniciar);
+
+  criarTemaChips();
+  iniciar();
+})();
+</script>
+
+</body>
+</html>

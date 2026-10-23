@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 300" width="480" height="300">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="30%" r="90%">
+      <stop offset="0%" stop-color="#3b1a6e"/>
+      <stop offset="100%" stop-color="#120821"/>
+    </radialGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#fde047"/>
+      <stop offset="100%" stop-color="#facc15"/>
+    </linearGradient>
+  </defs>
+
+  <!-- fundo -->
+  <rect width="480" height="300" fill="url(#bg)"/>
+
+  <!-- tabuleiro 4x4 -->
+  <g transform="translate(150, 30)">
+    <rect x="0" y="0" width="180" height="240" rx="10" fill="rgba(168,85,247,0.12)" stroke="#a855f7" stroke-width="3"/>
+    <g fill="rgba(168,85,247,0.06)">
+      <!-- linha 1 -->
+      <rect x="14" y="14" width="34" height="44" rx="5"/>
+      <rect x="54" y="14" width="34" height="44" rx="5"/>
+      <rect x="94" y="14" width="34" height="44" rx="5"/>
+      <rect x="134" y="14" width="32" height="44" rx="5"/>
+      <!-- linha 2 -->
+      <rect x="14" y="64" width="34" height="44" rx="5"/>
+      <rect x="94" y="64" width="34" height="44" rx="5"/>
+      <rect x="134" y="64" width="32" height="44" rx="5"/>
+      <!-- linha 3 -->
+      <rect x="54" y="114" width="34" height="44" rx="5"/>
+      <rect x="94" y="114" width="34" height="44" rx="5"/>
+      <!-- linha 4 -->
+      <rect x="14" y="164" width="34" height="44" rx="5"/>
+      <rect x="94" y="164" width="34" height="44" rx="5"/>
+      <rect x="134" y="164" width="32" height="44" rx="5"/>
+    </g>
+    <!-- tiles -->
+    <g font-family="Segoe UI, sans-serif" font-weight="800" text-anchor="middle">
+      <rect x="54" y="14" width="34" height="44" rx="5" fill="#fde68a"/>
+      <text x="71" y="44" font-size="22" fill="#78350f">2</text>
+      <rect x="134" y="14" width="32" height="44" rx="5" fill="#fbbf24"/>
+      <text x="150" y="44" font-size="22" fill="#78350f">4</text>
+      <rect x="14" y="64" width="34" height="44" rx="5" fill="#fde68a"/>
+      <text x="31" y="94" font-size="22" fill="#78350f">2</text>
+      <rect x="54" y="64" width="34" height="44" rx="5" fill="#fb923c"/>
+      <text x="71" y="94" font-size="22" fill="#fff">8</text>
+      <rect x="14" y="114" width="34" height="44" rx="5" fill="#fbbf24"/>
+      <text x="31" y="144" font-size="22" fill="#78350f">4</text>
+      <rect x="94" y="114" width="34" height="44" rx="5" fill="#f97316"/>
+      <text x="111" y="144" font-size="19" fill="#fff">16</text>
+      <rect x="54" y="164" width="34" height="44" rx="5" fill="#e879f9"/>
+      <text x="71" y="194" font-size="16" fill="#fff">128</text>
+      <rect x="14" y="214" width="34" height="14" rx="5" fill="#fb7185"/>
+    </g>
+  </g>
+
+  <!-- tile 2048 destaque -->
+  <g transform="translate(300, 90)">
+    <rect x="0" y="0" width="150" height="70" rx="12" fill="url(#gold)" filter="drop-shadow(0 0 10px rgba(250,204,21,0.7))"/>
+    <text x="75" y="47" font-family="Segoe UI, sans-serif" font-size="34" font-weight="800" fill="#713f12" text-anchor="middle">2048</text>
+  </g>
+
+  <!-- brilhos -->
+  <circle cx="90" cy="60" r="4" fill="#e879f9" opacity="0.7"/>
+  <circle cx="70" cy="230" r="3" fill="#38bdf8" opacity="0.7"/>
+  <circle cx="420" cy="230" r="4" fill="#34d399" opacity="0.6"/>
+  <circle cx="430" cy="60" r="3" fill="#facc15" opacity="0.6"/>
+
+  <!-- título -->
+  <text x="240" y="280" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="20" font-weight="800" fill="#e879f9" letter-spacing="3">COMBINE E SOMANDO!</text>
+</svg>

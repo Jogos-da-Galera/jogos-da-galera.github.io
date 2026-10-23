@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jogo da Velha</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  :root {
+    --bg: #12082b;
+    --bg2: #1d0f3f;
+    --roxo: #7c3aed;
+    --roxo-claro: #a78bfa;
+    --x: #22d3ee;
+    --o: #f472b6;
+    --texto: #ede9fe;
+  }
+
+  html, body { height: 100%; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: radial-gradient(1200px 600px at 50% -10%, #2b1465 0%, var(--bg2) 45%, var(--bg) 100%);
+    color: var(--texto);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 16px;
+    user-select: none;
+  }
+
+  h1 {
+    font-size: clamp(1.6rem, 5vw, 2.4rem);
+    margin-bottom: 4px;
+    background: linear-gradient(90deg, var(--x), var(--roxo-claro), var(--o));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .sub { color: #b8a8e8; font-size: 0.95rem; margin-bottom: 18px; }
+
+  /* ---- Menu de modos ---- */
+  .menu {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .btn {
+    font: inherit;
+    font-weight: 600;
+    color: var(--texto);
+    background: linear-gradient(135deg, var(--roxo), #5b21b6);
+    border: none;
+    border-radius: 12px;
+    padding: 12px 22px;
+    min-width: 240px;
+    cursor: pointer;
+    box-shadow: 0 4px 0 #3b1d78, 0 6px 18px rgba(124, 58, 237, 0.35);
+    transition: transform 0.08s, box-shadow 0.08s, filter 0.15s;
+  }
+  .btn:hover { filter: brightness(1.15); }
+  .btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #3b1d78; }
+  .btn.ghost {
+    background: transparent;
+    box-shadow: none;
+    border: 2px solid var(--roxo);
+    color: var(--roxo-claro);
+    font-size: 0.95rem;
+    padding: 10px 18px;
+  }
+  .btn.ghost:active { transform: none; }
+
+  /* ---- Placar ---- */
+  .placar {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .placar div {
+    background: rgba(124, 58, 237, 0.12);
+    border: 2px solid rgba(167, 139, 250, 0.35);
+    border-radius: 12px;
+    padding: 8px 16px;
+    text-align: center;
+    min-width: 78px;
+    transition: border-color 0.3s, background 0.3s;
+  }
+  .placar div.ativo {
+    border-color: var(--roxo-claro);
+    background: rgba(167, 139, 250, 0.22);
+  }
+  .placar .quem { font-size: 0.85rem; font-weight: 700; }
+  .placar .quem.x { color: var(--x); }
+  .placar .quem.o { color: var(--o); }
+  .placar .pts { font-size: 1.3rem; font-weight: 800; }
+
+  /* ---- Tabuleiro ---- */
+  .tabuleiro-wrap { position: relative; }
+
+  .tabuleiro {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    gap: 8px;
+    width: min(82vw, 380px);
+    aspect-ratio: 1;
+  }
+
+  .celula {
+    background: rgba(167, 139, 250, 0.08);
+    border: 2px solid rgba(167, 139, 250, 0.3);
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: clamp(2.6rem, 12vw, 4.2rem);
+    font-weight: 800;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+    line-height: 1;
+  }
+  .celula:hover:not(:disabled) { background: rgba(167, 139, 250, 0.2); }
+  .celula:active:not(:disabled) { transform: scale(0.95); }
+  .celula.x { color: var(--x); text-shadow: 0 0 18px rgba(34, 211, 238, 0.6); }
+  .celula.o { color: var(--o); text-shadow: 0 0 18px rgba(244, 114, 182, 0.6); }
+  .celula.ganha { background: rgba(250, 204, 21, 0.16); border-color: #facc15; animation: pulo 0.5s ease infinite alternate; }
+  .celula:disabled { cursor: default; }
+
+  @keyframes pulo {
+    from { transform: scale(1); }
+    to   { transform: scale(1.06); }
+  }
+
+  /* ---- Status ---- */
+  .status {
+    margin-top: 16px;
+    font-size: 1.15rem;
+    font-weight: 700;
+    min-height: 1.6em;
+    text-align: center;
+  }
+  .status.x { color: var(--x); }
+  .status.o { color: var(--o); }
+
+  .acoes { margin-top: 18px; display: flex; gap: 10px; }
+
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+  <h1>Jogo da Velha</h1>
+
+  <div class="menu" id="menu">
+    <p class="sub">Escolha como quer jogar:</p>
+    <button class="btn" onclick="iniciarJogo('cpu')">🤖 Jogar contra a máquina</button>
+    <button class="btn" onclick="iniciarJogo('pvp')">👥 Dois jogadores</button>
+  </div>
+
+  <div id="jogo" class="hidden" style="display:flex; flex-direction:column; align-items:center;">
+    <div class="placar">
+      <div id="p-x"><div class="quem x">X</div><div class="pts" id="pts-x">0</div></div>
+      <div id="p-e"><div class="quem">Empates</div><div class="pts" id="pts-e">0</div></div>
+      <div id="p-o"><div class="quem o" id="rotulo-o">O</div><div class="pts" id="pts-o">0</div></div>
+    </div>
+
+    <div class="tabuleiro-wrap">
+      <div class="tabuleiro" id="tabuleiro"></div>
+    </div>
+
+    <div class="status" id="status"></div>
+
+    <div class="acoes">
+      <button class="btn ghost" onclick="novaPartida()">🔄 Nova partida</button>
+      <button class="btn ghost" onclick="voltarMenu()">🏠 Menu</button>
+    </div>
+  </div>
+
+<script>
+(function () {
+  'use strict';
+
+  const LINHAS = [
+    [0,1,2],[3,4,5],[6,7,8],
+    [0,3,6],[1,4,7],[2,5,8],
+    [0,4,8],[2,4,6]
+  ];
+
+  let modo = null;      // 'cpu' | 'pvp'
+  let tab = [];         // '', 'X' ou 'O'
+  let vez = 'X';
+  let fim = false;
+  let pontos = { X: 0, O: 0, E: 0 };
+
+  const $ = id => document.getElementById(id);
+
+  const tabEl = $('tabuleiro');
+  tabEl.addEventListener('click', e => {
+    const i = e.target.dataset.i;
+    if (i !== undefined) jogar(+i);
+  });
+
+  window.iniciarJogo = function (m) {
+    modo = m;
+    $('menu').classList.add('hidden');
+    $('jogo').classList.remove('hidden');
+    $('rotulo-o').textContent = m === 'cpu' ? '🤖 Máquina' : 'O';
+    pontos = { X: 0, O: 0, E: 0 };
+    atualizaPlacar();
+    novaPartida();
+  };
+
+  window.novaPartida = function () {
+    tab = Array(9).fill('');
+    vez = 'X';
+    fim = false;
+    desenha();
+    status('Vez de X', 'x');
+  };
+
+  window.voltarMenu = function () {
+    $('jogo').classList.add('hidden');
+    $('menu').classList.remove('hidden');
+  };
+
+  function desenha() {
+    tabEl.innerHTML = '';
+    tab.forEach((v, i) => {
+      const c = document.createElement('div');
+      c.className = 'celula' + (v ? ' ' + v.toLowerCase() : '');
+      c.textContent = v;
+      c.dataset.i = i;
+      c.disabled = !!v || fim;
+      tabEl.appendChild(c);
+    });
+  }
+
+  function status(txt, cor) {
+    const s = $('status');
+    s.textContent = txt;
+    s.className = 'status' + (cor ? ' ' + cor : '');
+  }
+
+  function atualizaPlacar() {
+    $('pts-x').textContent = pontos.X;
+    $('pts-o').textContent = pontos.O;
+    $('pts-e').textContent = pontos.E;
+    $('p-x').classList.toggle('ativo', !fim && vez === 'X');
+    $('p-o').classList.toggle('ativo', !fim && vez === 'O');
+  }
+
+  function jogada(i) {
+    if (tab[i] || fim) return;
+    tab[i] = vez;
+    const r = checa();
+    if (r) { termina(r); return; }
+    vez = vez === 'X' ? 'O' : 'X';
+    desenha();
+    atualizaPlacar();
+    status(modo === 'cpu' && vez === 'O' ? '🤖 Máquina pensando...' : 'Vez de ' + vez, vez.toLowerCase());
+
+    if (modo === 'cpu' && vez === 'O' && !fim) {
+      setTimeout(() => {
+        const m = melhorJogada();
+        tab[m] = 'O';
+        const r2 = checa();
+        if (r2) { termina(r2); return; }
+        vez = 'X';
+        desenha();
+        atualizaPlacar();
+        status('Vez de X', 'x');
+      }, 350);
+    }
+  }
+  window.jogar = jogada;
+
+  function checa() {
+    for (const l of LINHAS) {
+      const [a, b, c] = l;
+      if (tab[a] && tab[a] === tab[b] && tab[a] === tab[c]) return { quem: tab[a], linha: l };
+    }
+    if (tab.every(v => v)) return { quem: 'E', linha: null };
+    return null;
+  }
+
+  function termina(r) {
+    fim = true;
+    desenha();
+    if (r.quem === 'E') {
+      pontos.E++;
+      status('🤝 Empate!');
+    } else {
+      pontos[r.quem]++;
+      const nomes = modo === 'cpu' ? { X: '😎 Você', O: '🤖 Máquina' } : {};
+      const nome = nomes[r.quem] || 'Jogador ' + r.quem;
+      status('🏆 ' + nome + ' venceu!');
+      r.linha.forEach(i => tabEl.children[i].classList.add('ganha'));
+    }
+    atualizaPlacar();
+  }
+
+  /* ---- Minimax (máquina imbatível) ---- */
+  function melhorJogada() {
+    let melhor = -Infinity, escolha = -1;
+    for (let i = 0; i < 9; i++) {
+      if (!tab[i]) {
+        tab[i] = 'O';
+        const v = minimax(tab, false);
+        tab[i] = '';
+        if (v > melhor) { melhor = v; escolha = i; }
+      }
+    }
+    return escolha;
+  }
+
+  function minimax(t, turnoO) {
+    const r = checaDa(t);
+    if (r) return r.quem === 'O' ? 10 : r.quem === 'X' ? -10 : 0;
+    if (turnoO) {
+      let m = -Infinity;
+      for (let i = 0; i < 9; i++)
+        if (!t[i]) { t[i] = 'O'; m = Math.max(m, minimax(t, false)); t[i] = ''; }
+      return m;
+    } else {
+      let m = Infinity;
+      for (let i = 0; i < 9; i++)
+        if (!t[i]) { t[i] = 'X'; m = Math.min(m, minimax(t, true)); t[i] = ''; }
+      return m;
+    }
+  }
+
+  function checaDa(t) {
+    for (const l of LINHAS) {
+      const [a, b, c] = l;
+      if (t[a] && t[a] === t[b] && t[a] === t[c]) return { quem: t[a] };
+    }
+    if (t.every(v => v)) return { quem: 'E' };
+    return null;
+  }
+})();
+</script>
+</body>
+</html>

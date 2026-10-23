@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="300" viewBox="0 0 480 300">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2a1250"/>
+      <stop offset="1" stop-color="#120821"/>
+    </linearGradient>
+    <linearGradient id="r0" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f87171"/><stop offset="1" stop-color="#dc2626"/>
+    </linearGradient>
+    <linearGradient id="r1" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fb923c"/><stop offset="1" stop-color="#ea580c"/>
+    </linearGradient>
+    <linearGradient id="r2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#facc15"/><stop offset="1" stop-color="#ca8a04"/>
+    </linearGradient>
+    <linearGradient id="r3" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#34d399"/><stop offset="1" stop-color="#059669"/>
+    </linearGradient>
+    <linearGradient id="r4" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#38bdf8"/><stop offset="1" stop-color="#0284c7"/>
+    </linearGradient>
+    <linearGradient id="paddle" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#7c3aed"/>
+      <stop offset="0.5" stop-color="#e879f9"/>
+      <stop offset="1" stop-color="#7c3aed"/>
+    </linearGradient>
+    <radialGradient id="ball" cx="0.4" cy="0.4" r="0.8">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#e879f9"/>
+    </radialGradient>
+  </defs>
+  <rect width="480" height="300" fill="url(#bg)"/>
+  <g>
+    <!-- linha 1 -->
+    <rect x="24" y="40" width="48" height="22" rx="5" fill="url(#r0)"/>
+    <rect x="80" y="40" width="48" height="22" rx="5" fill="url(#r0)"/>
+    <rect x="136" y="40" width="48" height="22" rx="5" fill="url(#r0)"/>
+    <rect x="192" y="40" width="48" height="22" rx="5" fill="url(#r0)"/>
+    <rect x="248" y="40" width="48" height="22" rx="5" fill="url(#r0)"/>
+    <rect x="304" y="40" width="48" height="22" rx="5" fill="url(#r0)"/>
+    <rect x="360" y="40" width="48" height="22" rx="5" fill="url(#r0)"/>
+    <rect x="416" y="40" width="48" height="22" rx="5" fill="url(#r0)"/>
+    <!-- linha 2 -->
+    <rect x="24" y="72" width="48" height="22" rx="5" fill="url(#r1)"/>
+    <rect x="80" y="72" width="48" height="22" rx="5" fill="url(#r1)"/>
+    <rect x="136" y="72" width="48" height="22" rx="5" fill="url(#r1)"/>
+    <rect x="192" y="72" width="48" height="22" rx="5" fill="url(#r1)"/>
+    <rect x="304" y="72" width="48" height="22" rx="5" fill="url(#r1)"/>
+    <rect x="360" y="72" width="48" height="22" rx="5" fill="url(#r1)"/>
+    <rect x="416" y="72" width="48" height="22" rx="5" fill="url(#r1)"/>
+    <!-- linha 3 -->
+    <rect x="24" y="104" width="48" height="22" rx="5" fill="url(#r2)"/>
+    <rect x="80" y="104" width="48" height="22" rx="5" fill="url(#r2)"/>
+    <rect x="136" y="104" width="48" height="22" rx="5" fill="url(#r2)"/>
+    <rect x="248" y="104" width="48" height="22" rx="5" fill="url(#r2)"/>
+    <rect x="304" y="104" width="48" height="22" rx="5" fill="url(#r2)"/>
+    <rect x="360" y="104" width="48" height="22" rx="5" fill="url(#r2)"/>
+    <rect x="416" y="104" width="48" height="22" rx="5" fill="url(#r2)"/>
+    <!-- linha 4 -->
+    <rect x="24" y="136" width="48" height="22" rx="5" fill="url(#r3)"/>
+    <rect x="80" y="136" width="48" height="22" rx="5" fill="url(#r3)"/>
+    <rect x="136" y="136" width="48" height="22" rx="5" fill="url(#r3)"/>
+    <rect x="192" y="136" width="48" height="22" rx="5" fill="url(#r3)"/>
+    <rect x="248" y="136" width="48" height="22" rx="5" fill="url(#r3)"/>
+    <rect x="304" y="136" width="48" height="22" rx="5" fill="url(#r3)"/>
+    <rect x="360" y="136" width="48" height="22" rx="5" fill="url(#r3)"/>
+    <rect x="416" y="136" width="48" height="22" rx="5" fill="url(#r3)"/>
+    <!-- linha 5 -->
+    <rect x="24" y="168" width="48" height="22" rx="5" fill="url(#r4)"/>
+    <rect x="80" y="168" width="48" height="22" rx="5" fill="url(#r4)"/>
+    <rect x="136" y="168" width="48" height="22" rx="5" fill="url(#r4)"/>
+    <rect x="192" y="168" width="48" height="22" rx="5" fill="url(#r4)"/>
+    <rect x="248" y="168" width="48" height="22" rx="5" fill="url(#r4)"/>
+    <rect x="304" y="168" width="48" height="22" rx="5" fill="url(#r4)"/>
+    <rect x="360" y="168" width="48" height="22" rx="5" fill="url(#r4)"/>
+    <rect x="416" y="168" width="48" height="22" rx="5" fill="url(#r4)"/>
+  </g>
+  <!-- partículas -->
+  <circle cx="222" cy="126" r="3" fill="#fb923c"/>
+  <circle cx="258" cy="146" r="3" fill="#facc15"/>
+  <circle cx="240" cy="98" r="2.5" fill="#facc15"/>
+  <!-- bolinha -->
+  <circle cx="240" cy="215" r="9" fill="url(#ball)"/>
+  <!-- raquete -->
+  <rect x="180" y="255" width="120" height="16" rx="8" fill="url(#paddle)"/>
+  <text x="240" y="295" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" font-weight="bold" fill="#b9a8d9">TIJOLINHO</text>
+</svg>

@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Horta Invadida</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    height: 100%;
+    background: #1a2e12;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
+  }
+  #wrap {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+  }
+  canvas {
+    background: linear-gradient(#87ceeb 0%, #8bc34a 62%, #3f8c2a 100%);
+    border-radius: 10px;
+    box-shadow: 0 0 40px rgba(0,0,0,.5);
+    max-width: 100%;
+    max-height: 100%;
+  }
+  #touch {
+    position: absolute;
+    bottom: 10px;
+    left: 0; right: 0;
+    display: flex;
+    justify-content: center;
+    gap: 14px;
+    pointer-events: none;
+  }
+  .tbtn {
+    pointer-events: auto;
+    width: 68px; height: 68px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(0,0,0,.35);
+    color: #fff;
+    font-size: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+  .tbtn:active { background: rgba(255,255,255,.3); }
+  #tfire { width: 84px; height: 84px; background: rgba(200,60,30,.5); font-size: 32px; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="game" width="960" height="1200"></canvas>
+  <div id="touch">
+    <button class="tbtn" id="tleft">◀</button>
+    <button class="tbtn" id="tfire">🌱</button>
+    <button class="tbtn" id="tright">▶</button>
+  </div>
+</div>
+<script>
+(() => {
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  // resolução interna 2× para texto/emoji nitidos; coordenadas lógicas 480×600
+  ctx.scale(2, 2);
+  const W = 480, H = 600;
+
+  const HIGH_KEY = 'horta-invadida-high';
+  let high = +(localStorage.getItem(HIGH_KEY) || 0);
+
+  // ---- estado ----
+  const ROWS = 4, COLS = 8;
+  const TYPES = [
+    { emoji: '🐌', pontos: 30, nome: 'Caramujo' },
+    { emoji: '🦗', pontos: 20, nome: 'Grilo'   },
+    { emoji: '🐜', pontos: 10, nome: 'Formiga' },
+    { emoji: '🐞', pontos: 10, nome: 'Besouro' },
+  ];
+  const CELL_W = 52, CELL_H = 46;
+
+  let state, score, level, lives, player, bullets, enemies, enemyBullets,
+      gridDir, gridSpeed, stepTimer, stepInterval, shootTimer,
+      particles, levelMsg, shake, lastFrame;
+
+  function reset(full) {
+    if (full !== false) { score = 0; level = 1; lives = 3; }
+    player = { x: W/2 - 18, y: H - 70, w: 36, h: 30, cooldown: 0, inv: 0 };
+    bullets = [];
+    enemyBullets = [];
+    particles = [];
+    gridDir = 1;
+    gridSpeed = 7 + level * 2;
+    stepTimer = 0;
+    shootTimer = 2.5;
+    levelMsg = 0;
+    shake = 0;
+    buildGrid();
+  }
+
+  function buildGrid() {
+    enemies = [];
+    const top = 70, left = (W - (COLS-1)*CELL_W) / 2;
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        enemies.push({ r, c, x: left + c*CELL_W, y: top + r*CELL_H, alive: true });
+      }
+    }
+  }
+
+  state = 'start';
+  reset(true);
+
+  // ---- entrada ----
+  const keys = {};
+  addEventListener('keydown', e => {
+    if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown',' '].includes(e.key)) e.preventDefault();
+    keys[e.key.toLowerCase()] = true;
+    if (e.key === ' ' || e.key === 'Enter') {
+      if (state === 'start') startGame();
+      else if (state === 'over') { state = 'start'; reset(true); }
+    }
+  });
+  addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+
+  function touch(id, key) {
+    const el = document.getElementById(id);
+    const on = e => { e.preventDefault(); keys[key] = true;
+      if (state === 'start') startGame(); else if (state === 'over') { state='start'; reset(true); } };
+    const off = e => { e.preventDefault(); keys[key] = false; };
+    el.addEventListener('touchstart', on, {passive:false});
+    el.addEventListener('touchend', off, {passive:false});
+    el.addEventListener('mousedown', on);
+    el.addEventListener('mouseup', off);
+  }
+  touch('tleft','arrowleft'); touch('tright','arrowright'); touch('tfire',' ');
+
+  canvas.addEventListener('click', () => {
+    if (state === 'start') startGame();
+    else if (state === 'over') { state = 'start'; reset(true); }
+  });
+
+  function startGame() { reset(true); state = 'playing'; }
+
+  // ---- lógica ----
+
+  function stepGrid() {
+    const alive = enemies.filter(e => e.alive);
+    if (!alive.length) { nextLevel(); return; }
+    // acelera conforme morre bicho
+    const aliveCount = alive.length;
+    const speedMul = 1 + (ROWS*COLS - aliveCount) / (ROWS*COLS) * 1.5;
+    const step = gridSpeed * speedMul;
+
+    let minX = Math.min(...alive.map(e => e.x));
+    let maxX = Math.max(...alive.map(e => e.x));
+    let hitEdge = (gridDir > 0 && maxX + step > W - 24) || (gridDir < 0 && minX - step < 24);
+    if (hitEdge) {
+      gridDir *= -1;
+      for (const e of enemies) if (e.alive) e.y += 16;
+    } else {
+      for (const e of enemies) if (e.alive) e.x += step * gridDir;
+    }
+    // se um bicho chega no nível do fazendeiro, game over
+    if (Math.max(...enemies.filter(e => e.alive).map(e => e.y)) >= player.y - 10) {
+      loseLife(true);
+      if (state !== 'playing') return;
+    }
+  }
+
+  function nextLevel() {
+    level++;
+    levelMsg = 2;
+    buildGrid();
+    gridDir = 1;
+  }
+
+  function loseLife(dropDown) {
+    lives--;
+    shake = 0.5;
+    if (lives <= 0) {
+      state = 'over';
+      if (score > high) { high = score; localStorage.setItem(HIGH_KEY, high); }
+    } else {
+      player.x = W/2 - 18;
+      player.inv = 2.5;
+      enemyBullets = [];
+      if (dropDown) { // reinicia a formação do nível (bichos não podem passar)
+        const top = 70, left = (W - (COLS-1)*CELL_W) / 2;
+        for (const e of enemies) if (e.alive) e.y = top + e.r*CELL_H, e.x = left + e.c*CELL_W;
+        gridDir = 1;
+      }
+    }
+  }
+
+  function fire() {
+    if (player.cooldown > 0) return;
+    bullets.push({ x: player.x + player.w/2, y: player.y - 6, vy: -420 });
+    player.cooldown = 0.3;
+  }
+
+  function enemyShoot() {
+    const alive = enemies.filter(e => e.alive);
+    if (!alive.length) return;
+    // o bicho mais "embaixo" de cada coluna; escolhe uma coluna aleatória
+    const byCol = {};
+    for (const e of alive) {
+      if (!byCol[e.c] || e.y > byCol[e.c].y) byCol[e.c] = e;
+    }
+    const shooters = Object.values(byCol);
+    const s = shooters[Math.floor(Math.random()*shooters.length)];
+    enemyBullets.push({ x: s.x + 10, y: s.y + 26, vy: 100 + level*8, vx: (Math.random()-.5)*30 });
+  }
+
+  function boom(x, y, color) {
+    for (let i = 0; i < 10; i++) {
+      const a = Math.random()*Math.PI*2, sp = 40 + Math.random()*120;
+      particles.push({ x, y, vx: Math.cos(a)*sp, vy: Math.sin(a)*sp, life: .5, color });
+    }
+  }
+
+  function update(dt) {
+    if (state !== 'playing') return;
+
+    // fazendeiro
+    const spd = 320;
+    if (keys['arrowleft'] || keys['a']) player.x -= spd*dt;
+    if (keys['arrowright'] || keys['d']) player.x += spd*dt;
+    player.x = Math.max(8, Math.min(W-8-player.w, player.x));
+    player.cooldown = Math.max(0, player.cooldown - dt);
+    player.inv = Math.max(0, player.inv - dt);
+    levelMsg = Math.max(0, levelMsg - dt);
+    if (keys[' ']) fire();
+
+    // grade de bichos
+    stepTimer += dt;
+    stepInterval = 0.18 / (1 + (level-1)*0.08);
+    while (stepTimer >= stepInterval) {
+      stepTimer -= stepInterval;
+      stepGrid();
+      if (state !== 'playing') return;
+    }
+
+    // tiro inimigo
+    shootTimer -= dt;
+    if (shootTimer <= 0) {
+      enemyShoot();
+      shootTimer = Math.max(1.0, 2.8 - level*0.2) * (0.8 + Math.random()*0.5);
+    }
+
+    // balas do jogador
+    for (const b of bullets) b.y += b.vy*dt;
+    bullets = bullets.filter(b => b.y > -20);
+    // balas inimigas
+    for (const b of enemyBullets) { b.y += b.vy*dt; b.x += (b.vx||0)*dt; }
+    enemyBullets = enemyBullets.filter(b => b.y < H+20 && b.x > -10 && b.x < W+10);
+
+    // colisão bala x bicho
+    for (const b of bullets) {
+      for (const e of enemies) {
+        if (!e.alive) continue;
+        if (b.x > e.x-6 && b.x < e.x+26 && b.y > e.y-4 && b.y < e.y+28) {
+          e.alive = false;
+          b.y = -999;
+          score += TYPES[e.r].pontos;
+          if (score > high) { high = score; localStorage.setItem(HIGH_KEY, high); }
+          boom(b.x, b.y, ['#ffd23f','#ff8c42','#7cff5e'][e.r % 3]);
+          break;
+        }
+      }
+    }
+    bullets = bullets.filter(b => b.y > -100);
+
+    // colisão bala inimiga x fazendeiro
+    if (player.inv <= 0) {
+      for (const b of enemyBullets) {
+        if (b.x > player.x && b.x < player.x+player.w && b.y > player.y && b.y < player.y+player.h) {
+          b.y = H+999;
+          boom(player.x+player.w/2, player.y+player.h/2, '#ffd23f');
+          loseLife(false);
+          break;
+        }
+      }
+    }
+
+    // partículas
+    for (const p of particles) { p.x += p.vx*dt; p.y += p.vy*dt; p.vy += 300*dt; p.life -= dt; }
+    particles = particles.filter(p => p.life > 0);
+  }
+
+  // ---- desenho ----
+  function drawFarmer(x, y) {
+    ctx.save();
+    // corpo (macacão azul)
+    ctx.fillStyle = '#3f51b5';
+    ctx.fillRect(x+8, y+14, 20, 16);
+    // cabeça
+    ctx.fillStyle = '#ffcc80';
+    ctx.beginPath(); ctx.arc(x+18, y+10, 7, 0, Math.PI*2); ctx.fill();
+    // chapéu de palha
+    ctx.fillStyle = '#e6b84f';
+    ctx.fillRect(x+4, y+4, 28, 4);
+    ctx.fillRect(x+10, y-3, 16, 7);
+    // cano (lança-semente)
+    ctx.fillStyle = '#8d6e63';
+    ctx.fillRect(x+15, y-12, 6, 10);
+    // sementinha no cano
+    ctx.fillStyle = '#cddc39';
+    ctx.beginPath(); ctx.arc(x+18, y-13, 2.5, 0, Math.PI*2); ctx.fill();
+    // bracinhos
+    ctx.fillStyle = '#ffcc80';
+    ctx.fillRect(x+4, y+16, 4, 8);
+    ctx.fillRect(x+28, y+16, 4, 8);
+    ctx.restore();
+  }
+
+  function drawEnemy(e, t) {
+    if (!e.alive) return;
+    const bob = Math.sin(t*6 + e.x*0.05) * 2;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.save();
+    // sombra dura (sem blur) para destacar sem borrar o bichinho
+    ctx.shadowColor = 'rgba(0,0,0,.5)';
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetY = 2;
+    ctx.font = '30px serif';
+    ctx.fillText(TYPES[e.r].emoji, e.x+10, e.y+11+bob);
+    ctx.restore();
+  }
+
+  function drawHUD() {
+    ctx.fillStyle = 'rgba(0,0,0,.55)';
+    ctx.fillRect(0, 0, W, 34);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 15px "Segoe UI", sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`PONTOS ${score}`, 12, 18);
+    ctx.textAlign = 'center';
+    ctx.fillText(`NÍVEL ${level}`, W/2, 18);
+    ctx.textAlign = 'right';
+    ctx.fillText(`RECORDE ${high}`, W-12, 18);
+    // vidas
+    ctx.textAlign = 'left';
+    ctx.font = '14px serif';
+    let s = '';
+    for (let i = 0; i < lives; i++) s += '🌻 ';
+    ctx.fillText(s, 12, H-14);
+  }
+
+  function drawCenter(msg, sub) {
+    ctx.fillStyle = 'rgba(0,0,0,.6)';
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#fff';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = 'bold 34px "Segoe UI", sans-serif';
+    ctx.fillText(msg, W/2, H/2 - 30);
+    ctx.font = '16px "Segoe UI", sans-serif';
+    ctx.fillStyle = '#cddc39';
+    ctx.fillText(sub, W/2, H/2 + 14);
+  }
+
+  function render(t) {
+    ctx.clearRect(0, 0, W, H);
+    ctx.save();
+    if (shake > 0 && state === 'playing') ctx.translate((Math.random()-.5)*10, (Math.random()-.5)*10);
+
+    // chão / canteiro
+    ctx.fillStyle = 'rgba(121,85,72,.35)';
+    for (let i = 0; i < 8; i++) {
+      ctx.beginPath();
+      ctx.ellipse(40 + i*58, H-30, 22, 6, 0, 0, Math.PI*2);
+      ctx.fill();
+    }
+    // plantinhas de fundo
+    ctx.font = '18px serif'; ctx.textAlign='center';
+    for (let i = 0; i < 6; i++) ctx.fillText('🥬', 50 + i*80, H-24);
+
+    for (const e of enemies) drawEnemy(e, t);
+    drawFarmer(player.x, player.y + (player.inv > 0 && Math.floor(t*10)%2 ? -3 : 0));
+
+    // balas do jogador: sementinhas brilhantes
+    for (const b of bullets) {
+      ctx.fillStyle = '#fff176';
+      ctx.beginPath(); ctx.ellipse(b.x, b.y, 4.5, 8, 0, 0, Math.PI*2); ctx.fill();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+    // balas inimigas: gotinhas de "baba" (laranja para contrastar com a grama)
+    ctx.fillStyle = '#ff9800';
+    for (const b of enemyBullets) {
+      ctx.beginPath(); ctx.arc(b.x, b.y, 5.5, 0, Math.PI*2); ctx.fill();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+
+    // partículas
+    for (const p of particles) {
+      ctx.globalAlpha = p.life * 2;
+      ctx.fillStyle = p.color;
+      ctx.fillRect(p.x-2, p.y-2, 4, 4);
+    }
+    ctx.globalAlpha = 1;
+
+    drawHUD();
+
+    if (levelMsg > 0 && state === 'playing') {
+      ctx.fillStyle = 'rgba(255,255,255,.9)';
+      ctx.font = 'bold 28px "Segoe UI", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(`Nível ${level}!`, W/2, H/2);
+    }
+
+    if (state === 'start') {
+      drawCenter('HORTA INVADIDA', '🐌🦗🐜 Bichinhos invadiram a horta!');
+      ctx.fillStyle = '#ddd';
+      ctx.font = '14px "Segoe UI", sans-serif';
+      ctx.fillText('Setas/WASD para mover · Espaço para lançar sementes', W/2, H/2 + 46);
+      ctx.fillStyle = '#ffeb3b';
+      ctx.font = 'bold 16px "Segoe UI", sans-serif';
+      ctx.fillText('Pressione ESPAÇO ou clique para começar', W/2, H/2 + 78);
+    } else if (state === 'over') {
+      drawCenter('A HORTA CAIU...', `Pontuação: ${score} · Recorde: ${high}`);
+      ctx.fillStyle = '#ffeb3b';
+      ctx.font = 'bold 16px "Segoe UI", sans-serif';
+      ctx.fillText('Pressione ESPAÇO ou clique para jogar de novo', W/2, H/2 + 60);
+    }
+    ctx.restore();
+  }
+
+  function loop(ts) {
+    const t = ts / 1000;
+    const dt = Math.min(0.05, lastFrame ? t - lastFrame : 0.016);
+    lastFrame = t;
+    shake = Math.max(0, shake - dt);
+    update(dt);
+    if (state !== 'playing') {
+      for (const p of particles) { p.x += p.vx*dt; p.y += p.vy*dt; p.vy += 300*dt; p.life -= dt; }
+      particles = particles.filter(p => p.life > 0);
+    }
+    render(t);
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

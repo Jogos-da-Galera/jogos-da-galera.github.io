@@ -1,0 +1,82 @@
+[
+  {
+    "id": "minhoquinha",
+    "nome": "Minhoquinha",
+    "descricao": "O clássico snake de sempre! Controle a minhoquinha com as setas do teclado (ou WASD), coma as maçãs e não bata nas paredes nem em você mesmo. Quanto maior, mais pontos!",
+    "categorias": [
+      "Arcade",
+      "Clássicos",
+      "Reflexo"
+    ]
+  },
+  {
+    "id": "jogo-da-velha",
+    "nome": "Jogo da Velha",
+    "descricao": "O clássico 3 em linha! Jogue contra a máquina (imbatível, bom proveito 😏) ou contra um amigo no mesmo dispositivo. Placar com vitórias e empates.",
+    "categorias": [
+      "Clássicos",
+      "Estratégia",
+      "2 Jogadores"
+    ]
+  },
+  {
+    "id": "tetris",
+    "nome": "Tetris",
+    "descricao": "O rei dos clássicos! Encaixe as peças coloridas e complete linhas para pontuar. 1 linha = 40 pts, 2 = 100, 3 = 300 e o famoso Tetris = 1200 (tudo multiplicado pelo nível)! A cada 10 linhas você sobe de nível e fica mais rápido.",
+    "categorias": [
+      "Clássicos",
+      "Arcade",
+      "Reflexo"
+    ]
+  },
+  {
+    "id": "breakout",
+    "nome": "Tijolinho",
+    "descricao": "O clássico de destruir tijolos! Mova a raquete com o mouse, o toque ou as setas e devolva a bolinha para quebrar todos os tijolos coloridos. Linhas de cima valem mais pontos, você tem 3 vidas e a bola fica cada vez mais rápida. Destrua tudo para ir ao próximo nível!",
+    "categorias": [
+      "Clássicos",
+      "Arcade",
+      "Reflexo"
+    ]
+  },
+  {
+    "id": "2048",
+    "nome": "2048",
+    "descricao": "O puzzle de somar tiles que dominou o mundo! Mova o tabuleiro com as setas, o WASD ou deslizando o dedo e combine os números iguais até chegar ao mágico 2048. Depois de vencer, continue subindo o placar — como vai longe você?",
+    "categorias": [
+      "Clássicos",
+      "Puzzle",
+      "Estratégia"
+    ]
+  },
+  {
+    "id": "memoria-emojis",
+    "nome": "Memória de Emojis",
+    "descricao": "O clássico jogo da memória com 4 temas para escolher: Emojis, Dinossauros, Animais e Profissões! Vire dois cartões por vez e encontre todos os 8 pares em poucas tentativas. Acompanhe seu placar e tente bater seu recorde! 🧠",
+    "categorias": [
+      "Puzzle",
+      "Memória",
+      "Casual"
+    ]
+  },
+  {
+    "id": "horta-invadida",
+    "nome": "Horta Invadida",
+    "descricao": "Os bichinhos invadiram a horta! 🐌🦗🐜 Defenda as plantinhas no clássico estilo Space Invaders: mova o fazendeiro com as setas/WASD, lance sementes com o espaço e elimine caramujos, grilos e formigas antes que eles cheguem às suas couves. Sobreviva aos níveis cada vez mais rápidos!",
+    "categorias": [
+      "Clássicos",
+      "Arcade",
+      "Reflexo"
+    ]
+  },
+  {
+    "id": "bolinhas",
+    "nome": "Bolinhas",
+    "descricao": "O clássico jogo de bolinhas coloridas! Mire com o mouse, o toque ou as setas e lance a bolinha do lançador. Reúna 3 ou mais da mesma cor para explodir, e cuidado com as bolinhas soltas que caem! A cada nível uma fileira nova desce do topo — não deixe as bolinhas passarem da linha vermelha!",
+    "categorias": [
+      "Puzzle",
+      "Arcade",
+      "Reflexo"
+    ]
+  }
+]

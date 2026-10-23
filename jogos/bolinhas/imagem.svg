@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="300" viewBox="0 0 480 300">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#241245"/>
+      <stop offset="1" stop-color="#150a2e"/>
+    </linearGradient>
+    <radialGradient id="red" cx="0.35" cy="0.3" r="0.9">
+      <stop offset="0" stop-color="#ffffff"/><stop offset="0.3" stop-color="#ff5a5a"/><stop offset="1" stop-color="#b32222"/>
+    </radialGradient>
+    <radialGradient id="yel" cx="0.35" cy="0.3" r="0.9">
+      <stop offset="0" stop-color="#ffffff"/><stop offset="0.3" stop-color="#ffd740"/><stop offset="1" stop-color="#c49a10"/>
+    </radialGradient>
+    <radialGradient id="grn" cx="0.35" cy="0.3" r="0.9">
+      <stop offset="0" stop-color="#ffffff"/><stop offset="0.3" stop-color="#58d155"/><stop offset="1" stop-color="#2a8a28"/>
+    </radialGradient>
+    <radialGradient id="blu" cx="0.35" cy="0.3" r="0.9">
+      <stop offset="0" stop-color="#ffffff"/><stop offset="0.3" stop-color="#53b8ff"/><stop offset="1" stop-color="#2271b3"/>
+    </radialGradient>
+    <radialGradient id="pnk" cx="0.35" cy="0.3" r="0.9">
+      <stop offset="0" stop-color="#ffffff"/><stop offset="0.3" stop-color="#ff7ae0"/><stop offset="1" stop-color="#c02e9c"/>
+    </radialGradient>
+    <radialGradient id="prt" cx="0.35" cy="0.3" r="0.9">
+      <stop offset="0" stop-color="#ffffff"/><stop offset="0.3" stop-color="#c792ff"/><stop offset="1" stop-color="#8247c9"/>
+    </radialGradient>
+  </defs>
+  <rect width="480" height="300" fill="url(#bg)"/>
+  <!-- fileira 1 (offset) -->
+  <g>
+    <circle cx="60" cy="40" r="22" fill="url(#red)"/>
+    <circle cx="104" cy="40" r="22" fill="url(#yel)"/>
+    <circle cx="148" cy="40" r="22" fill="url(#grn)"/>
+    <circle cx="192" cy="40" r="22" fill="url(#red)"/>
+    <circle cx="236" cy="40" r="22" fill="url(#blu)"/>
+    <circle cx="280" cy="40" r="22" fill="url(#pnk)"/>
+    <circle cx="324" cy="40" r="22" fill="url(#red)"/>
+    <circle cx="368" cy="40" r="22" fill="url(#grn)"/>
+    <circle cx="412" cy="40" r="22" fill="url(#blu)"/>
+  </g>
+  <!-- fileira 2 -->
+  <g>
+    <circle cx="38" cy="78" r="22" fill="url(#grn)"/>
+    <circle cx="82" cy="78" r="22" fill="url(#pnk)"/>
+    <circle cx="126" cy="78" r="22" fill="url(#red)"/>
+    <circle cx="170" cy="78" r="22" fill="url(#prt)"/>
+    <circle cx="214" cy="78" r="22" fill="url(#yel)"/>
+    <circle cx="258" cy="78" r="22" fill="url(#red)"/>
+    <circle cx="302" cy="78" r="22" fill="url(#pnk)"/>
+    <circle cx="346" cy="78" r="22" fill="url(#blu)"/>
+    <circle cx="390" cy="78" r="22" fill="url(#yel)"/>
+    <circle cx="434" cy="78" r="22" fill="url(#grn)"/>
+  </g>
+  <!-- fileira 3 (offset) -->
+  <g>
+    <circle cx="60" cy="116" r="22" fill="url(#blu)"/>
+    <circle cx="104" cy="116" r="22" fill="url(#prt)"/>
+    <circle cx="148" cy="116" r="22" fill="url(#pnk)"/>
+    <circle cx="236" cy="116" r="22" fill="url(#grn)"/>
+    <circle cx="280" cy="116" r="22" fill="url(#yel)"/>
+    <circle cx="412" cy="116" r="22" fill="url(#prt)"/>
+  </g>
+  <!-- linha perigosa -->
+  <line x1="0" y1="180" x2="480" y2="180" stroke="#ff5050" stroke-width="3" stroke-dasharray="12 8" opacity="0.6"/>
+  <!-- bolinha em voo -->
+  <circle cx="330" cy="150" r="20" fill="url(#pnk)"/>
+  <!-- lançador -->
+  <path d="M 165 285 A 55 55 0 0 1 275 285 Z" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.35)" stroke-width="3"/>
+  <circle cx="220" cy="268" r="22" fill="url(#yel)"/>
+  <circle cx="300" cy="268" r="14" fill="url(#red)" opacity="0.9"/>
+  <text x="300" y="240" fill="rgba(255,255,255,0.6)" font-family="sans-serif" font-size="11" text-anchor="middle">próxima</text>
+  <!-- título -->
+  <text x="240" y="240" fill="#ffffff" font-family="sans-serif" font-weight="bold" font-size="34" text-anchor="middle" opacity="0.95">Bolinhas</text>
+</svg>
