@@ -3,7 +3,7 @@
 // recursos locais (cada jogo fica offline depois de ser aberto 1x).
 
 // Aumente o valor a cada vez que o site mudar (novos jogos, css, etc.)
-const CACHE_VERSION = "v1";
+const CACHE_VERSION = "v2";
 const CACHE_NAME = `jogos-da-galera-${CACHE_VERSION}`;
 
 // Shell essencial: sem isso nada funciona
