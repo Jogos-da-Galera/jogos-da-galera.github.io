@@ -58,7 +58,13 @@
   var BX = (W - BW) / 2;                // 0
   var BY = 172, BH = BW;                // área do tabuleiro
   var BOTTOM_Y = BY + BH;               // 716? -> BY+512 = 684
-  var MOVS_POR_NIVEL = 25;
+  // Níveis: {g: meta de pontos do nível, m: jogadas disponíveis}
+  var LEVELS = [
+    { g: 1500, m: 30 }, { g: 1800, m: 30 }, { g: 2200, m: 30 }, { g: 2600, m: 30 }, { g: 3000, m: 32 },
+    { g: 3400, m: 32 }, { g: 3900, m: 32 }, { g: 4400, m: 34 }, { g: 4900, m: 34 }, { g: 5500, m: 34 },
+    { g: 6100, m: 36 }, { g: 6800, m: 36 }, { g: 7500, m: 36 }, { g: 8300, m: 38 }, { g: 9200, m: 38 }
+  ];
+  var NIVEIS = LEVELS.length;
 
   // Variantes (o "select" da tela inicial)
   var THEMES = [
@@ -72,15 +78,15 @@
   var state = "menu";                  // menu | play | win | lose
   var theme = 0;
   var grid = null;                     // grid[y][x] = {t, row, col, born, pop, isB, line}
-  var score = 0, level = 1, moves = MOVS_POR_NIVEL;
-  var goal = 1500;
+  var score = 0, total = 0, level = 1, moves = 30;
+  var goal = 1500, missing = 0;
   var phase = "idle";                  // idle | swap | swapback | pop | fall | shuffle
   var anim = { t: 0, dur: 0, data: null };
   var sel = null;                      // {x, y}
   var particles = [], floats = [];
   var msg = null;                      // {text, t, dur}
   var regions = [];                    // botões desenhados (para hit-test)
-  var hiKey = "", hi = 0;
+  var hiKey = "", hi = 0, recorde = false;
   var last = performance.now();
 
   // ---------------- Áudio ----------------
@@ -130,8 +136,9 @@
     hi = parseInt(localStorage.getItem(hiKey) || "0", 10) || 0;
   }
   function saveHi() {
-    if (score > hi) {
-      hi = score;
+    if (total > hi) {
+      recorde = total > 0;
+      hi = total;
       try { localStorage.setItem(hiKey, String(hi)); } catch (e) {}
     }
   }
@@ -163,12 +170,11 @@
     }
   }
 
-  function goalForLevel(lv) { return 500 + lv * 1000; }
-
   function startLevel(lv) {
     level = lv;
-    goal = goalForLevel(lv);
-    moves = MOVS_POR_NIVEL;
+    goal = LEVELS[lv - 1].g;
+    moves = LEVELS[lv - 1].m;
+    score = 0;
     initBoard();
     sel = null;
     phase = "idle";
@@ -179,6 +185,8 @@
   function newGame(tIdx) {
     theme = tIdx;
     score = 0;
+    total = 0;
+    recorde = false;
     loadHi(theme);
     particles = []; floats = [];
     startLevel(1);
@@ -306,10 +314,12 @@
     var clear = {};
     var bombClear = {};
     var creates = [];
+    var ptsTotal = 0;
 
     runs.forEach(function (run) {
       var pts = run.length >= 5 ? 150 : run.length === 4 ? 100 : 60;
       pts *= chain;
+      ptsTotal += pts;
       var mid = cellCenter(run[(run.length / 2) | 0].x, run[(run.length / 2) | 0].y);
       addFloat("+" + pts, mid.x, mid.y);
       run.forEach(function (p) { clear[p.x + "," + p.y] = 1; });
@@ -339,8 +349,7 @@
       }
     });
 
-    var total = Object.keys(clear).length + Object.keys(bombClear).length;
-    score += total;
+    score += ptsTotal;
     sfx.pop(chain);
 
     // marca pops
@@ -398,11 +407,19 @@
     phase = "idle";
     if (!hasValidMoves()) { doShuffle(false); }
     if (score >= goal) {
+      var bonus = moves * 20;
+      total += score + bonus;
       saveHi();
-      state = "win";
       sfx.win();
-      addFloat("🎉 Nível " + level + " completo!", W / 2, BY + BH / 2);
+      if (level >= NIVEIS) {
+        state = "victory";
+      } else {
+        state = "win";
+        addFloat("🎉 Nível " + level + " de " + NIVEIS + " completo! Bônus de jogadas: +" + bonus, W / 2, BY + BH / 2);
+      }
     } else if (moves <= 0) {
+      missing = goal - score;
+      total += score;
       saveHi();
       state = "lose";
       sfx.lose();
@@ -454,7 +471,7 @@
       }
       return;
     }
-    if (state === "win" || state === "lose") {
+    if (state === "win" || state === "lose" || state === "victory") {
       for (i = 0; i < regions.length; i++) {
         if (inRect(p.x, p.y, regions[i])) {
           sfx.select();
@@ -558,10 +575,10 @@
     // botão home
     drawButton(W - 52, 14, 38, 38, "⌂", { font: "700 20px sans-serif", kind: "home" });
 
-    // plaques: nível | meta | pontos | movimentos
+    // plaques: nível | meta | pontos | jogadas
     var py = 56, ph = 52;
     var items = [
-      { v: String(level), l: "NÍVEL" },
+      { v: level + " / " + NIVEIS, l: "NÍVEL" },
       { v: fmt(goal), l: "META" },
       { v: fmt(score), l: "PONTOS" }
     ];
@@ -580,7 +597,7 @@
       ctx.fillText(it.l, x, py + 40);
     });
 
-    // movimentos (grande, à direita)
+    // jogadas restantes (grande, à direita)
     var mx = W - 118, my = 120, mw = 90, mh = 44;
     ctx.fillStyle = "rgba(255,255,255,0.07)";
     rr(mx, my, mw, mh, 12);
@@ -591,7 +608,7 @@
     ctx.fillText(String(moves), mx + mw / 2, my + 16);
     ctx.font = "600 9px 'Segoe UI', sans-serif";
     ctx.fillStyle = "#9d8cd0";
-    ctx.fillText("MOVIMENTOS", mx + mw / 2, my + 34);
+    ctx.fillText("JOGADAS", mx + mw / 2, my + 34);
 
     // recorde
     ctx.textAlign = "left";
@@ -736,24 +753,38 @@
     if (state === "win") {
       ctx.font = "900 40px 'Segoe UI', sans-serif";
       ctx.fillStyle = "#34d399";
-      ctx.fillText("Nível " + level + " completo! 🎉", W / 2, 200);
-      ctx.font = "600 18px 'Segoe UI', sans-serif";
-      ctx.fillStyle = "#c4b5fd";
-      ctx.fillText("Pontos: " + score, W / 2, 252);
-      drawButton(W / 2 - 110, 320, 220, 54, "Próximo nível ➜", { kind: "next" });
-      drawButton(W / 2 - 110, 392, 220, 48, "Tela inicial", { kind: "menu", color: "#4c1d95", color2: "#2e1065", font: "600 15px 'Segoe UI', sans-serif" });
-    } else if (state === "lose") {
-      var recorde = score >= hi && score > 0;
-      ctx.font = "900 40px 'Segoe UI', sans-serif";
-      ctx.fillStyle = "#f472b6";
-      ctx.fillText("Fim de jogo!", W / 2, 180);
+      ctx.fillText("Nível " + level + " de " + NIVEIS + "! 🎉", W / 2, 180);
       ctx.font = "600 19px 'Segoe UI', sans-serif";
       ctx.fillStyle = "#c4b5fd";
-      ctx.fillText("Nível " + level + " · Pontos: " + score, W / 2, 232);
+      ctx.fillText("Pontos do nível: " + score, W / 2, 232);
       ctx.fillStyle = "#fbbf24";
-      ctx.fillText(recorde ? "🏆 Novo recorde!" : "🏆 Recorde: " + fmt(hi), W / 2, 268);
-      drawButton(W / 2 - 110, 330, 220, 54, "Jogar de novo 🔁", { kind: "play" });
+      ctx.fillText("Total: " + total, W / 2, 268);
+      drawButton(W / 2 - 110, 330, 220, 54, "Próximo nível ➜", { kind: "next" });
       drawButton(W / 2 - 110, 402, 220, 48, "Tela inicial", { kind: "menu", color: "#4c1d95", color2: "#2e1065", font: "600 15px 'Segoe UI', sans-serif" });
+    } else if (state === "lose") {
+      ctx.font = "900 40px 'Segoe UI', sans-serif";
+      ctx.fillStyle = "#f472b6";
+      ctx.fillText("Jogadas esgotadas! 🫳", W / 2, 172);
+      ctx.font = "600 19px 'Segoe UI', sans-serif";
+      ctx.fillStyle = "#c4b5fd";
+      ctx.fillText("Nível " + level + " de " + NIVEIS + " · Faltaram " + missing + " pts para a meta", W / 2, 226);
+      ctx.fillStyle = "#fbbf24";
+      ctx.fillText(recorde ? "🏆 Novo recorde: " + fmt(hi) : "🏆 Recorde: " + fmt(hi), W / 2, 262);
+      drawButton(W / 2 - 110, 326, 220, 54, "Tentar de novo 🔁", { kind: "play" });
+      drawButton(W / 2 - 110, 398, 220, 48, "Tela inicial", { kind: "menu", color: "#4c1d95", color2: "#2e1065", font: "600 15px 'Segoe UI', sans-serif" });
+    } else if (state === "victory") {
+      ctx.font = "56px 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif";
+      ctx.fillText("🏆", W / 2, 160);
+      ctx.font = "900 38px 'Segoe UI', sans-serif";
+      ctx.fillStyle = "#fbbf24";
+      ctx.fillText("Você completou o jogo!", W / 2, 224);
+      ctx.font = "600 19px 'Segoe UI', sans-serif";
+      ctx.fillStyle = "#c4b5fd";
+      ctx.fillText("Os " + NIVEIS + " níveis com o total de " + total + " pontos", W / 2, 270);
+      ctx.fillStyle = "#fbbf24";
+      ctx.fillText(recorde ? "🏆 Novo recorde: " + fmt(hi) : "🏆 Recorde: " + fmt(hi), W / 2, 306);
+      drawButton(W / 2 - 110, 360, 220, 54, "Jogar de novo 🔁", { kind: "play" });
+      drawButton(W / 2 - 110, 432, 220, 48, "Tela inicial", { kind: "menu", color: "#4c1d95", color2: "#2e1065", font: "600 15px 'Segoe UI', sans-serif" });
     }
   }
 
@@ -778,7 +809,7 @@
 
     ctx.font = "600 17px 'Segoe UI', sans-serif";
     ctx.fillStyle = "#b8a8e8";
-    ctx.fillText("Escolha a variante da roda 🎡", W / 2, 226);
+    ctx.fillText("Escolha a variante da roda 🎡 · " + NIVEIS + " níveis", W / 2, 226);
 
     // "select" — lista de variantes
     var top = 252, ih = 70, gap = 10;
@@ -808,7 +839,7 @@
     ctx.textAlign = "center";
     ctx.font = "500 13px 'Segoe UI', sans-serif";
     ctx.fillStyle = "#8b7bc0";
-    ctx.fillText("Trote 2 frutas vizinhas para casar 3+. 4 em linha = bomba!", W / 2, btnY + 80);
+    ctx.fillText("Troque 2 frutas vizinhas para casar 3+. Bata a META de pontos nas jogadas disponíveis!", W / 2, btnY + 80);
   }
 
   function render() {
@@ -846,7 +877,7 @@
       ctx.globalAlpha = 1;
     }
 
-    if (state === "win" || state === "lose") drawOverlay();
+    if (state === "win" || state === "lose" || state === "victory") drawOverlay();
   }
 
   requestAnimationFrame(tick);
