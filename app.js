@@ -180,3 +180,94 @@ if ("serviceWorker" in navigator && location.protocol !== "file:") {
     });
   });
 }
+
+// ===== Botão "Instalar app" =====
+// - Chrome/Edge: usa o beforeinstallprompt (instala direto)
+// - Outros: abre modal com instruções (Android menu, iOS Safari, desktop)
+(function setupInstallButton() {
+  const btn = document.getElementById("install-btn");
+  const modal = document.getElementById("install-modal");
+  const closeBtn = document.getElementById("install-modal-close");
+  if (!btn || !modal) return;
+
+  let deferredPrompt = null;
+  let userDismissed = false;
+
+  function isStandalone() {
+    return (
+      window.matchMedia("(display-mode: standalone)").matches ||
+      // iOS: detecta quando aberto como app na tela de início
+      (navigator.standalone === true) ||
+      (window.navigator.standalone === true)
+    );
+  }
+
+  function detectPlatform() {
+    const ua = navigator.userAgent;
+    if (/iPhone|iPad|iPod/.test(ua)) return "ios";
+    if (/Android/.test(ua)) return "android";
+    return "desktop";
+  }
+
+  function openModal() {
+    // Mostra apenas as instruções da plataforma detectada
+    const platform = detectPlatform();
+    modal.querySelectorAll(".install-steps").forEach((el) => el.classList.add("hidden"));
+    const section = document.getElementById(`install-steps-${platform}`);
+    if (section) section.classList.remove("hidden");
+    modal.classList.remove("hidden");
+    closeBtn.focus();
+  }
+
+  function closeModal() {
+    modal.classList.add("hidden");
+    btn.focus();
+  }
+
+  // Chrome/Edge disparam beforeinstallprompt quando o site é instalável.
+  window.addEventListener("beforeinstallprompt", (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    if (!userDismissed && !isStandalone()) {
+      btn.classList.remove("hidden");
+    }
+  });
+
+  // Se o usuário já instalou, esconde o botão
+  window.addEventListener("appinstalled", () => {
+    btn.classList.add("hidden");
+    deferredPrompt = null;
+  });
+
+  // Mostra o botão mesmo sem beforeinstallprompt (iOS, Firefox, etc.)
+  // para que o usuário ao menos veja as instruções.
+  if (!isStandalone()) {
+    btn.classList.remove("hidden");
+  }
+
+  btn.addEventListener("click", async () => {
+    if (deferredPrompt) {
+      // Instala direto via API (Chrome/Android, Chrome/desktop)
+      deferredPrompt.prompt();
+      const choice = await deferredPrompt.userChoice;
+      if (choice.outcome === "accepted") {
+        btn.classList.add("hidden");
+      } else {
+        // Se recusou, esconde o botão e oferece as instruções manuais
+        userDismissed = true;
+        btn.classList.add("hidden");
+      }
+      deferredPrompt = null;
+    } else {
+      openModal();
+    }
+  });
+
+  closeBtn.addEventListener("click", closeModal);
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) closeModal();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !modal.classList.contains("hidden")) closeModal();
+  });
+})();

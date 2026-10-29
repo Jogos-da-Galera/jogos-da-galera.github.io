@@ -21,6 +21,9 @@
     <header class="home-header">
       <h1 class="logo">🎮 Jogos da Galera</h1>
       <p class="tagline">Jogos clássicos e novos, 100% gratuitos e sem propagandas</p>
+      <button id="install-btn" class="install-btn hidden" type="button" title="Instalar o site como app (jogue offline)">
+        📲 <span class="install-btn-label">Instalar app</span>
+      </button>
     </header>
 
     <div class="filters">
@@ -66,6 +69,41 @@
     <iframe id="game-frame" class="game-frame" title="Área do jogo"
       sandbox="allow-scripts allow-pointer-lock allow-same-origin"></iframe>
   </section>
+
+  <!-- ===== Modal: como instalar ===== -->
+  <div id="install-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="install-modal-title">
+    <div class="modal">
+      <button id="install-modal-close" class="modal-close" type="button" aria-label="Fechar">✕</button>
+      <h2 id="install-modal-title">📲 Instalar o site</h2>
+      <p class="modal-subtitle">Salve os jogos na tela de início e jogue offline, sem internet.</p>
+
+      <div id="install-steps-android" class="install-steps hidden">
+        <p class="install-steps-title">Android (Chrome)</p>
+        <ol>
+          <li>Toque no ícone <strong>⋮</strong> (três pontinhos) no canto superior direito do navegador.</li>
+          <li>Toque em <strong>Instalar site</strong> (ou "Adicionar à tela de início").</li>
+          <li>Confirme com <strong>Instalar</strong>. Pronto, o ícone aparece na sua tela de início!</li>
+        </ol>
+      </div>
+
+      <div id="install-steps-ios" class="install-steps hidden">
+        <p class="install-steps-title">iPhone / iPad (Safari)</p>
+        <ol>
+          <li>Toque no botão <strong>Compartilhar</strong> (quadrado com seta pra cima) na barra do Safari.</li>
+          <li>Toque em <strong>Adicionar à Tela de Início</strong>.</li>
+          <li>Toque em <strong>Adicionar</strong>. Pronto, o ícone aparece na sua tela de início!</li>
+        </ol>
+      </div>
+
+      <div id="install-steps-desktop" class="install-steps hidden">
+        <p class="install-steps-title">Computador (Chrome ou Edge)</p>
+        <ol>
+          <li>Toque no ícone de <strong>instalar</strong> (pequeno ícone do site) à direita da barra de endereço, ou</li>
+          <li>Toque no ícone <strong>⋮</strong> do menu e escolha <strong>Instalar Jogos da Galera…</strong></li>
+        </ol>
+      </div>
+    </div>
+  </div>
 
   <script src="app.js"></script>
 </body>

@@ -63,6 +63,114 @@ body {
   font-size: 1.05rem;
 }
 
+/* ---------- Botão instalar app ---------- */
+
+.install-btn {
+  margin-top: 20px;
+  padding: 12px 28px;
+  font-size: 1rem;
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(90deg, var(--accent-2), var(--accent));
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(250, 204, 21, 0.4);
+  transition: transform 0.15s, box-shadow 0.15s;
+  animation: install-pulse 2s ease-in-out infinite;
+}
+
+.install-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 22px rgba(250, 204, 21, 0.6);
+}
+
+.install-btn:active {
+  transform: scale(0.98);
+}
+
+@keyframes install-pulse {
+  0%, 100% { box-shadow: 0 4px 16px rgba(250, 204, 21, 0.4); }
+  50% { box-shadow: 0 4px 24px rgba(250, 204, 21, 0.7); }
+}
+
+/* ---------- Modal instalar ---------- */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(10, 5, 20, 0.8);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.modal {
+  position: relative;
+  width: min(480px, 100%);
+  background: var(--card);
+  border-radius: var(--radius);
+  border: 2px solid var(--primary);
+  padding: 32px 28px 28px;
+  box-shadow: 0 20px 60px rgba(139, 47, 240, 0.5);
+}
+
+.modal-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 50%;
+  background: var(--bg-soft);
+  color: var(--text-dim);
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.modal-close:hover {
+  background: var(--primary);
+  color: #fff;
+}
+
+.modal h2 {
+  font-size: 1.5rem;
+  font-weight: 900;
+  margin-bottom: 8px;
+}
+
+.modal-subtitle {
+  color: var(--text-dim);
+  font-size: 0.95rem;
+  margin-bottom: 20px;
+}
+
+.install-steps {
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.install-steps-title {
+  font-weight: 800;
+  color: var(--accent-2);
+  margin-bottom: 10px;
+  font-size: 1.05rem;
+}
+
+.install-steps ol {
+  padding-left: 20px;
+  color: var(--text);
+}
+
+.install-steps ol li {
+  margin-bottom: 10px;
+}
+
 /* ---------- Filtros ---------- */
 
 .filters {
