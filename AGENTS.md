@@ -21,6 +21,11 @@ python3 -m http.server 8000
 ├── app.js            # roteador + renderização da aplicação
 ├── app.css           # estilo (vibrante, jovem, tons de roxo)
 ├── jogos.json        # descritor dos jogos (array)
+├── manifest.json     # manifest do PWA (prompt de instalar no celular)
+├── sw.js             # service worker (modo offline / cache)
+├── icon.svg          # ícone do app (fonte; gera os PNGs abaixo)
+├── icon-192.png      # ícone PWA 192px
+├── icon-512.png      # ícone PWA 512px
 └── jogos/
     └── <id>/         # um pasta por jogo (id padrão posix)
         ├── index.html   # o payload do jogo
@@ -61,6 +66,18 @@ Array de objetos:
 3. Coloque lá o `index.html` do jogo (autocontido, roda sozinho) e o `imagem.svg` (idealmente 480×300, proporção 8:5, que é a do grid).
 
 Não é preciso mexer em `index.html`/`app.js` — tudo é gerado a partir do JSON.
+
+## PWA / offline
+
+O site é um PWA: `sw.js` faz cache do site (offline) e o `manifest.json` habilita o prompt de instalar no celular.
+
+- **Ao adicionar um jogo ou mudar shell (css/js/json), aumente `CACHE_VERSION` em `sw.js`** — senão os usuários continuam com a versão antiga em cache. O jogo em si funciona offline depois de ser aberto uma vez (cache-first no service worker).
+- Ícone: edite `icon.svg` e regenere os PNGs com:
+  ```bash
+  rsvg-convert -w 192 -h 192 icon.svg -o icon-192.png
+  rsvg-convert -w 512 -h 512 icon.svg -o icon-512.png
+  ```
+- iOS: sem prompt automático de instalar — o usuário usa "Adicionar à Tela de Início" no Safari; o offline funciona normalmente.
 
 ## Jogo de demonstração
 

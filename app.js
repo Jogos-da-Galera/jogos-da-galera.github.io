@@ -170,3 +170,13 @@ function route() {
 document.getElementById("filter-name").addEventListener("input", applyFilters);
 
 document.addEventListener("DOMContentLoaded", init);
+
+// Service Worker: habilita o modo offline e o prompt de instalar (PWA).
+// Só registra via HTTPS (ou localhost) e no navegador que suportar.
+if ("serviceWorker" in navigator && location.protocol !== "file:") {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js").catch((err) => {
+      console.error("Falha ao registrar service worker:", err);
+    });
+  });
+}
