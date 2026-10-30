@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sapinho Varia 🐸🐔🐊🦫</title>
+  <style>
+    :root {
+      --bg: #120821;
+      --primary: #a855f7;
+      --accent: #e879f9;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: radial-gradient(800px 400px at 50% -20%, #3b1a6e 0%, var(--bg) 60%);
+      color: #f5f0ff;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      gap: 12px;
+      padding: 14px;
+      user-select: none;
+    }
+    h1 {
+      font-size: 1.6rem;
+      background: linear-gradient(90deg, var(--accent), var(--primary));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    #hud {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.95rem;
+    }
+    #hud span { color: var(--accent); }
+    canvas {
+      border: 3px solid var(--primary);
+      border-radius: 12px;
+      box-shadow: 0 10px 30px rgba(139, 47, 240, 0.4);
+      max-width: 100%;
+      max-height: 66vh;
+      touch-action: none;
+      display: block;
+    }
+    #themes {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .theme-btn {
+      background: #241040;
+      border: 2px solid #4c2a7e;
+      color: #cbb8e8;
+      font: inherit;
+      font-weight: 700;
+      font-size: 0.85rem;
+      padding: 8px 12px;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .theme-btn:hover { border-color: var(--primary); }
+    .theme-btn.sel {
+      background: linear-gradient(135deg, #7c3aed, #c026d3);
+      color: #fff;
+      border-color: var(--accent);
+      box-shadow: 0 0 14px rgba(232, 121, 249, 0.5);
+    }
+    #hint { color: #b9a8d9; font-size: 0.88rem; text-align: center; }
+  </style>
+</head>
+<body>
+  <h1>Sapinho Varia</h1>
+  <div id="hud">
+    <div>❤️ <span id="h-vidas">3</span></div>
+    <div>🎯 <span id="h-meta">0/4</span></div>
+    <div>⏱️ <span id="h-tempo">60</span></div>
+    <div>⭐ <span id="h-pontos">0</span></div>
+    <div>🏆 <span id="h-rec">0</span></div>
+  </div>
+  <canvas id="cv" width="440" height="320"></canvas>
+  <div id="themes">
+    <button class="theme-btn sel" data-t="0">🐸 Sapinho na Rua</button>
+    <button class="theme-btn" data-t="1">🐔 Galinha na Rua</button>
+    <button class="theme-btn" data-t="2">🐸 Sapinho no Pantano</button>
+    <button class="theme-btn" data-t="3">🦫 Capivara no Rio</button>
+  </div>
+  <div id="hint">Toque ao lado do personagem para ele andar • Setas / WASD também 🐾</div>
+
+<script>
+(() => {
+  const cv = document.getElementById("cv");
+  const ctx = cv.getContext("2d");
+  const W = cv.width, H = cv.height;
+
+  const COLS = 11, ROWS = 8, CELL = 40;      // W=440, H=320
+  // linhas: 0 = casa | 1..4 = perigo | 5 = segura | 6 = filhotes | 7 = início
+  const M = 44;                              // margem offscreen dos perigos
+
+  // ---------- Temas ----------
+  const THEMES = [
+    {
+      id: "rua", nome: "Sapinho na Rua",
+      player: "🐸", baby: "🐸", home: "🏡",
+      water: false,
+      rows: [
+        { e: "🚗", hw: 1.15, sp: 36, dir: 1,  gap: 3.1 },
+        { e: "🚙", hw: 1.15, sp: 58, dir: -1, gap: 3.3 },
+        { e: "🚌", hw: 1.6,  sp: 72, dir: 1,  gap: 4.4 },
+        { e: "🚕", hw: 1.15, sp: 50, dir: -1, gap: 2.9 },
+      ],
+    },
+    {
+      id: "galinha", nome: "Galinha na Rua",
+      player: "🐔", baby: "🐥", home: "🪺",
+      water: false,
+      rows: [
+        { e: "🚗", hw: 1.15, sp: 40, dir: -1, gap: 3.0 },
+        { e: "🚕", hw: 1.15, sp: 62, dir: 1,  gap: 3.2 },
+        { e: "🚚", hw: 1.6,  sp: 76, dir: -1, gap: 4.5 },
+        { e: "🚲", hw: 0.9,  sp: 55, dir: 1,  gap: 2.8 },
+      ],
+    },
+    {
+      id: "pantano", nome: "Sapinho no Pantano",
+      player: "🐸", baby: "🐸", home: "🍄",
+      water: true,
+      rows: [
+        { e: "🐢", hw: 1.0,  sp: 34, dir: 1,  gap: 3.2 },
+        { e: "🐊", hw: 1.4,  sp: 56, dir: -1, gap: 3.6 },
+        { e: "🐊", hw: 1.4,  sp: 70, dir: 1,  gap: 4.0 },
+        { e: "🐟", hw: 0.9,  sp: 60, dir: -1, gap: 2.6 },
+      ],
+    },
+    {
+      id: "capivara", nome: "Capivara no Rio",
+      player: "🦫", baby: "🦫", home: "🏕️",
+      water: true,
+      rows: [
+        { e: "🐢", hw: 1.0,  sp: 36, dir: -1, gap: 3.2 },
+        { e: "🐟", hw: 0.9,  sp: 60, dir: 1,  gap: 2.6 },
+        { e: "🐊", hw: 1.4,  sp: 72, dir: -1, gap: 4.0 },
+        { e: "🦈", hw: 1.3,  sp: 64, dir: 1,  gap: 3.4 },
+      ],
+    },
+  ];
+
+  // ---------- Áudio ----------
+  let AC = null;
+  function beep(freq, dur, type = "square", vol = 0.12, slide = 0) {
+    try {
+      if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
+      const o = AC.createOscillator(), g = AC.createGain();
+      o.type = type; o.frequency.value = freq;
+      if (slide) o.frequency.linearRampToValueAtTime(freq + slide, AC.currentTime + dur);
+      g.gain.value = vol;
+      g.gain.exponentialRampToValueAtTime(0.001, AC.currentTime + dur);
+      o.connect(g).connect(AC.destination);
+      o.start(); o.stop(AC.currentTime + dur);
+    } catch (e) {}
+  }
+  const sfx = {
+    move:    () => beep(300, 0.05, "square", 0.05),
+    pegar:   () => { beep(520, 0.08, "sine", 0.15); setTimeout(() => beep(780, 0.1, "sine", 0.15), 80); },
+    entrega: () => { [440, 550, 660, 880].forEach((f, i) => setTimeout(() => beep(f, 0.1, "sine", 0.14), i * 70)); },
+    morde:   () => beep(200, 0.3, "sawtooth", 0.16, -140),
+    level:   () => { [392, 523, 659, 784].forEach((f, i) => setTimeout(() => beep(f, 0.12, "triangle", 0.16), i * 90)); },
+    fim:     () => { [400, 320, 240, 160].forEach((f, i) => setTimeout(() => beep(f, 0.18, "sawtooth", 0.12), i * 140)); },
+  };
+
+  // ---------- Recorde (localStorage, pode não existir em iframe sandboxed) ----------
+  const REC_KEY = "sapinho-varia-rec";
+  let recs = {};
+  try { recs = JSON.parse(localStorage.getItem(REC_KEY) || "{}"); } catch (e) {}
+  function salvarRec() {
+    if (score > (recs[themeIdx] || 0)) {
+      recs[themeIdx] = score;
+      try { localStorage.setItem(REC_KEY, JSON.stringify(recs)); } catch (e) {}
+      return true;
+    }
+    return false;
+  }
+
+  // ---------- Estado ----------
+  let themeIdx = 0;
+  let state = "ready";        // ready | playing | dead | levelup | over
+  let level, target, delivered, score, lives, timeLeft;
+  let player = { col: 5, row: 7 };
+  let carrying = false;
+  let rows = [];              // [{e, hw, sp, dir, items:[x...]}, ...]
+  let babies = [];            // [col, ...]
+  let deadTimer = 0, levelTimer = 0, flash = 0, msgTimer = 0, newRec = false;
+
+  const speedMul = () => 1 + 0.12 * (level - 1);
+
+  function spawnRows() {
+    const T = THEMES[themeIdx];
+    rows = T.rows.map(cfg => {
+      const span = W + 2 * M;
+      const n = Math.ceil(span / (cfg.gap * CELL));
+      const items = [];
+      const off = Math.random() * span;
+      for (let i = 0; i < n; i++) {
+        let x = -M + i * cfg.gap * CELL + (Math.random() - 0.5) * cfg.gap * CELL * 0.5 + off;
+        x = ((x % span) + span) % span - M;
+        items.push(x);
+      }
+      return { e: cfg.e, hw: cfg.hw, sp: cfg.sp, dir: cfg.dir, items };
+    });
+  }
+
+  function resetBabies() {
+    babies = [];
+    for (let i = 0; i < target; i++) spawnBaby();
+  }
+  function spawnBaby(forceCol) {
+    const cols = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+    let c;
+    do {
+      c = forceCol !== undefined ? forceCol : cols[Math.floor(Math.random() * cols.length)];
+    } while (babies.includes(c));
+    babies.push(c);
+  }
+
+  function resetGame() {
+    level = 1; target = 4; delivered = 0; score = 0; lives = 3; timeLeft = 60;
+    player = { col: 5, row: 7 };
+    carrying = false;
+    newRec = false;
+    spawnRows();
+    resetBabies();
+  }
+
+  function startGame() {
+    resetGame();
+    state = "playing";
+    beep(440, 0.1, "sine", 0.12);
+  }
+
+  // ---------- Lógica ----------
+  function movePlayer(dc, dr) {
+    const nc = Math.max(0, Math.min(COLS - 1, player.col + dc));
+    const nr = Math.max(0, Math.min(ROWS - 1, player.row + dr));
+    if (nc === player.col && nr === player.row) return;
+    player.col = nc; player.row = nr;
+    sfx.move();
+    // pega filhote?
+    if (nr === 6 && !carrying && babies.includes(nc)) {
+      babies.splice(babies.indexOf(nc), 1);
+      carrying = true;
+      sfx.pegar();
+    }
+    // entregou em casa?
+    if (nr === 0 && carrying) {
+      carrying = false;
+      delivered++;
+      score += 100;
+      sfx.entrega();
+      if (delivered >= target) {
+        score += Math.floor(timeLeft) * 5;   // bônus de tempo
+        state = "levelup";
+        levelTimer = 1.6;
+        sfx.level();
+      }
+    }
+  }
+
+  function die() {
+    lives--;
+    // filhote cai e volta pra faixa
+    if (carrying) { carrying = false; spawnBaby(); }
+    sfx.morde();
+    flash = 0.25;
+    if (lives <= 0) {
+      gameOver();
+    } else {
+      state = "dead";
+      deadTimer = 0.7;
+    }
+  }
+
+  function gameOver() {
+    newRec = salvarRec();
+    state = "over";
+    sfx.fim();
+  }
+
+  function update(dt) {
+    flash = Math.max(0, flash - dt);
+    if (state === "dead") {
+      deadTimer -= dt;
+      if (deadTimer <= 0) {
+        player = { col: 5, row: 7 };
+        state = "playing";
+      }
+      return;
+    }
+    if (state === "levelup") {
+      levelTimer -= dt;
+      if (levelTimer <= 0) {
+        level++;
+        target = Math.min(3 + level, 8);
+        delivered = 0;
+        timeLeft = 60;
+        player = { col: 5, row: 7 };
+        carrying = false;
+        spawnRows();
+        resetBabies();
+        state = "playing";
+      }
+      return;
+    }
+    if (state !== "playing") return;
+
+    timeLeft -= dt;
+    if (timeLeft <= 0) { timeLeft = 0; gameOver(); return; }
+
+    // perigos se movem
+    const mul = speedMul();
+    for (const r of rows) {
+      for (let i = 0; i < r.items.length; i++) {
+        r.items[i] += r.dir * r.sp * mul * dt;
+        if (r.dir > 0 && r.items[i] > W + M) r.items[i] -= W + 2 * M;
+        if (r.dir < 0 && r.items[i] < -M) r.items[i] += W + 2 * M;
+      }
+    }
+
+    // colisão
+    const pc = player.col * CELL + CELL / 2;
+    for (let ri = 0; ri < 4; ri++) {
+      if (player.row === ri + 1) {
+        const r = rows[ri];
+        for (const x of r.items) {
+          if (Math.abs(x - pc) < r.hw * CELL * 0.28) {
+            die();
+            return;
+          }
+        }
+      }
+    }
+
+  }
+
+  // ---------- Desenho ----------
+  function drawEmoji(ch, x, y, size) {
+    ctx.font = `${size}px "Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(ch, x, y);
+  }
+
+  function rowY(r) { return r * CELL; }
+
+  function draw() {
+    const T = THEMES[themeIdx];
+    const safe = T.water ? "#3a5f3f" : "#2f8f2f";
+    const safe2 = T.water ? "#47704a" : "#3aa03a";
+
+    // fundo das linhas
+    ctx.fillStyle = "#245124";
+    ctx.fillRect(0, 0, W, CELL);                       // linha da casa
+    for (let i = 1; i <= 4; i++) {
+      ctx.fillStyle = T.water ? "#1c6e8c" : "#39424e";
+      ctx.fillRect(0, rowY(i), W, CELL);
+      // divisória entre faixas
+      if (T.water) {
+        ctx.strokeStyle = "rgba(255,255,255,0.12)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        for (let x = 0; x < W; x += 20) {
+          ctx.moveTo(x, rowY(i) + (i % 2 ? 12 : 28));
+          ctx.quadraticCurveTo(x + 10, rowY(i) + (i % 2 ? 6 : 34), x + 20, rowY(i) + (i % 2 ? 12 : 28));
+        }
+        ctx.stroke();
+      } else {
+        ctx.fillStyle = "rgba(255,255,255,0.25)";
+        for (let x = (i % 2 ? 0 : 20); x < W; x += 40) ctx.fillRect(x, rowY(i) + CELL / 2 - 2, 20, 4);
+      }
+    }
+    ctx.fillStyle = safe;                              // linha 5 (segura)
+    ctx.fillRect(0, rowY(5), W, CELL);
+    ctx.fillStyle = safe2;                             // linha 6 (filhotes)
+    ctx.fillRect(0, rowY(6), W, CELL);
+    ctx.fillStyle = safe;                              // linha 7 (início)
+    ctx.fillRect(0, rowY(7), W, CELL);
+
+    // casa
+    drawEmoji(T.home, W / 2, rowY(0) + CELL / 2, 30);
+    ctx.fillStyle = "rgba(255,255,255,0.7)";
+    ctx.font = "bold 12px 'Segoe UI',sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(`${delivered} / ${target}`, W / 2, rowY(0) - 2);
+
+    // filhotes
+    for (const c of babies) {
+      drawEmoji(T.baby, c * CELL + CELL / 2, rowY(6) + CELL / 2, 22);
+    }
+
+    // perigos
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i];
+      for (const x of r.items) drawEmoji(r.e, x, rowY(i + 1) + CELL / 2, 28);
+    }
+
+    // jogador
+    if (state !== "over" && state !== "ready") {
+      const px = player.col * CELL + CELL / 2;
+      const py = rowY(player.row) + CELL / 2;
+      if (flash > 0 && Math.floor(flash * 20) % 2 === 0) {
+        ctx.globalAlpha = 0.35;
+      }
+      if (carrying) drawEmoji(T.baby, px, py - 12, 16);
+      drawEmoji(T.player, px, py, 28);
+      ctx.globalAlpha = 1;
+    }
+
+    // overlays
+    ctx.textAlign = "center";
+    if (state === "ready") {
+      overlay(0.72);
+      drawEmoji(T.player, W / 2, 118, 44);
+      ctx.fillStyle = "#fff";
+      ctx.font = "bold 20px 'Segoe UI',sans-serif";
+      ctx.fillText(T.nome, W / 2, 162);
+      ctx.font = "14px 'Segoe UI',sans-serif";
+      ctx.fillStyle = "#e8e0ff";
+      ctx.fillText("Atravesse, pegue os filhotes e leve pra casa!", W / 2, 190);
+      pulse("TOQUE OU PRESSIONE ESPAÇO PARA COMEÇAR");
+    } else if (state === "over") {
+      overlay(0.75);
+      ctx.fillStyle = "#ffb4b4";
+      ctx.font = "bold 24px 'Segoe UI',sans-serif";
+      ctx.fillText("FIM DE JOGO!", W / 2, 105);
+      ctx.fillStyle = "#fff";
+      ctx.font = "bold 18px 'Segoe UI',sans-serif";
+      ctx.fillText(`Pontuação: ${score}`, W / 2, 140);
+      ctx.font = "15px 'Segoe UI',sans-serif";
+      ctx.fillStyle = "#ffd966";
+      ctx.fillText(newRec ? "🎉 NOVO RECORDE! 🎉" : `Recorde: ${recs[themeIdx] || 0}`, W / 2, 168);
+      pulse("TOQUE PARA JOGAR DE NOVO");
+    } else if (state === "levelup") {
+      overlay(0.5);
+      ctx.fillStyle = "#9dff9d";
+      ctx.font = "bold 26px 'Segoe UI',sans-serif";
+      ctx.fillText(`NÍVEL ${level} COMPLETO! 🎉`, W / 2, 140);
+      ctx.font = "15px 'Segoe UI',sans-serif";
+      ctx.fillStyle = "#fff";
+      ctx.fillText(`Bônus de tempo: +${Math.floor(timeLeft) * 5} pts`, W / 2, 172);
+    }
+  }
+
+  function overlay(a) {
+    ctx.fillStyle = `rgba(10,5,20,${a})`;
+    ctx.fillRect(0, 0, W, H);
+  }
+  function pulse(txt) {
+    const s = 0.7 + 0.3 * Math.sin(performance.now() / 300);
+    ctx.globalAlpha = s;
+    ctx.fillStyle = "#fff";
+    ctx.font = "bold 15px 'Segoe UI',sans-serif";
+    ctx.fillText(txt, W / 2, 235);
+    ctx.globalAlpha = 1;
+  }
+
+  // ---------- HUD ----------
+  const $ = id => document.getElementById(id);
+  function hud() {
+    $("h-vidas").textContent = "❤".repeat(Math.max(0, lives)) || "—";
+    $("h-meta").textContent = `${delivered}/${target}`;
+    $("h-tempo").textContent = Math.ceil(timeLeft);
+    $("h-pontos").textContent = score;
+    $("h-rec").textContent = recs[themeIdx] || 0;
+  }
+
+  // ---------- Loop ----------
+  let last = performance.now();
+  function loop(now) {
+    const dt = Math.min(0.05, (now - last) / 1000);
+    last = now;
+    update(dt);
+    draw();
+    hud();
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+
+  // ---------- Controles ----------
+  function startOrRestart() {
+    if (state === "ready") startGame();
+    else if (state === "over") { resetGame(); state = "ready"; beep(330, 0.08, "sine", 0.1); }
+  }
+
+  window.addEventListener("keydown", e => {
+    const k = e.key;
+    if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " "].includes(k)) e.preventDefault();
+    if (state === "ready" || state === "over") {
+      if (k === " " || k === "Enter") startOrRestart();
+      return;
+    }
+    if (state !== "playing") return;
+    if (k === "ArrowUp" || k === "w" || k === "W") movePlayer(0, -1);
+    else if (k === "ArrowDown" || k === "s" || k === "S") movePlayer(0, 1);
+    else if (k === "ArrowLeft" || k === "a" || k === "A") movePlayer(-1, 0);
+    else if (k === "ArrowRight" || k === "d" || k === "D") movePlayer(1, 0);
+  });
+
+  // toque: relativo à posição do personagem na tela
+  function toque(e) {
+    const t = e.touches ? e.touches[0] : e;
+    const rect = cv.getBoundingClientRect();
+    const x = (t.clientX - rect.left) * (W / rect.width);
+    const y = (t.clientY - rect.top) * (H / rect.height);
+    if (state === "ready" || state === "over") { startOrRestart(); return; }
+    if (state !== "playing") return;
+    const px = player.col * CELL + CELL / 2;
+    const py = rowY(player.row) + CELL / 2;
+    const dx = x - px, dy = y - py;
+    // toque perto do personagem: nada
+    if (Math.hypot(dx, dy) <= CELL * 0.6) return;
+    if (Math.abs(dx) > Math.abs(dy)) movePlayer(Math.sign(dx), 0);
+    else movePlayer(0, Math.sign(dy));
+  }
+  cv.addEventListener("touchstart", toque, { passive: true });
+  cv.addEventListener("mousedown", toque);
+
+  // ---------- Botões de tema ----------
+  const btns = [...document.querySelectorAll(".theme-btn")];
+  btns.forEach(b => b.addEventListener("click", () => {
+    themeIdx = +b.dataset.t;
+    btns.forEach(x => x.classList.toggle("sel", x === b));
+    resetGame();
+    state = "ready";
+    hud();
+    beep(392, 0.08, "sine", 0.1);
+  }));
+
+  resetGame();
+  hud();
+})();
+</script>
+</body>
+</html>

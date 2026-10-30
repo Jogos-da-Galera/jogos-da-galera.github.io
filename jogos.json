@@ -90,12 +90,42 @@
     ]
   },
   {
+    "id": "corre-corre",
+    "nome": "Corre-Corre",
+    "descricao": "O clássico runner do modo offline, mas com estilo! 🏃 Escolha seu corredor — Godzilla, Ninjazinho, Entregador de comida ou Bandido fugindo da polícia — e pule nos obstáculos de cada pista: rochas, prédios (com a cidade inteira ao fundo!), caixas, toneis, cones, barreiras, viaturas... e alguns bem GIGANTES! Use o pulo duplo, abaixe para esquivar dos pássaros, faça near miss para ganhar bônus e veja o ritmo aumentar. Quanto mais longe você corre, melhor!",
+    "categorias": [
+      "Arcade",
+      "Reflexo",
+      "Runner"
+    ]
+  },
+  {
     "id": "samba-da-fruta",
     "nome": "Samba da Fruta",
     "descricao": "O match-3 de frutas que o Brasil merece! 🍉 Escolha a variante (Frutas Tropicais, Caipirinha, Quitandas ou Churrasco) e atravesse os 15 níveis: troque frutas vizinhas para casar 3+ e bata a META de pontos nas jogadas disponíveis. Casos de 4 viram bombas de linha, 5+ viram bombas 3x3, e sobrar jogadas dá bônus — aproveite as cascatas para fazer combos enormes!",
     "categorias": [
       "Puzzle",
       "Casual"
+    ]
+  },
+  {
+    "id": "sapinho-varia",
+    "nome": "Sapinho Varia",
+    "descricao": "O clássico de atravessar e levar os filhotes pra casa, com 4 temas para trocar a qualquer momento! 🐸🐔🐊🦫 Sapinho na rua, galinha caçando pintinhos, sapinho no pantano e capivara no rio. Atravesse o tráfego (ou os crocodilos!), pegue os filhotes e entregue em casa antes do tempo acabar. Cada tema tem seu próprio recorde!",
+    "categorias": [
+      "Arcade",
+      "Clássicos",
+      "Reflexo"
+    ]
+  },
+  {
+    "id": "flappy-varia",
+    "nome": "Flappy Varia",
+    "descricao": "O Flappy Bird que nunca te deixa entediado! 📎🚀🐠🌴 Um toque, clássico e viciante — mas com 4 temas para trocar a qualquer momento: um avião de papel escapando no escritório, um foguete entre asteroides no espaço, um peixinho entre corais no fundo do mar e um sapinho entre bambus na selva. Cada tema tem seu próprio recorde: qual você bate primeiro?",
+    "categorias": [
+      "Arcade",
+      "Clássicos",
+      "Reflexo"
     ]
   }
 ]

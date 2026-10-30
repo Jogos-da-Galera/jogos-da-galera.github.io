@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Flappy Varia 🐸🚀🐠📎</title>
+  <style>
+    :root {
+      --bg: #120821;
+      --primary: #a855f7;
+      --accent: #e879f9;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: radial-gradient(800px 400px at 50% -20%, #3b1a6e 0%, var(--bg) 60%);
+      color: #f5f0ff;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      gap: 14px;
+      padding: 16px;
+      user-select: none;
+    }
+    h1 {
+      font-size: 1.6rem;
+      background: linear-gradient(90deg, var(--accent), var(--primary));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    #hud {
+      display: flex;
+      gap: 24px;
+      font-weight: 700;
+      font-size: 1.05rem;
+    }
+    #hud span { color: var(--accent); }
+    canvas {
+      border: 3px solid var(--primary);
+      border-radius: 12px;
+      box-shadow: 0 10px 30px rgba(139, 47, 240, 0.4);
+      max-width: 100%;
+      max-height: 66vh;
+      touch-action: none;
+      display: block;
+    }
+    #themes {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .theme-btn {
+      background: #241040;
+      border: 2px solid #4c2a7e;
+      color: #cbb8e8;
+      font: inherit;
+      font-weight: 700;
+      font-size: 0.9rem;
+      padding: 8px 14px;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .theme-btn:hover { border-color: var(--primary); }
+    .theme-btn.sel {
+      background: linear-gradient(135deg, #7c3aed, #c026d3);
+      color: #fff;
+      border-color: var(--accent);
+      box-shadow: 0 0 14px rgba(232, 121, 249, 0.5);
+    }
+    #hint { color: #b9a8d9; font-size: 0.9rem; text-align: center; }
+  </style>
+</head>
+<body>
+  <h1>Flappy Varia</h1>
+  <div id="hud">Recorde: <span id="rec">0</span></div>
+  <canvas id="cv" width="360" height="600"></canvas>
+  <div id="themes">
+    <button class="theme-btn sel" data-t="0">📎 Escritório</button>
+    <button class="theme-btn" data-t="1">🚀 Espaço</button>
+    <button class="theme-btn" data-t="2">🐠 Fundo do Mar</button>
+    <button class="theme-btn" data-t="3">🌴 Selva</button>
+  </div>
+  <div id="hint">Clique / toque / ESPAÇO para impulsionar • Troque o tema a qualquer momento!</div>
+
+<script>
+(() => {
+  const cv = document.getElementById("cv");
+  const ctx = cv.getContext("2d");
+  const W = cv.width, H = cv.height;
+  const GROUND_H = 56;
+
+  // ---------- Áudio (WebAudio, bem discretinho) ----------
+  let AC = null;
+  function beep(freq, dur, type = "square", vol = 0.12) {
+    try {
+      AC = AC || new (window.AudioContext || window.webkitAudioContext)();
+      const o = AC.createOscillator(), g = AC.createGain();
+      o.type = type; o.frequency.value = freq;
+      g.gain.setValueAtTime(vol, AC.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, AC.currentTime + dur);
+      o.connect(g); g.connect(AC.destination);
+      o.start(); o.stop(AC.currentTime + dur);
+    } catch (e) {}
+  }
+
+  // ---------- Recorde por tema ----------
+  const HS_KEY = "flappy-varia-high";
+  let highs = {};
+  try { highs = JSON.parse(localStorage.getItem(HS_KEY) || "{}"); } catch (e) {}
+  function setHigh(t, v) {
+    if (v > (highs[t] || 0)) {
+      highs[t] = v;
+      localStorage.setItem(HS_KEY, JSON.stringify(highs));
+      document.getElementById("rec").textContent = v;
+      return true;
+    }
+    return false;
+  }
+
+  // ---------- Temas ----------
+  // Cada tema: céu, decorações de fundo, obstáculo (coluna) e o "personagem"
+  const THEMES = [
+    {
+      id: "escritorio", nome: "Escritório", emoji: "📎",
+      sky: ["#dfe7f5", "#b8c6e0"],
+      ground: ["#a9744c", "#8a5a38"],
+      makeDeco() {
+        // janelas fixas + prateleiras em parallax
+        const posters = [];
+        for (let i = 0; i < 6; i++)
+          posters.push({ x: i * 220 + Math.random() * 80, y: 60 + Math.random() * 120, w: 52, h: 66, c: ["#f87171", "#60a5fa", "#facc15", "#34d399"][i % 4] });
+        return { posters };
+      },
+      drawBg(t, dt, scroll, deco) {
+        // paredes
+        ctx.fillStyle = "rgba(255,255,255,0.35)";
+        for (let i = 0; i < 3; i++) { // janelas
+          const x = 20 + i * 120;
+          ctx.fillRect(x, 20, 84, 96);
+        }
+        ctx.fillStyle = "rgba(120,150,200,0.35)";
+        for (let i = 0; i < 3; i++) {
+          const x = 20 + i * 120;
+          ctx.fillRect(x, 20, 4, 96); ctx.fillRect(x + 42, 20, 4, 96);
+        }
+        // pôsteres rolando
+        ctx.save();
+        deco.posters.forEach((p) => {
+          const x = ((p.x - scroll * 0.4) % (W + 240) + W + 240) % (W + 240) - 120;
+          ctx.fillStyle = p.c;
+          ctx.globalAlpha = 0.55;
+          ctx.fillRect(x, p.y, p.w, p.h);
+          ctx.globalAlpha = 1;
+          ctx.strokeStyle = "rgba(90,110,150,0.6)";
+          ctx.strokeRect(x, p.y, p.w, p.h);
+        });
+        ctx.restore();
+      },
+      drawCol(x, w, h, isTop, t) {
+        // pilha de papéis
+        ctx.fillStyle = "#f7f9fc";
+        ctx.fillRect(x, isTop ? 0 : H - GROUND_H - h, w, h);
+        ctx.strokeStyle = "#c3cde0";
+        ctx.lineWidth = 1;
+        for (let i = 0; i < h / 11; i++) {
+          const y = isTop ? i * 11 : H - GROUND_H - h + i * 11;
+          ctx.beginPath();
+          ctx.moveTo(x + 2, y);
+          ctx.lineTo(x + w - 2, y);
+          ctx.stroke();
+          // "texto" do papel
+          ctx.fillStyle = i % 2 ? "#dfe6f2" : "#e9eef8";
+          ctx.fillRect(x + 6, y + 3, w - 12, 3);
+          ctx.fillStyle = "#f7f9fc";
+        }
+        // grampos na borda da abertura
+        const capY = isTop ? h - 10 : H - GROUND_H - h;
+        ctx.fillStyle = "#64748b";
+        ctx.fillRect(x - 4, capY, w + 8, 10);
+        ctx.fillStyle = "#94a3b8";
+        ctx.fillRect(x - 4, capY + 2, w + 8, 3);
+      },
+      // personagem: avião de papel
+      drawBird(px, py, ang, t) {
+        ctx.save();
+        ctx.translate(px, py);
+        ctx.rotate(ang);
+        ctx.fillStyle = "#ffffff";
+        ctx.strokeStyle = "#8aa0c4";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(17, 0); ctx.lineTo(-13, -9); ctx.lineTo(-7, 0); ctx.lineTo(-13, 9);
+        ctx.closePath();
+        ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(17, 0); ctx.lineTo(-7, 0); ctx.stroke();
+        ctx.restore();
+      },
+    },
+    {
+      id: "espaco", nome: "Espaço", emoji: "🚀",
+      sky: ["#07071f", "#1c1c4e"],
+      ground: ["#57534e", "#44403c"],
+      makeDeco() {
+        const stars = [];
+        for (let i = 0; i < 70; i++)
+          stars.push({ x: Math.random() * W, y: Math.random() * (H - 80), r: Math.random() * 1.6 + 0.4, p: Math.random() * Math.PI * 2 });
+        return { stars };
+      },
+      drawBg(t, dt, scroll, deco) {
+        ctx.save();
+        // planeta
+        ctx.fillStyle = "#7c3aed";
+        ctx.beginPath(); ctx.arc(292, 70, 34, 0, 7); ctx.fill();
+        ctx.fillStyle = "#a78bfa";
+        ctx.beginPath(); ctx.arc(282, 60, 10, 0, 7); ctx.fill();
+        // anel
+        ctx.strokeStyle = "rgba(232,121,249,0.7)";
+        ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.ellipse(292, 72, 52, 12, -0.3, 0, 7); ctx.stroke();
+        // estrelas
+        deco.stars.forEach((s) => {
+          const a = 0.4 + 0.6 * Math.abs(Math.sin(t / 700 + s.p));
+          ctx.fillStyle = `rgba(255,255,255,${a})`;
+          const x = (s.x - scroll * 0.15) % W;
+          ctx.fillRect(x < 0 ? x + W : x, s.y, s.r, s.r);
+        });
+        ctx.restore();
+      },
+      drawCol(x, w, h, isTop, t) {
+        // pilha de asteroides
+        const ys = [];
+        if (isTop) { for (let y = 8; y < h; y += 30) ys.push(y); }
+        else { for (let y = H - GROUND_H - h; y < H - GROUND_H; y += 30) ys.push(y); }
+        ctx.fillStyle = "#6b7280";
+        ys.forEach((y) => {
+          const r = w / 2 - 4 + ((y * 7) % 7);
+          ctx.fillStyle = y % 60 < 30 ? "#6b7280" : "#7c8494";
+          ctx.beginPath(); ctx.ellipse(x + w / 2, y, r, r * 0.9, 0, 0, 7); ctx.fill();
+          ctx.fillStyle = "rgba(30,35,50,0.45)";
+          ctx.beginPath(); ctx.arc(x + w / 2 - r * 0.35, y - r * 0.2, r * 0.28, 0, 7); ctx.fill();
+          ctx.beginPath(); ctx.arc(x + w / 2 + r * 0.3, y + r * 0.3, r * 0.18, 0, 7); ctx.fill();
+        });
+        const capY = isTop ? h - 8 : H - GROUND_H - h;
+        ctx.fillStyle = "#374151";
+        ctx.fillRect(x - 4, capY, w + 8, 8);
+      },
+      // personagem: foguete
+      drawBird(px, py, ang, t) {
+        ctx.save();
+        ctx.translate(px, py);
+        ctx.rotate(ang);
+        // chama
+        const fl = 6 + Math.sin(t / 50) * 3;
+        ctx.fillStyle = "#fbbf24";
+        ctx.beginPath(); ctx.moveTo(-14, -4); ctx.lineTo(-14 - fl, 0); ctx.lineTo(-14, 4); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = "#f97316";
+        ctx.beginPath(); ctx.moveTo(-14, -2.5); ctx.lineTo(-14 - fl * 0.6, 0); ctx.lineTo(-14, 2.5); ctx.closePath(); ctx.fill();
+        // corpo
+        ctx.fillStyle = "#f8fafc";
+        ctx.beginPath();
+        ctx.moveTo(-14, -8); ctx.lineTo(8, -8); ctx.quadraticCurveTo(18, -8, 19, 0);
+        ctx.quadraticCurveTo(18, 8, 8, 8); ctx.lineTo(-14, 8);
+        ctx.closePath(); ctx.fill();
+        // nariz
+        ctx.fillStyle = "#ef4444";
+        ctx.beginPath(); ctx.moveTo(10, -7); ctx.quadraticCurveTo(19, -7, 19, 0); ctx.quadraticCurveTo(19, 7, 10, 7); ctx.lineTo(10, -7); ctx.fill();
+        // janela
+        ctx.fillStyle = "#38bdf8";
+        ctx.beginPath(); ctx.arc(2, 0, 4.5, 0, 7); ctx.fill();
+        ctx.strokeStyle = "#64748b"; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.arc(2, 0, 4.5, 0, 7); ctx.stroke();
+        // aletas
+        ctx.fillStyle = "#ef4444";
+        ctx.beginPath(); ctx.moveTo(-14, -8); ctx.lineTo(-20, -13); ctx.lineTo(-14, -1); ctx.closePath(); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(-14, 8); ctx.lineTo(-20, 13); ctx.lineTo(-14, 1); ctx.closePath(); ctx.fill();
+        ctx.restore();
+      },
+    },
+    {
+      id: "mar", nome: "Fundo do Mar", emoji: "🐠",
+      sky: ["#2ea8d8", "#0a3d62"],
+      ground: ["#e8d29a", "#d4bc80"],
+      makeDeco() {
+        const bubbles = [];
+        for (let i = 0; i < 26; i++)
+          bubbles.push({ x: Math.random() * W, y: Math.random() * H, r: Math.random() * 4 + 2, s: Math.random() * 30 + 20 });
+        return { bubbles };
+      },
+      drawBg(t, dt, scroll, deco) {
+        ctx.save();
+        // raios de luz
+        ctx.globalAlpha = 0.08;
+        ctx.fillStyle = "#ffffff";
+        for (let i = 0; i < 4; i++) {
+          const x = 30 + i * 95;
+          ctx.beginPath();
+          ctx.moveTo(x, 0); ctx.lineTo(x + 34, 0); ctx.lineTo(x + 90, H); ctx.lineTo(x + 46, H);
+          ctx.closePath(); ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+        // bolhas subindo
+        deco.bubbles.forEach((b) => {
+          b.y -= b.s / 60 * dt;
+          if (b.y < -6) { b.y = H + 6; b.x = Math.random() * W; }
+          ctx.strokeStyle = "rgba(255,255,255,0.55)";
+          ctx.lineWidth = 1.2;
+          ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, 7); ctx.stroke();
+        });
+        // algas rolando no fundo
+        ctx.strokeStyle = "rgba(20,120,90,0.5)";
+        ctx.lineWidth = 4;
+        for (let i = 0; i < 8; i++) {
+          const x = ((i * 62 - scroll * 0.6) % (W + 80) + W + 80) % (W + 80) - 40;
+          ctx.beginPath();
+          ctx.moveTo(x, H - GROUND_H);
+          ctx.quadraticCurveTo(x + 8, H - GROUND_H - 34, x - 4, H - GROUND_H - 62);
+          ctx.stroke();
+        }
+        ctx.restore();
+      },
+      drawCol(x, w, h, isTop, t) {
+        if (isTop) {
+          // algas pendendo
+          ctx.fillStyle = "#1f8a5f";
+          ctx.fillRect(x + 6, 0, w - 12, h);
+          ctx.strokeStyle = "#2fbf8f";
+          ctx.lineWidth = 5;
+          for (let i = 0; i < 3; i++) {
+            const lx = x + 14 + i * 14;
+            ctx.beginPath();
+            ctx.moveTo(lx, 0);
+            ctx.quadraticCurveTo(lx + 8, h * 0.4, lx - 3, h);
+            ctx.stroke();
+          }
+          ctx.fillStyle = "#157a50";
+          ctx.fillRect(x - 2, h - 8, w + 4, 8);
+        } else {
+          // coral crescendo
+          const base = H - GROUND_H;
+          const colors = ["#e0577a", "#f0789b", "#c74666"];
+          for (let i = 0; i < 4; i++) {
+            const bx = x + 8 + i * ((w - 16) / 3);
+            const bh = h * (0.55 + (i % 3) * 0.22);
+            ctx.strokeStyle = colors[i % 3];
+            ctx.lineWidth = 8;
+            ctx.lineCap = "round";
+            ctx.beginPath();
+            ctx.moveTo(bx, base);
+            ctx.quadraticCurveTo(bx + (i - 1.5) * 4, base - bh * 0.6, bx + (i - 1.5) * 7, base - bh);
+            ctx.stroke();
+            ctx.fillStyle = colors[i % 3];
+            ctx.beginPath(); ctx.arc(bx + (i - 1.5) * 7, base - bh, 6, 0, 7); ctx.fill();
+          }
+          ctx.fillStyle = "#c74666";
+          ctx.fillRect(x - 2, base - h, w + 4, 8);
+        }
+      },
+      // personagem: peixinho
+      drawBird(px, py, ang, t) {
+        ctx.save();
+        ctx.translate(px, py);
+        ctx.rotate(ang);
+        const wig = Math.sin(t / 90) * 3;
+        // cauda
+        ctx.fillStyle = "#ff8f3c";
+        ctx.beginPath();
+        ctx.moveTo(-12, 0); ctx.lineTo(-22, -7 + wig); ctx.lineTo(-22, 7 + wig);
+        ctx.closePath(); ctx.fill();
+        // corpo
+        ctx.fillStyle = "#ffb020";
+        ctx.beginPath(); ctx.ellipse(0, 0, 14, 9.5, 0, 0, 7); ctx.fill();
+        // listra
+        ctx.fillStyle = "#e0801a";
+        ctx.beginPath(); ctx.ellipse(-2, 0, 5, 9, 0, 0, 7); ctx.fill();
+        // nadadeira
+        ctx.fillStyle = "#ff8f3c";
+        ctx.beginPath(); ctx.moveTo(-1, -3); ctx.quadraticCurveTo(4, -10 - wig, 9, -4); ctx.closePath(); ctx.fill();
+        // olho
+        ctx.fillStyle = "#fff";
+        ctx.beginPath(); ctx.arc(7, -2.5, 3, 0, 7); ctx.fill();
+        ctx.fillStyle = "#111";
+        ctx.beginPath(); ctx.arc(8, -2.5, 1.5, 0, 7); ctx.fill();
+        // boca
+        ctx.strokeStyle = "#b45309"; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.arc(13, 2, 2.5, 0.3, 2.4); ctx.stroke();
+        ctx.restore();
+      },
+    },
+    {
+      id: "selva", nome: "Selva", emoji: "🌴",
+      sky: ["#c9ef9f", "#79c468"],
+      ground: ["#4e9e3f", "#3c7d30"],
+      makeDeco() {
+        const lianas = [];
+        for (let i = 0; i < 7; i++)
+          lianas.push({ x: i * 66 + Math.random() * 30, len: 60 + Math.random() * 80, p: Math.random() * 6 });
+        return { lianas };
+      },
+      drawBg(t, dt, scroll, deco) {
+        ctx.save();
+        // sol
+        ctx.fillStyle = "rgba(255,236,150,0.9)";
+        ctx.beginPath(); ctx.arc(300, 64, 28, 0, 7); ctx.fill();
+        // folhas ao fundo (parallax)
+        ctx.globalAlpha = 0.35;
+        ctx.fillStyle = "#2f7d32";
+        for (let i = 0; i < 6; i++) {
+          const x = ((i * 90 - scroll * 0.3) % (W + 120) + W + 120) % (W + 120) - 60;
+          ctx.beginPath(); ctx.ellipse(x, 140 + (i % 3) * 50, 42, 26, 0.5, 0, 7); ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+        // lianas balançando
+        ctx.strokeStyle = "#2c6e2f";
+        ctx.lineWidth = 4;
+        deco.lianas.forEach((l) => {
+          const sway = Math.sin(t / 800 + l.p) * 7;
+          ctx.beginPath();
+          ctx.moveTo(l.x, 0);
+          ctx.quadraticCurveTo(l.x + sway, l.len * 0.6, l.x + sway, l.len);
+          ctx.stroke();
+          ctx.fillStyle = "#3e8e3e";
+          ctx.beginPath(); ctx.ellipse(l.x + sway, l.len, 8, 5, 0.6, 0, 7); ctx.fill();
+        });
+        ctx.restore();
+      },
+      drawCol(x, w, h, isTop, t) {
+        // bambu
+        const top = isTop ? 0 : H - GROUND_H - h;
+        ctx.fillStyle = "#7ec850";
+        ctx.fillRect(x + 4, top, w - 8, h);
+        ctx.fillStyle = "#a3e07c";
+        ctx.fillRect(x + 8, top, 7, h);
+        // nós
+        ctx.fillStyle = "#4c9a3f";
+        for (let y = isTop ? 24 : H - GROUND_H - h + 24; y < (isTop ? h : H - GROUND_H); y += 30)
+          ctx.fillRect(x + 4, y, w - 8, 5);
+        // folhas na ponta
+        ctx.fillStyle = "#3e8e3e";
+        const capY = isTop ? h : H - GROUND_H - h;
+        ctx.fillRect(x - 2, capY + (isTop ? -9 : 0), w + 4, 9);
+        ctx.beginPath(); ctx.ellipse(x - 4, capY + (isTop ? -8 : 0), 12, 5, 0.5, 0, 7); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(x + w + 4, capY + (isTop ? -8 : 0), 12, 5, -0.5, 0, 7); ctx.fill();
+      },
+      // personagem: sapinho
+      drawBird(px, py, ang, t) {
+        ctx.save();
+        ctx.translate(px, py);
+        ctx.rotate(ang);
+        // patas
+        ctx.fillStyle = "#3d9140";
+        ctx.beginPath(); ctx.ellipse(-9, 8, 5, 3.5, 0.4, 0, 7); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(9, 8, 5, 3.5, -0.4, 0, 7); ctx.fill();
+        // corpo
+        ctx.fillStyle = "#5fbf5f";
+        ctx.beginPath(); ctx.ellipse(0, 1, 13, 10, 0, 0, 7); ctx.fill();
+        // barriga
+        ctx.fillStyle = "#d9f2c0";
+        ctx.beginPath(); ctx.ellipse(2, 5, 7, 4.5, 0, 0, 7); ctx.fill();
+        // olhos
+        [-5, 6].forEach((ex) => {
+          ctx.fillStyle = "#5fbf5f";
+          ctx.beginPath(); ctx.arc(ex, -8, 5, 0, 7); ctx.fill();
+          ctx.fillStyle = "#fff";
+          ctx.beginPath(); ctx.arc(ex, -8, 3.4, 0, 7); ctx.fill();
+          ctx.fillStyle = "#111";
+          ctx.beginPath(); ctx.arc(ex + 1, -8, 1.7, 0, 7); ctx.fill();
+        });
+        // sorriso
+        ctx.strokeStyle = "#1d5c22"; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.arc(0, 3, 5, 0.25, Math.PI - 0.25); ctx.stroke();
+        ctx.restore();
+      },
+    },
+  ];
+
+  // ---------- Estado do jogo ----------
+  let themeIdx = 0;
+  let state = "menu"; // menu | play | dead
+  let bird, pipes, score, speed, gap, scroll, deadAt, flash, newRecord;
+  let lastTime = 0;
+  let deco = null;
+
+  const P = { x: 82, r: 13 };
+  const PIPE_W = 60, SPAWN_GAP = 168;
+
+  function theme() { return THEMES[themeIdx]; }
+
+  function loadTheme(i, keepGame) {
+    themeIdx = i;
+    deco = THEMES[i].makeDeco();
+    if (!keepGame) state = "menu";
+    document.getElementById("rec").textContent = highs[THEMES[i].id] || 0;
+    document.querySelectorAll(".theme-btn").forEach((b) =>
+      b.classList.toggle("sel", +b.dataset.t === i));
+  }
+
+  function reset() {
+    bird = { y: H * 0.42, vy: 0 };
+    pipes = [];
+    score = 0;
+    speed = 2.6;
+    gap = 168;
+    scroll = 0;
+    newRecord = false;
+    state = "play";
+  }
+
+  function flap() {
+    if (state === "menu") { reset(); bird.vy = -7.2; return true; }
+    if (state === "play") { bird.vy = -7.2; return true; }
+    if (state === "dead" && performance.now() - deadAt > 500) { state = "menu"; return true; }
+    return false;
+  }
+
+  // ---------- Física ----------
+  function step(dt) {
+    scroll += speed * 0.5 * dt;
+    if (state !== "play") return;
+
+    const t = theme();
+    bird.vy += 0.42 * dt;
+    bird.y += bird.vy * dt;
+    if (bird.y < P.r) { bird.y = P.r; bird.vy = 0; }
+
+    speed = 2.6 + Math.min(score * 0.03, 1.3);
+    gap = Math.max(124, 168 - score);
+
+    // mover pipes
+    pipes.forEach((p) => (p.x -= speed * dt));
+    // spawn
+    const last = pipes[pipes.length - 1];
+    if (!last || last.x < W - SPAWN_GAP) {
+      const gy = 90 + Math.random() * (H - GROUND_H - 180);
+      pipes.push({ x: W + 10, gy, scored: false });
+    }
+    if (pipes.length && pipes[0].x < -PIPE_W - 20) pipes.shift();
+
+    // pontuação + colisão
+    for (const p of pipes) {
+      const topH = p.gy - gap / 2;
+      const botY = p.gy + gap / 2;
+      if (!p.scored && p.x + PIPE_W < P.x) {
+        p.scored = true;
+        score++;
+        beep(880, 0.08, "triangle", 0.15);
+        document.getElementById("rec").textContent = highs[t.id] || 0;
+      }
+      if (P.x + P.r > p.x && P.x - P.r < p.x + PIPE_W) {
+        if (bird.y - P.r < topH || bird.y + P.r > botY) return die();
+      }
+    }
+    if (bird.y + P.r > H - GROUND_H) die();
+  }
+
+  function die() {
+    state = "dead";
+    deadAt = performance.now();
+    flash = 1;
+    beep(140, 0.25, "sawtooth", 0.2);
+    newRecord = setHigh(theme().id, score);
+  }
+
+  // ---------- Render ----------
+  function render(t) {
+    const th = theme();
+    // céu
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, th.sky[0]);
+    g.addColorStop(1, th.sky[1]);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+
+    th.drawBg(t, 1, scroll, deco);
+
+    // obstáculos
+    const gapNow = state === "play" ? gap : 168;
+    pipes.forEach((p) => {
+      const topH = p.gy - gapNow / 2;
+      const botH = H - GROUND_H - (p.gy + gapNow / 2);
+      th.drawCol(p.x, PIPE_W, topH, true, t);
+      th.drawCol(p.x, PIPE_W, botH, false, t);
+    });
+
+    // chão
+    ctx.fillStyle = th.ground[0];
+    ctx.fillRect(0, H - GROUND_H, W, GROUND_H);
+    ctx.fillStyle = th.ground[1];
+    for (let x = -((scroll * 1.2) % 28); x < W; x += 28)
+      ctx.fillRect(x, H - GROUND_H, 14, 8);
+    ctx.fillStyle = "rgba(0,0,0,0.12)";
+    ctx.fillRect(0, H - GROUND_H, W, 3);
+
+    // personagem
+    const by = state === "menu" ? H * 0.42 + Math.sin(t / 350) * 10 : bird.y;
+    const bang = state === "dead" ? Math.min(1.4, (performance.now() - deadAt) / 300) : 0;
+    const ang = state === "play" ? Math.max(-0.5, Math.min(1.25, bird.vy / 11))
+              : state === "menu" ? Math.sin(t / 350 + 1) * 0.15 : 1.4;
+    th.drawBird(P.x, by, state === "dead" ? bang : ang, t);
+
+    // pontuação
+    ctx.textAlign = "center";
+    if (state === "play") {
+      ctx.font = "700 44px 'Segoe UI', sans-serif";
+      ctx.fillStyle = "rgba(255,255,255,0.92)";
+      ctx.strokeStyle = "rgba(0,0,0,0.35)";
+      ctx.lineWidth = 5;
+      ctx.strokeText(score, W / 2, 64);
+      ctx.fillText(score, W / 2, 64);
+    }
+    if (state === "menu") {
+      ctx.font = "700 34px 'Segoe UI', sans-serif";
+      ctx.fillStyle = "#fff";
+      ctx.strokeStyle = "rgba(0,0,0,0.4)";
+      ctx.lineWidth = 6;
+      ctx.strokeText("FLAPPY VARIA", W / 2, 140);
+      ctx.fillText("FLAPPY VARIA", W / 2, 140);
+      ctx.font = "600 17px 'Segoe UI', sans-serif";
+      ctx.fillStyle = "rgba(255,255,255,0.95)";
+      ctx.strokeStyle = "rgba(0,0,0,0.3)";
+      ctx.lineWidth = 4;
+      const msg = `${th.emoji} ${th.nome} ${th.emoji}`;
+      ctx.strokeText(msg, W / 2, H / 2 + 90);
+      ctx.fillText(msg, W / 2, H / 2 + 90);
+      if (Math.floor(t / 500) % 2 === 0) {
+        ctx.font = "700 20px 'Segoe UI', sans-serif";
+        ctx.strokeText("Toque ou ESPAÇO para jogar!", W / 2, H / 2 + 140);
+        ctx.fillText("Toque ou ESPAÇO para jogar!", W / 2, H / 2 + 140);
+      }
+    }
+    if (state === "dead" && performance.now() - deadAt > 400) {
+      ctx.fillStyle = "rgba(0,0,0,0.55)";
+      ctx.fillRect(0, H / 2 - 96, W, 190);
+      ctx.strokeStyle = "rgba(255,255,255,0.5)";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(4, H / 2 - 92, W - 8, 182);
+      ctx.fillStyle = "#fff";
+      ctx.font = "700 28px 'Segoe UI', sans-serif";
+      ctx.fillText("Fim de jogo!", W / 2, H / 2 - 50);
+      ctx.font = "600 20px 'Segoe UI', sans-serif";
+      ctx.fillText(`Pontos: ${score}`, W / 2, H / 2 - 10);
+      ctx.fillText(`Recorde: ${highs[theme().id] || 0}`, W / 2, H / 2 + 22);
+      if (newRecord) {
+        ctx.fillStyle = "#fde047";
+        ctx.font = "700 20px 'Segoe UI', sans-serif";
+        ctx.fillText("🏆 Novo recorde!", W / 2, H / 2 + 58);
+      }
+      if (Math.floor(t / 500) % 2 === 0) {
+        ctx.fillStyle = "rgba(255,255,255,0.9)";
+        ctx.font = "600 15px 'Segoe UI', sans-serif";
+        ctx.fillText("Toque para continuar", W / 2, H / 2 + 80);
+      }
+    }
+
+    // flash de dano
+    if (flash > 0) {
+      ctx.fillStyle = `rgba(255,60,60,${flash * 0.35})`;
+      ctx.fillRect(0, 0, W, H);
+      flash = Math.max(0, flash - 0.04);
+    }
+  }
+
+  // ---------- Loop ----------
+  function loop(now) {
+    const dt = Math.min((now - lastTime) / 16.667, 2.5);
+    lastTime = now;
+    step(dt);
+    render(now);
+    requestAnimationFrame(loop);
+  }
+
+  // ---------- Input ----------
+  cv.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    if (flap()) beep(520, 0.06, "square", 0.1);
+  });
+  window.addEventListener("keydown", (e) => {
+    if (e.code === "Space" || e.code === "ArrowUp" || e.code === "Enter") {
+      e.preventDefault();
+      if (flap()) beep(520, 0.06, "square", 0.1);
+    }
+    if (e.code === "ArrowLeft") loadTheme((themeIdx + 3) % 4);
+    if (e.code === "ArrowRight") loadTheme((themeIdx + 1) % 4);
+  });
+  document.querySelectorAll(".theme-btn").forEach((b) =>
+    b.addEventListener("click", () => { loadTheme(+b.dataset.t); beep(660, 0.05, "sine", 0.08); })
+  );
+
+  loadTheme(0);
+  bird = { y: H * 0.42, vy: 0 };
+  pipes = []; score = 0; speed = 2.6; gap = 168; scroll = 0; flash = 0; newRecord = false;
+  requestAnimationFrame((t) => { lastTime = t; requestAnimationFrame(loop); });
+})();
+</script>
+</body>
+</html>

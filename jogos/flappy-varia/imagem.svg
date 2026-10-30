@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="300" viewBox="0 0 480 300">
+  <defs>
+    <linearGradient id="g1" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#dfe7f5"/><stop offset="1" stop-color="#b8c6e0"/>
+    </linearGradient>
+    <linearGradient id="g2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1c1c4e"/><stop offset="1" stop-color="#07071f"/>
+    </linearGradient>
+    <linearGradient id="g3" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2ea8d8"/><stop offset="1" stop-color="#0a3d62"/>
+    </linearGradient>
+    <linearGradient id="g4" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#c9ef9f"/><stop offset="1" stop-color="#79c468"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 4 painéis: os 4 temas -->
+  <g>
+    <!-- Escritório -->
+    <rect x="6" y="6" width="228" height="140" rx="12" fill="url(#g1)"/>
+    <rect x="180" y="20" width="44" height="112" rx="6" fill="#f7f9fc" stroke="#c3cde0"/>
+    <line x1="184" y1="42" x2="220" y2="42" stroke="#dfe6f2" stroke-width="3"/>
+    <line x1="184" y1="64" x2="220" y2="64" stroke="#dfe6f2" stroke-width="3"/>
+    <line x1="184" y1="86" x2="220" y2="86" stroke="#dfe6f2" stroke-width="3"/>
+    <line x1="184" y1="108" x2="220" y2="108" stroke="#dfe6f2" stroke-width="3"/>
+    <!-- avião de papel -->
+    <polygon points="70,80 30,64 42,80 30,96" fill="#fff" stroke="#8aa0c4" stroke-width="2"/>
+    <line x1="70" y1="80" x2="42" y2="80" stroke="#8aa0c4" stroke-width="1.5"/>
+    <text x="20" y="40" font-size="20">📎</text>
+  </g>
+
+  <g>
+    <!-- Espaço -->
+    <rect x="246" y="6" width="228" height="140" rx="12" fill="url(#g2)"/>
+    <circle cx="280" cy="28" r="1.6" fill="#fff"/>
+    <circle cx="350" cy="46" r="1.2" fill="#fff"/>
+    <circle cx="420" cy="30" r="1.6" fill="#fff"/>
+    <circle cx="440" cy="120" r="1.2" fill="#fff"/>
+    <!-- asteroides -->
+    <circle cx="410" cy="150" r="20" fill="#6b7280"/>
+    <circle cx="404" cy="144" r="5" fill="#3b4048"/>
+    <!-- foguete -->
+    <g transform="translate(320,72) rotate(-18)">
+      <rect x="-22" y="-9" width="34" height="18" rx="8" fill="#f8fafc"/>
+      <polygon points="12,-9 32,0 12,9" fill="#ef4444"/>
+      <circle cx="-4" cy="0" r="5" fill="#38bdf8"/>
+      <polygon points="-22,-9 -32,-15 -22,0" fill="#ef4444"/>
+      <polygon points="-22,9 -32,15 -22,0" fill="#ef4444"/>
+      <polygon points="-24,0 -38,3 -24,6" fill="#fbbf24"/>
+    </g>
+    <text x="258" y="36" font-size="20">🚀</text>
+  </g>
+
+  <g>
+    <!-- Fundo do mar -->
+    <rect x="6" y="154" width="228" height="140" rx="12" fill="url(#g3)"/>
+    <!-- coral -->
+    <g stroke="#e0577a" stroke-width="7" stroke-linecap="round" fill="none">
+      <path d="M196 294 q4 -30 10 -46"/>
+      <path d="M210 294 q-6 -24 -2 -38"/>
+      <path d="M224 294 q6 -20 2 -32"/>
+    </g>
+    <circle cx="206" cy="248" r="5" fill="#f0789b"/>
+    <circle cx="208" cy="256" r="5" fill="#c74666"/>
+    <!-- peixe -->
+    <g transform="translate(96,222)">
+      <polygon points="-14,0 -28,-9 -28,9" fill="#ff8f3c"/>
+      <ellipse cx="0" cy="0" rx="17" ry="11" fill="#ffb020"/>
+      <ellipse cx="-3" cy="0" rx="6" ry="10" fill="#e0801a"/>
+      <circle cx="8" cy="-3" r="3.6" fill="#fff"/>
+      <circle cx="9" cy="-3" r="1.8" fill="#111"/>
+    </g>
+    <circle cx="140" cy="180" r="4" fill="none" stroke="rgba(255,255,255,0.6)"/>
+    <circle cx="160" cy="200" r="2.5" fill="none" stroke="rgba(255,255,255,0.6)"/>
+    <text x="20" y="182" font-size="20">🐠</text>
+  </g>
+
+  <g>
+    <!-- Selva -->
+    <rect x="246" y="154" width="228" height="140" rx="12" fill="url(#g4)"/>
+    <!-- bambu -->
+    <rect x="410" y="160" width="26" height="134" rx="6" fill="#7ec850"/>
+    <rect x="414" y="160" width="5" height="134" fill="#a3e07c"/>
+    <rect x="410" y="196" width="26" height="5" fill="#4c9a3f"/>
+    <rect x="410" y="240" width="26" height="5" fill="#4c9a3f"/>
+    <!-- sapo -->
+    <g transform="translate(330,228)">
+      <ellipse cx="0" cy="2" rx="15" ry="11" fill="#5fbf5f"/>
+      <ellipse cx="2" cy="6" rx="8" ry="5" fill="#d9f2c0"/>
+      <circle cx="-6" cy="-9" r="5.5" fill="#5fbf5f"/>
+      <circle cx="7" cy="-9" r="5.5" fill="#5fbf5f"/>
+      <circle cx="-6" cy="-9" r="3.6" fill="#fff"/>
+      <circle cx="7" cy="-9" r="3.6" fill="#fff"/>
+      <circle cx="-5" cy="-9" r="1.8" fill="#111"/>
+      <circle cx="8" cy="-9" r="1.8" fill="#111"/>
+    </g>
+    <path d="M270 154 q4 30 -2 44" stroke="#2c6e2f" stroke-width="3" fill="none"/>
+    <ellipse cx="268" cy="200" rx="7" ry="4" fill="#3e8e3e"/>
+    <text x="258" y="182" font-size="20">🌴</text>
+  </g>
+
+  <!-- bordas dos painéis -->
+  <g fill="none" stroke="#a855f7" stroke-width="3" stroke-linejoin="round">
+    <rect x="6" y="6" width="228" height="140" rx="12"/>
+    <rect x="246" y="6" width="228" height="140" rx="12"/>
+    <rect x="6" y="154" width="228" height="140" rx="12"/>
+    <rect x="246" y="154" width="228" height="140" rx="12"/>
+  </g>
+</svg>

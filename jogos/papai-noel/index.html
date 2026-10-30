@@ -72,7 +72,6 @@
     display:flex; align-items:center; justify-content:center;
   }
   .tbtn:active{background:rgba(255,255,255,.35)}
-  #bS{right:14px; bottom:102px}
   #bP{right:14px; bottom:16px; background:rgba(255,212,59,.22); border-color:rgba(255,212,59,.6)}
   .tchint{display:none}
   body.touch .tchint{display:inline}
@@ -83,7 +82,6 @@
   <canvas id="c" width="960" height="540"></canvas>
 
   <div id="touch">
-    <button class="tbtn" id="bS">❄</button>
     <button class="tbtn" id="bP">🎁</button>
   </div>
 
@@ -202,7 +200,7 @@ const LEVELS=[
       [["goblin",.6],["skate",.45]],
     ]},
   { name:"2º — Ventania",
-    sub:"Uma ventania forte desvia suas bolas de neve e presentes! ❄ Compense a mira, atirando e jogando mais à frente da meta. 4 entregas hoje.",
+    sub:"Uma ventania forte empurra a trenó para trás e desvia suas bolas de neve e presentes! ❄ Segure o volante, compense a mira e entregue 4 presentes.",
     deliveries:4, scroll:235, wind:-150, blizzard:false, spawnEvery:4.6, boss:false,
     waves:[
       [["goblin",.5]],
@@ -274,11 +272,11 @@ function startLevel(i){
   banner=cfg.name;bannerT=2.4;
   nextTargetX=W+420; nextHouseX=200;
   genAhead();
-  snow=[]; const n=blizzard?170:60;
-  for(let k=0;k<n;k++)snow.push({x:rnd(W),y:rnd(H),s:rnd(.5,1.6),sp:rnd(30,90),dr:rnd(-10,10)});
+  snow=[]; const n=blizzard?240:60;
+  for(let k=0;k<n;k++)snow.push({x:rnd(W),y:rnd(H),s:blizzard?rnd(.7,2.2):rnd(.5,1.6),sp:blizzard?rnd(60,150):rnd(30,90),dr:rnd(-10,10)});
   show("intro");
   document.getElementById("introName").textContent=cfg.name;
-  document.getElementById("introSub").textContent=cfg.sub+((document.body.classList.contains("touch"))?" \n📱 Arraste para voar • toque = tiro • botões 🎁/❄":" ");
+  document.getElementById("introSub").textContent=cfg.sub+((document.body.classList.contains("touch"))?" \n📱 Arraste para voar • toque = tiro • botão 🎁 para entregar":" ");
   state=ST.INTRO;
 }
 function genAhead(){
@@ -355,7 +353,7 @@ function update(dt){
   if(ay)santa.vy+=ay*acc*dt; else santa.vy*=Math.max(0,1-7*dt);
   if(ax)santa.vx+=ax*acc*dt; else santa.vx*=Math.max(0,1-7*dt);
   santa.vx=clamp(santa.vx,-maxV,maxV); santa.vy=clamp(santa.vy,-maxV,maxV);
-  santa.x=clamp(santa.x+santa.vx*dt,26,W-40);
+  santa.x=clamp(santa.x+santa.vx*dt+wind*dt,26,W-40); /* vento empurra a trenó */
   santa.y=clamp(santa.y+santa.vy*dt,86,H-158);
   santa.inv=Math.max(0,santa.inv-dt);
   santa.shootCd-=dt; santa.dropCd-=dt;
@@ -690,18 +688,23 @@ function draw(){
 
   /* vento */
   if(wind){
-    ctx.strokeStyle="rgba(200,225,255,.25)";ctx.lineWidth=2;
-    for(let i=0;i<8;i++){
-      const yy=(i*67+time*wind)%(H), xx=((time*(-wind)*2.4+i*230)%(W+120)+W+120)%(W+120)-60;
-      ctx.beginPath();ctx.moveTo(xx,yy);ctx.lineTo(xx+(-Math.sign(wind))*46,yy+3);ctx.stroke();
+    ctx.strokeStyle="rgba(210,230,255,.4)";ctx.lineWidth=2;
+    for(let i=0;i<14;i++){
+      const yy=(i*43+time*wind)%(H), xx=((time*(-wind)*2.6+i*170)%(W+160)+W+160)%(W+160)-80;
+      ctx.beginPath();ctx.moveTo(xx,yy);ctx.lineTo(xx+(-Math.sign(wind))*62,yy+4);ctx.stroke();
     }
   }
   /* nevasca (neblina) */
   if(blizzard){
-    const fog=ctx.createLinearGradient(0,0,W,0);
-    fog.addColorStop(0,"rgba(220,232,255,0)");fog.addColorStop(.5,"rgba(220,232,255,.28)");fog.addColorStop(1,"rgba(220,232,255,0)");
-    ctx.fillStyle=fog;ctx.fillRect(0,0,W,H);
-    ctx.fillStyle="rgba(235,242,255,.16)";ctx.fillRect(0,0,W,H);
+    /* neblina em bancadas que passam, reduzindo a visibilidade aos pedaços */
+    for(let i=0;i<2;i++){
+      const cx=W/2+Math.sin(time*.55+i*2.9)*(W*.55);
+      const cy=H*.42+Math.cos(time*.4+i*1.7)*60;
+      const fog=ctx.createRadialGradient(cx,cy,40,cx,cy,W*.7);
+      fog.addColorStop(0,"rgba(240,246,255,.5)");fog.addColorStop(1,"rgba(240,246,255,0)");
+      ctx.fillStyle=fog;ctx.fillRect(0,0,W,H);
+    }
+    ctx.fillStyle="rgba(235,242,255,.2)";ctx.fillRect(0,0,W,H);
   }
 
   ctx.restore();
@@ -1024,7 +1027,7 @@ function bindHold(id,key){
   el.addEventListener("pointercancel",off);
   el.addEventListener("pointerleave",off);
 }
-bindHold("bS","shoot");bindHold("bP","drop");
+bindHold("bP","drop");
 if("ontouchstart" in window||matchMedia("(pointer:coarse)").matches)document.body.classList.add("touch");
 addEventListener("touchstart",()=>document.body.classList.add("touch"),{once:true,passive:true});
 
