@@ -71,7 +71,7 @@ Não é preciso mexer em `index.html`/`app.js` — tudo é gerado a partir do JS
 
 O site é um PWA: `sw.js` faz cache do site (offline) e o `manifest.json` habilita o prompt de instalar no celular.
 
-- **Ao adicionar um jogo ou mudar shell (css/js/json), aumente `CACHE_VERSION` em `sw.js`** — senão os usuários continuam com a versão antiga em cache. O jogo em si funciona offline depois de ser aberto uma vez (cache-first no service worker).
+- **Ao adicionar um jogo ou mudar shell (css/js/json), aumente `CACHE_VERSION` em `sw.js`** — senão os usuários continuam com a versão antiga em cache. No install, o SW precacheia o shell + os recursos de TODOS os jogos (a lista é lida do `jogos.json`), então todo jogo funciona offline desde a instalação, sem precisar abrir cada um.
 - Ícone: edite `icon.svg` e regenere os PNGs com:
   ```bash
   rsvg-convert -w 192 -h 192 icon.svg -o icon-192.png
