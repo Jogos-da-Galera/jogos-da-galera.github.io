@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quebra-Cabeça</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  :root {
+    --bg: #12082b;
+    --bg2: #1d0f3f;
+    --roxo: #7c3aed;
+    --roxo-claro: #a78bfa;
+    --verde: #34d399;
+    --rosa: #f472b6;
+    --texto: #ede9fe;
+  }
+
+  html, body { height: 100%; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: radial-gradient(1200px 600px at 50% -10%, #2b1465 0%, var(--bg2) 45%, var(--bg) 100%);
+    color: var(--texto);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    padding: 12px;
+    user-select: none;
+  }
+
+  h1 {
+    font-size: clamp(1.4rem, 5vw, 2rem);
+    margin-bottom: 2px;
+    background: linear-gradient(90deg, var(--rosa), var(--roxo-claro), var(--verde));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .sub { color: #b8a8e8; font-size: 0.85rem; margin-bottom: 10px; text-align: center; }
+
+  /* ---- Placar ---- */
+  .placar { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; justify-content: center; }
+  .placar .caixa {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(167,139,250,0.35);
+    border-radius: 12px;
+    padding: 6px 14px;
+    text-align: center;
+    min-width: 92px;
+  }
+  .placar .rotulo { font-size: 0.68rem; color: #b8a8e8; text-transform: uppercase; letter-spacing: 0.5px; }
+  .placar .valor { font-size: 1.05rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+  /* ---- Dificuldade ---- */
+  .chips { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; justify-content: center; }
+  .chip {
+    background: rgba(255,255,255,0.06);
+    border: 1.5px solid rgba(167,139,250,0.4);
+    color: var(--texto);
+    border-radius: 999px;
+    padding: 7px 14px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .chip small { display: block; font-weight: 400; font-size: 0.66rem; color: #b8a8e8; }
+  .chip.ativo {
+    background: linear-gradient(135deg, var(--roxo), #9333ea);
+    border-color: var(--roxo-claro);
+    box-shadow: 0 0 14px rgba(124,58,237,0.55);
+  }
+  .chip.ativo small { color: #e9d5ff; }
+  .chip:hover { transform: translateY(-1px); }
+
+  /* ---- Galeria de imagens ---- */
+  .galeria-wrap { width: 100%; max-width: 560px; margin-bottom: 10px; }
+  .galeria-label { font-size: 0.72rem; color: #b8a8e8; text-align: center; margin-bottom: 5px; }
+  .galeria {
+    display: flex;
+    gap: 7px;
+    overflow-x: auto;
+    padding: 6px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(167,139,250,0.25);
+    border-radius: 14px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--roxo) transparent;
+  }
+  .galeria::-webkit-scrollbar { height: 6px; }
+  .galeria::-webkit-scrollbar-thumb { background: var(--roxo); border-radius: 3px; }
+  .thumb {
+    flex: 0 0 auto;
+    width: 54px; height: 54px;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 2.5px solid transparent;
+    cursor: pointer;
+    transition: transform 0.12s, border-color 0.12s;
+    position: relative;
+  }
+  .thumb canvas { width: 100%; height: 100%; display: block; }
+  .thumb:hover { transform: scale(1.08); }
+  .thumb.ativo { border-color: var(--verde); box-shadow: 0 0 10px rgba(52,211,153,0.5); }
+  .thumb .nome {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    font-size: 8px; text-align: center;
+    background: rgba(0,0,0,0.55); color: #fff;
+    padding: 1px 0; white-space: nowrap; overflow: hidden;
+  }
+
+  /* ---- Ações ---- */
+  .acoes { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; justify-content: center; }
+  .btn {
+    background: rgba(255,255,255,0.08);
+    border: 1.5px solid rgba(167,139,250,0.45);
+    color: var(--texto);
+    border-radius: 12px;
+    padding: 9px 16px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn:hover { background: rgba(255,255,255,0.15); transform: translateY(-1px); }
+  .btn.principal {
+    background: linear-gradient(135deg, var(--roxo), #9333ea);
+    border-color: var(--roxo-claro);
+  }
+  .btn.verde {
+    background: linear-gradient(135deg, #059669, var(--verde));
+    border-color: var(--verde);
+  }
+  .btn[aria-pressed="true"] { border-color: var(--verde); box-shadow: 0 0 10px rgba(52,211,153,0.4); }
+
+  /* ---- Tabuleiro ---- */
+  .stage { position: relative; }
+  #board {
+    display: block;
+    border-radius: 14px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.45), 0 0 0 2px rgba(167,139,250,0.35);
+    touch-action: none;
+    cursor: grab;
+  }
+  #board:active { cursor: grabbing; }
+  #fx { position: absolute; inset: 0; pointer-events: none; z-index: 6; }
+
+  /* ---- Vitória ---- */
+  .vitoria {
+    position: absolute; inset: 0;
+    border-radius: 14px;
+    background: rgba(18,8,43,0.82);
+    backdrop-filter: blur(6px);
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    text-align: center;
+    padding: 16px;
+    z-index: 5;
+  }
+  .vitoria.mostra { display: flex; animation: pop 0.35s ease; }
+  @keyframes pop { 0% { transform: scale(0.85); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+  .vitoria .trofeu { font-size: 3rem; animation: quica 0.8s ease infinite alternate; }
+  @keyframes quica { from { transform: translateY(0); } to { transform: translateY(-8px); } }
+  .vitoria h2 { font-size: 1.6rem; background: linear-gradient(90deg, var(--rosa), var(--verde)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .vitoria .resumo { color: #d6c9f5; font-size: 0.95rem; line-height: 1.6; }
+  .vitoria .record { color: var(--verde); font-weight: 700; font-size: 0.9rem; }
+  .vitoria canvas { border-radius: 10px; box-shadow: 0 4px 16px rgba(0,0,0,0.5); }
+  .vitoria .botoes { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+
+  .dica { color: #8d7bc0; font-size: 0.72rem; margin-top: 10px; text-align: center; max-width: 460px; }
+</style>
+</head>
+<body>
+
+<h1>🧩 Quebra-Cabeça</h1>
+<p class="sub">Troque as peças de lugar e monte a imagem!</p>
+
+<div class="placar">
+  <div class="caixa"><div class="rotulo">⏱ Tempo</div><div class="valor" id="tempo">0:00</div></div>
+  <div class="caixa"><div class="rotulo">🎯 Jogadas</div><div class="valor" id="jogadas">0</div></div>
+  <div class="caixa"><div class="rotulo">🏆 Recorde</div><div class="valor" id="recorde">—</div></div>
+</div>
+
+<div class="chips" id="chips"></div>
+
+<div class="galeria-wrap">
+  <div class="galeria-label">Escolha uma das 20 imagens:</div>
+  <div class="galeria" id="galeria"></div>
+</div>
+
+<div class="acoes">
+  <button class="btn principal" id="btn-novo">🔄 Novo Jogo</button>
+  <button class="btn" id="btn-ref" aria-pressed="true">🖼️ Referência</button>
+</div>
+
+<div class="stage" id="stage">
+  <canvas id="board"></canvas>
+  <canvas id="fx"></canvas>
+  <div class="vitoria" id="vitoria">
+    <div class="trofeu">🏆</div>
+    <h2>Parabéns!</h2>
+    <canvas id="img-final" width="220" height="220"></canvas>
+    <div class="resumo" id="resumo"></div>
+    <div class="record" id="record-badge" style="display:none">⭐ Novo recorde!</div>
+    <div class="botoes">
+      <button class="btn principal" id="btn-reencontrar">🔄 Novamente</button>
+      <button class="btn verde" id="btn-proxima">➡️ Próxima Imagem</button>
+    </div>
+  </div>
+</div>
+
+<p class="dica">💡 Arraste uma peça para cima de outra — ou toque em duas peças — para trocar de lugar. Peças no lugar certo brilham em verde!</p>
+
+<script>
+"use strict";
+
+/* ============================================================
+   CENAS: 20 imagens inspiradas nos temas da plataforma
+   Coordenadas x/y em fração (0..1) do quadrado de 480px;
+   tamanhos (s, r, w, h) em px.
+   ============================================================ */
+const S = 480;
+
+const CENAS = [
+  { id:"snake", nome:"Minhoquinha", bg:["#d9f99d","#15803d"], props:[
+    {t:"circle",x:0.85,y:0.14,r:46,c:"#fde047"},
+    {t:"rect",x:0.5,y:0.97,w:520,h:70,c:"#166534"},
+    {t:"emoji",e:"🐍",x:0.5,y:0.55,s:160},
+    {t:"emoji",e:"🍎",x:0.2,y:0.75,s:60},
+    {t:"emoji",e:"🍎",x:0.8,y:0.3,s:48},
+    {t:"emoji",e:"🌿",x:0.14,y:0.22,s:64},
+    {t:"emoji",e:"🌿",x:0.86,y:0.8,s:64},
+  ]},
+  { id:"velha", nome:"Jogo da Velha", bg:["#e9d5ff","#6d28d9"], props:[
+    {t:"grid3",c:"rgba(255,255,255,0.8)"},
+    {t:"emoji",e:"⭕",x:0.33,y:0.33,s:84},
+    {t:"emoji",e:"❌",x:0.66,y:0.33,s:84},
+    {t:"emoji",e:"⭕",x:0.33,y:0.66,s:84},
+    {t:"emoji",e:"❌",x:0.66,y:0.66,s:84},
+    {t:"emoji",e:"⭕",x:0.5,y:0.5,s:84},
+  ]},
+  { id:"tetris", nome:"Tetris", bg:["#1e1b4b","#4338ca"], props:[
+    {t:"rect",x:0.19,y:0.2,w:52,h:52,c:"#22d3ee"},
+    {t:"rect",x:0.31,y:0.2,w:52,h:52,c:"#22d3ee"},
+    {t:"rect",x:0.43,y:0.2,w:52,h:52,c:"#22d3ee"},
+    {t:"rect",x:0.55,y:0.2,w:52,h:52,c:"#22d3ee"},
+    {t:"rect",x:0.66,y:0.28,w:52,h:52,c:"#facc15"},
+    {t:"rect",x:0.78,y:0.28,w:52,h:52,c:"#facc15"},
+    {t:"rect",x:0.66,y:0.40,w:52,h:52,c:"#facc15"},
+    {t:"rect",x:0.78,y:0.40,w:52,h:52,c:"#facc15"},
+    {t:"rect",x:0.22,y:0.70,w:52,h:52,c:"#fb923c"},
+    {t:"rect",x:0.22,y:0.58,w:52,h:52,c:"#fb923c"},
+    {t:"rect",x:0.34,y:0.70,w:52,h:52,c:"#fb923c"},
+    {t:"rect",x:0.46,y:0.70,w:52,h:52,c:"#fb923c"},
+    {t:"rect",x:0.58,y:0.58,w:52,h:52,c:"#a78bfa"},
+    {t:"rect",x:0.70,y:0.58,w:52,h:52,c:"#a78bfa"},
+    {t:"rect",x:0.82,y:0.58,w:52,h:52,c:"#a78bfa"},
+    {t:"rect",x:0.70,y:0.70,w:52,h:52,c:"#a78bfa"},
+    {t:"star",x:0.1,y:0.85,r:20,c:"#f0abfc"},
+    {t:"star",x:0.9,y:0.12,r:14,c:"#f0abfc"},
+    {t:"star",x:0.5,y:0.86,r:12,c:"#fde047"},
+  ]},
+  { id:"breakout", nome:"Tijolinho", bg:["#7c2d12","#f97316"], props:[
+    {t:"bricks",x:0.09,y:0.20,cols:7,rows:4,w:54,h:26,gap:6,pal:["#f43f5e","#fb923c","#facc15","#4ade80"]},
+    {t:"circle",x:0.5,y:0.70,r:16,c:"#ffffff"},
+    {t:"rect",x:0.5,y:0.88,w:150,h:16,c:"#c4b5fd"},
+  ]},
+  { id:"2048", nome:"2048", bg:["#f5ecd7","#d3bfa0"], props: (function(){
+    const xs=[0.175,0.395,0.615,0.835], ys=[0.175,0.395,0.615,0.835];
+    const vals=[
+      [2,4,8,16],
+      [32,64,128,256],
+      [512,1024,2048,128],
+      [64,2,4,8]
+    ];
+    const p=[];
+    for(let r=0;r<4;r++) for(let c=0;c<4;c++) p.push({t:"tile",x:xs[c],y:ys[r],v:vals[r][c]});
+    return p;
+  })()},
+  { id:"memoria", nome:"Memória", bg:["#fbcfe8","#db2777"], props:[
+    {t:"star",x:0.12,y:0.16,r:18,c:"#ffffff"},
+    {t:"star",x:0.88,y:0.8,r:16,c:"#ffffff"},
+    {t:"card",x:0.5,y:0.5,w:150,h:200,back:true,rot:-0.2},
+    {t:"card",x:0.27,y:0.5,w:150,h:200,e:"🐱"},
+    {t:"card",x:0.73,y:0.5,w:150,h:200,e:"🚀"},
+  ]},
+  { id:"horta", nome:"Horta Invadida", bg:["#86efac","#3f6212"], props:[
+    {t:"circle",x:0.12,y:0.14,r:44,c:"#fde047"},
+    {t:"emoji",e:"🚜",x:0.78,y:0.30,s:96},
+    {t:"rect",x:0.5,y:0.96,w:520,h:90,c:"#78350f"},
+    {t:"emoji",e:"🥕",x:0.18,y:0.70,s:84},
+    {t:"emoji",e:"🥬",x:0.42,y:0.76,s:84},
+    {t:"emoji",e:"🍅",x:0.66,y:0.72,s:76},
+    {t:"emoji",e:"🌽",x:0.86,y:0.60,s:84},
+    {t:"emoji",e:"🐌",x:0.30,y:0.90,s:52},
+    {t:"emoji",e:"🦗",x:0.62,y:0.92,s:52},
+  ]},
+  { id:"bolinhas", nome:"Bolinhas", bg:["#f5d0fe","#a21caf"], props: (function(){
+    const pal=["#f43f5e","#facc15","#4ade80","#22d3ee","#a78bfa"];
+    const p=[]; let i=0;
+    const rows=[[0.24,5],[0.37,4],[0.50,3],[0.63,2]];
+    for(const [y,n] of rows){
+      for(let j=0;j<n;j++){
+        const x=0.5+(j-(n-1)/2)*0.12;
+        p.push({t:"circle",x:x,y:y,r:24,c:pal[i++%pal.length]});
+      }
+    }
+    p.push({t:"circle",x:0.5,y:0.88,r:38,c:"rgba(255,255,255,0.45)"});
+    p.push({t:"circle",x:0.5,y:0.88,r:26,c:"#22d3ee"});
+    return p;
+  })()},
+  { id:"noel", nome:"Papai Noel", bg:["#1e3a8a","#0f172a"], props:[
+    {t:"star",x:0.5,y:0.14,r:34,c:"#fde047"},
+    {t:"circle",x:0.10,y:0.20,r:5,c:"#fff"},{t:"circle",x:0.80,y:0.10,r:5,c:"#fff"},
+    {t:"circle",x:0.25,y:0.40,r:4,c:"#fff"},{t:"circle",x:0.90,y:0.35,r:4,c:"#fff"},
+    {t:"circle",x:0.40,y:0.10,r:4,c:"#fff"},{t:"circle",x:0.70,y:0.72,r:4,c:"#fff"},
+    {t:"circle",x:0.15,y:0.78,r:4,c:"#fff"},{t:"circle",x:0.93,y:0.78,r:5,c:"#fff"},
+    {t:"emoji",e:"🎄",x:0.20,y:0.62,s:130},
+    {t:"emoji",e:"🎅",x:0.55,y:0.55,s:140},
+    {t:"emoji",e:"🦌",x:0.82,y:0.58,s:90},
+    {t:"emoji",e:"🎁",x:0.35,y:0.88,s:64},
+    {t:"emoji",e:"🎁",x:0.70,y:0.88,s:64},
+  ]},
+  { id:"corre", nome:"Corre-Corre", bg:["#93c5fd","#1e40af"], props:[
+    {t:"emoji",e:"☁️",x:0.2,y:0.14,s:84},
+    {t:"emoji",e:"☁️",x:0.75,y:0.20,s:72},
+    {t:"rect",x:0.12,y:0.78,w:100,h:180,c:"#1e293b"},
+    {t:"rect",x:0.32,y:0.72,w:120,h:240,c:"#334155"},
+    {t:"rect",x:0.55,y:0.80,w:110,h:160,c:"#1e293b"},
+    {t:"rect",x:0.80,y:0.74,w:110,h:220,c:"#334155"},
+    {t:"rect",x:0.5,y:0.95,w:520,h:70,c:"#475569"},
+    {t:"emoji",e:"🏃",x:0.5,y:0.62,s:130},
+    {t:"emoji",e:"🚗",x:0.15,y:0.88,s:64},
+    {t:"emoji",e:"🚔",x:0.82,y:0.88,s:72},
+  ]},
+  { id:"fruta", nome:"Samba da Fruta", bg:["#fef08a","#f59e0b"], props:[
+    {t:"emoji",e:"🍉",x:0.22,y:0.28,s:120},
+    {t:"emoji",e:"🍌",x:0.62,y:0.22,s:110},
+    {t:"emoji",e:"🍇",x:0.84,y:0.48,s:96},
+    {t:"emoji",e:"🍍",x:0.18,y:0.62,s:110},
+    {t:"emoji",e:"🍒",x:0.5,y:0.52,s:120},
+    {t:"emoji",e:"🍋",x:0.72,y:0.78,s:100},
+    {t:"emoji",e:"🍓",x:0.38,y:0.82,s:90},
+  ]},
+  { id:"sapinho", nome:"Sapinho", bg:["#bbf7d0","#0d9488"], props:[
+    {t:"rect",x:0.5,y:0.82,w:520,h:140,c:"#0e7490"},
+    {t:"wave",y:0.76,amp:8,c:"rgba(255,255,255,0.5)"},
+    {t:"wave",y:0.90,amp:8,c:"rgba(255,255,255,0.35)"},
+    {t:"emoji",e:"🏠",x:0.15,y:0.62,s:110},
+    {t:"emoji",e:"🐣",x:0.82,y:0.66,s:80},
+    {t:"emoji",e:"🐸",x:0.45,y:0.38,s:150},
+    {t:"emoji",e:"🐛",x:0.70,y:0.56,s:60},
+    {t:"emoji",e:"🍄",x:0.88,y:0.18,s:76},
+    {t:"emoji",e:"🌿",x:0.12,y:0.16,s:72},
+  ]},
+  { id:"flappy", nome:"Flappy", bg:["#7dd3fc","#0284c7"], props:[
+    {t:"emoji",e:"☁️",x:0.42,y:0.12,s:72},
+    {t:"pipeTop",x:0.24,h:150},
+    {t:"pipeBot",x:0.24,h:190},
+    {t:"pipeTop",x:0.72,h:210},
+    {t:"pipeBot",x:0.72,h:130},
+    {t:"emoji",e:"🐦",x:0.48,y:0.48,s:100},
+  ]},
+  { id:"espaco", nome:"Espaço", bg:["#0f172a","#4338ca"], props:[
+    {t:"circle",x:0.08,y:0.50,r:3,c:"#fff"},{t:"circle",x:0.18,y:0.82,r:3,c:"#fff"},
+    {t:"circle",x:0.30,y:0.12,r:3,c:"#fff"},{t:"circle",x:0.45,y:0.90,r:3,c:"#fff"},
+    {t:"circle",x:0.55,y:0.08,r:3,c:"#fff"},{t:"circle",x:0.65,y:0.72,r:3,c:"#fff"},
+    {t:"circle",x:0.90,y:0.55,r:3,c:"#fff"},{t:"circle",x:0.95,y:0.88,r:3,c:"#fff"},
+    {t:"emoji",e:"🪐",x:0.20,y:0.24,s:120},
+    {t:"emoji",e:"🚀",x:0.52,y:0.52,s:150,r:-0.6},
+    {t:"emoji",e:"👽",x:0.80,y:0.72,s:96},
+    {t:"star",x:0.85,y:0.18,r:26,c:"#fde047"},
+  ]},
+  { id:"maro", nome:"Fundo do Mar", bg:["#38bdf8","#1e3a8a"], props:[
+    {t:"wave",y:0.10,amp:9,c:"rgba(255,255,255,0.6)"},
+    {t:"circle",x:0.88,y:0.28,r:8,c:"rgba(255,255,255,0.5)"},
+    {t:"circle",x:0.93,y:0.40,r:5,c:"rgba(255,255,255,0.5)"},
+    {t:"circle",x:0.78,y:0.20,r:4,c:"rgba(255,255,255,0.4)"},
+    {t:"emoji",e:"🌿",x:0.10,y:0.72,s:96},
+    {t:"emoji",e:"🌿",x:0.30,y:0.80,s:72},
+    {t:"emoji",e:"🐠",x:0.24,y:0.26,s:96},
+    {t:"emoji",e:"🐠",x:0.86,y:0.62,s:64},
+    {t:"emoji",e:"🐬",x:0.62,y:0.42,s:130},
+    {t:"emoji",e:"🐙",x:0.55,y:0.78,s:104},
+    {t:"emoji",e:"🦀",x:0.22,y:0.86,s:84},
+  ]},
+  { id:"dino", nome:"Dinossauros", bg:["#a7f3d0","#065f46"], props:[
+    {t:"rect",x:0.5,y:0.96,w:520,h:90,c:"#166534"},
+    {t:"emoji",e:"🌋",x:0.18,y:0.60,s:130},
+    {t:"emoji",e:"🦕",x:0.56,y:0.55,s:160},
+    {t:"emoji",e:"🌴",x:0.90,y:0.72,s:110},
+    {t:"emoji",e:"🥚",x:0.78,y:0.88,s:64},
+    {t:"emoji",e:"🌿",x:0.88,y:0.22,s:84},
+    {t:"emoji",e:"🦎",x:0.35,y:0.85,s:70},
+  ]},
+  { id:"festa", nome:"Festa", bg:["#f9a8d4","#7c3aed"], props:[
+    {t:"rect",x:0.22,y:0.12,w:14,h:14,c:"#fde047",r:0.6},
+    {t:"rect",x:0.55,y:0.10,w:14,h:14,c:"#22d3ee",r:0.2},
+    {t:"rect",x:0.78,y:0.16,w:14,h:14,c:"#4ade80",r:0.9},
+    {t:"rect",x:0.35,y:0.18,w:12,h:12,c:"#f43f5e",r:0.4},
+    {t:"rect",x:0.90,y:0.32,w:12,h:12,c:"#fde047",r:0.7},
+    {t:"rect",x:0.08,y:0.35,w:12,h:12,c:"#22d3ee",r:0.3},
+    {t:"emoji",e:"🎈",x:0.18,y:0.26,s:84},
+    {t:"emoji",e:"🎈",x:0.82,y:0.26,s:84},
+    {t:"emoji",e:"🎂",x:0.5,y:0.55,s:150},
+    {t:"emoji",e:"🎁",x:0.20,y:0.88,s:72},
+    {t:"emoji",e:"🎁",x:0.80,y:0.88,s:72},
+    {t:"emoji",e:"🎉",x:0.12,y:0.58,s:84},
+    {t:"emoji",e:"🎊",x:0.88,y:0.58,s:84},
+  ]},
+  { id:"pirata", nome:"Pirata", bg:["#334155","#0f172a"], props:[
+    {t:"circle",x:0.82,y:0.15,r:42,c:"#fde047"},
+    {t:"star",x:0.15,y:0.55,r:14,c:"#fff"},
+    {t:"wave",y:0.82,amp:12,c:"rgba(255,255,255,0.5)"},
+    {t:"wave",y:0.94,amp:10,c:"rgba(255,255,255,0.35)"},
+    {t:"emoji",e:"⛵",x:0.45,y:0.62,s:150},
+    {t:"emoji",e:"🏴‍☠️",x:0.14,y:0.30,s:90},
+    {t:"emoji",e:"💎",x:0.16,y:0.84,s:80},
+    {t:"emoji",e:"🦜",x:0.82,y:0.45,s:84},
+  ]},
+  { id:"praia", nome:"Praia", bg:["#fde047","#38bdf8"], props:[
+    {t:"circle",x:0.5,y:0.40,r:88,c:"#fbbf24"},
+    {t:"rect",x:0.5,y:0.60,w:520,h:100,c:"#0284c7"},
+    {t:"wave",y:0.55,amp:7,c:"rgba(255,255,255,0.6)"},
+    {t:"rect",x:0.5,y:0.88,w:520,h:130,c:"#fde68a"},
+    {t:"emoji",e:"⛱️",x:0.22,y:0.64,s:130},
+    {t:"emoji",e:"🌴",x:0.86,y:0.52,s:130},
+    {t:"emoji",e:"🐚",x:0.42,y:0.90,s:60},
+    {t:"emoji",e:"🦀",x:0.64,y:0.93,s:56},
+    {t:"emoji",e:"🦆",x:0.80,y:0.74,s:64},
+  ]},
+  { id:"selva", nome:"Selva", bg:["#86efac","#14532d"], props:[
+    {t:"emoji",e:"🌴",x:0.13,y:0.62,s:140},
+    {t:"emoji",e:"🌴",x:0.88,y:0.68,s:140},
+    {t:"emoji",e:"🐒",x:0.30,y:0.20,s:84},
+    {t:"emoji",e:"🦜",x:0.70,y:0.18,s:84},
+    {t:"emoji",e:"🦁",x:0.5,y:0.52,s:160},
+    {t:"emoji",e:"🍌",x:0.64,y:0.86,s:64},
+    {t:"emoji",e:"🌿",x:0.25,y:0.85,s:72},
+  ]},
+];
+
+/* Níveis: [id, rotulo, grade, descricao] */
+const NIVEIS = [
+  { id:2, rot:"😊 Fácil",    desc:"2×2",  alvo:"crianças" },
+  { id:3, rot:"🙂 Médio",   desc:"3×3",  alvo:"8–12 anos" },
+  { id:4, rot:"😎 Normal",  desc:"4×4",  alvo:"casual" },
+  { id:6, rot:"🤯 Avançado",desc:"6×6",  alvo:"experts" },
+];
+
+/* ============================================================
+   RENDERIZAÇÃO DAS CENAS
+   ============================================================ */
+function rr(ctx,x,y,w,h,r){
+  r = Math.min(r, w/2, h/2);
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);
+  ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
+}
+function starPath(ctx,x,y,r){
+  ctx.beginPath();
+  for(let i=0;i<10;i++){
+    const ang = -Math.PI/2 + i*Math.PI/5;
+    const rad = i%2===0 ? r : r*0.45;
+    const px = x + Math.cos(ang)*rad, py = y + Math.sin(ang)*rad;
+    i===0 ? ctx.moveTo(px,py) : ctx.lineTo(px,py);
+  }
+  ctx.closePath();
+}
+function drawProp(ctx,p){
+  const X = p.x*S, Y = p.y*S;
+  switch(p.t){
+    case "emoji": {
+      ctx.save();
+      ctx.translate(X,Y);
+      ctx.rotate(p.r||0);
+      ctx.font = p.s+'px "Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif';
+      ctx.textAlign="center"; ctx.textBaseline="middle";
+      ctx.fillText(p.e,0,p.s*0.05);
+      ctx.restore();
+      break;
+    }
+    case "circle":
+      ctx.beginPath(); ctx.arc(X,Y,p.r,0,Math.PI*2);
+      ctx.fillStyle=p.c; ctx.fill();
+      break;
+    case "rect":
+      ctx.save(); ctx.translate(X,Y); ctx.rotate(p.r||0);
+      ctx.fillStyle=p.c;
+      rr(ctx,-p.w/2,-p.h/2,p.w,p.h,6); ctx.fill();
+      ctx.restore();
+      break;
+    case "line":
+      ctx.beginPath(); ctx.moveTo(p.x1*S,p.y1*S); ctx.lineTo(p.x2*S,p.y2*S);
+      ctx.strokeStyle=p.c||"#fff"; ctx.lineWidth=p.w||4; ctx.lineCap="round"; ctx.stroke();
+      break;
+    case "star":
+      starPath(ctx,X,Y,p.r); ctx.fillStyle=p.c||"#fde047"; ctx.fill();
+      break;
+    case "wave":
+      ctx.beginPath();
+      for(let x=0;x<=S;x+=6){
+        const y = Y + Math.sin(x/S*Math.PI*4)*p.amp;
+        x===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+      }
+      ctx.strokeStyle=p.c||"rgba(255,255,255,0.5)"; ctx.lineWidth=6; ctx.lineCap="round"; ctx.stroke();
+      break;
+    case "grid3": {
+      ctx.strokeStyle=p.c||"#fff"; ctx.lineWidth=7; ctx.lineCap="round";
+      const m=0.1, e=0.9;
+      for(let i=1;i<3;i++){
+        const v = (m+(e-m)*i/3)*S;
+        ctx.beginPath(); ctx.moveTo(v,m*S); ctx.lineTo(v,e*S); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(m*S,v); ctx.lineTo(e*S,v); ctx.stroke();
+      }
+      break;
+    }
+    case "bricks": {
+      for(let r=0;r<p.rows;r++) for(let c=0;c<p.cols;c++){
+        const x = p.x*S + c*(p.w+p.gap);
+        const y = p.y*S + r*(p.h+p.gap);
+        ctx.fillStyle = p.pal[r%p.pal.length];
+        rr(ctx,x,y,p.w,p.h,5); ctx.fill();
+      }
+      break;
+    }
+    case "tile": {
+      const v = String(p.v);
+      const dark = p.v >= 128;
+      const cores = {2:"#eee4da",4:"#ede0c8",8:"#f2b179",16:"#f59563",32:"#f67c5f",64:"#f65e3b"};
+      const alts  = ["#edcf72","#edcc61","#edc850","#edc53f","#edc22e"];
+      const fill = p.v < 64 ? cores[p.v] : alts[Math.min(Math.max(Math.floor(Math.log2(p.v))-7,0),4)];
+      ctx.fillStyle = fill;
+      rr(ctx,X-38,Y-38,76,76,9); ctx.fill();
+      ctx.fillStyle = dark ? "#f9f6f2" : "#776e65";
+      ctx.font = "bold " + (v.length<=2?36 : v.length===3?30 : 25)+'px "Segoe UI",sans-serif';
+      ctx.textAlign="center"; ctx.textBaseline="middle";
+      ctx.fillText(v,X,Y+2);
+      break;
+    }
+    case "card": {
+      ctx.save(); ctx.translate(X,Y); ctx.rotate(p.rot||0);
+      if(p.back){
+        ctx.fillStyle="#5b21b6"; rr(ctx,-p.w/2,-p.h/2,p.w,p.h,14); ctx.fill();
+        ctx.strokeStyle="#c4b5fd"; ctx.lineWidth=4; ctx.stroke();
+        ctx.font = (p.h*0.4)+'px sans-serif';
+        ctx.textAlign="center"; ctx.textBaseline="middle";
+        ctx.fillStyle="rgba(255,255,255,0.85)";
+        ctx.fillText("✦",0,0);
+      } else {
+        ctx.fillStyle="#fdf4ff"; rr(ctx,-p.w/2,-p.h/2,p.w,p.h,14); ctx.fill();
+        ctx.strokeStyle="#f9a8d4"; ctx.lineWidth=4; ctx.stroke();
+        ctx.font = (p.h*0.45)+'px "Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif';
+        ctx.textAlign="center"; ctx.textBaseline="middle";
+        ctx.fillText(p.e,0,0);
+      }
+      ctx.restore();
+      break;
+    }
+    case "pipeTop":
+    case "pipeBot": {
+      const w=62, lip=12;
+      const top = p.t==="pipeTop";
+      if(top){
+        ctx.fillStyle="#15803d"; ctx.fillRect(X-w/2,0,w,p.h);
+        ctx.fillStyle="#166534"; rr(ctx,X-w/2-lip/2,p.h-24,w+lip,24,5); ctx.fill();
+      } else {
+        ctx.fillStyle="#15803d"; ctx.fillRect(X-w/2,S-p.h,w,p.h);
+        ctx.fillStyle="#166534"; rr(ctx,X-w/2-lip/2,S-p.h,w+lip,24,5); ctx.fill();
+      }
+      break;
+    }
+  }
+}
+function renderCena(ctx,cena,scale=1){
+  ctx.save();
+  if(scale!==1){ ctx.scale(scale,scale); }
+  const g = ctx.createLinearGradient(0,0,0,S);
+  g.addColorStop(0,cena.bg[0]); g.addColorStop(1,cena.bg[1]);
+  ctx.fillStyle=g; ctx.fillRect(0,0,S,S);
+  for(const p of cena.props) drawProp(ctx,p);
+  ctx.restore();
+}
+
+/* Prerenderiza cada cena em 480×480 */
+const cenaCanvases = CENAS.map(c=>{
+  const c2 = document.createElement("canvas");
+  c2.width = S; c2.height = S;
+  renderCena(c2.getContext("2d"),c);
+  return c2;
+});
+
+/* ============================================================
+   ESTADO DO JOGO
+   ============================================================ */
+let nivel = 3;          // grade
+let imgIdx = 0;         // cena atual
+let pos = [];           // pos[célula] = índice da peça
+let pecas = [];         // canvases das peças
+let jogadas = 0;
+let inicio = null;      // tempo de início (ms)
+let duracao = 0;        // tempo congelado
+let terminado = false;
+let selecionado = null; // célula selecionada (modo toque)
+let arrastando = null;  // {cel, dx, dy, moved}
+let mostrarRef = true;
+
+const board = document.getElementById("board");
+const bctx = board.getContext("2d");
+const fx = document.getElementById("fx");
+const fctx = fx.getContext("2d");
+const stage = document.getElementById("stage");
+const dpr = window.devicePixelRatio || 1;
+let tamanho = 0;        // tamanho CSS do tabuleiro (px)
+
+function dimGrid(){ return Math.min(Math.floor(window.innerWidth*0.92), 440); }
+
+function layout(){
+  tamanho = dimGrid();
+  board.style.width = tamanho+"px";
+  board.style.height = tamanho+"px";
+  board.width = tamanho*dpr; board.height = tamanho*dpr;
+  fx.style.width = tamanho+"px"; fx.style.height = tamanho+"px";
+  fx.width = tamanho*dpr; fx.height = tamanho*dpr;
+}
+
+function novoJogo(){
+  const n = nivel, N = n*n;
+  const src = cenaCanvases[imgIdx];
+  const pw = S/n;
+  pecas = [];
+  for(let i=0;i<N;i++){
+    const c2 = document.createElement("canvas");
+    c2.width = pw*dpr; c2.height = pw*dpr;
+    const cx = c2.getContext("2d");
+    cx.drawImage(src, (i%n)*pw, Math.floor(i/n)*pw, pw, pw, 0, 0, pw*dpr, pw*dpr);
+    pecas.push(c2);
+  }
+  // embaralhar (evitando sair já resolvido)
+  do {
+    pos = Array.from({length:N},(_,i)=>i);
+    for(let i=N-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [pos[i],pos[j]] = [pos[j],pos[i]];
+    }
+  } while(pos.every((v,i)=>v===i));
+  jogadas = 0;
+  inicio = null;
+  duracao = 0;
+  terminado = false;
+  selecionado = null;
+  arrastando = null;
+  document.getElementById("jogadas").textContent = "0";
+  document.getElementById("tempo").textContent = "0:00";
+  document.getElementById("vitoria").classList.remove("mostra");
+  fctx.clearRect(0,0,fx.width,fx.height);
+  atualizaRecordeLabel();
+  desenha();
+}
+
+/* ============================================================
+   DESENHO
+   ============================================================ */
+function desenha(){
+  const n = nivel, N = n*n;
+  const cell = board.width/n;
+  bctx.clearRect(0,0,board.width,board.height);
+
+  // fundo
+  bctx.fillStyle = "#1d0f3f";
+  bctx.fillRect(0,0,board.width,board.height);
+
+  // peças
+  for(let c=0;c<N;c++){
+    if(arrastando && arrastando.cel===c) continue;
+    const p = pos[c];
+    const x = (c%n)*cell, y = Math.floor(c/n)*cell;
+    bctx.drawImage(pecas[p], x, y, cell, cell);
+    if(p===c){
+      bctx.strokeStyle = "rgba(52,211,153,0.9)";
+      bctx.lineWidth = 3*dpr;
+      bctx.strokeRect(x+2*dpr,y+2*dpr,cell-4*dpr,cell-4*dpr);
+    }
+  }
+
+  // seleção
+  if(selecionado!==null){
+    const x = (selecionado%n)*cell, y = Math.floor(selecionado/n)*cell;
+    bctx.strokeStyle = "#ffffff";
+    bctx.lineWidth = 4*dpr;
+    bctx.strokeRect(x+2*dpr,y+2*dpr,cell-4*dpr,cell-4*dpr);
+  }
+
+  // grade
+  bctx.strokeStyle = "rgba(255,255,255,0.35)";
+  bctx.lineWidth = 1.5*dpr;
+  for(let i=0;i<=n;i++){
+    bctx.beginPath(); bctx.moveTo(i*cell,0); bctx.lineTo(i*cell,board.height); bctx.stroke();
+    bctx.beginPath(); bctx.moveTo(0,i*cell); bctx.lineTo(board.width,i*cell); bctx.stroke();
+  }
+
+  // peça arrastada por cima
+  if(arrastando){
+    const p = pos[arrastando.cel];
+    const s = cell*1.08;
+    bctx.save();
+    bctx.shadowColor = "rgba(0,0,0,0.5)";
+    bctx.shadowBlur = 18*dpr;
+    bctx.shadowOffsetY = 6*dpr;
+    bctx.drawImage(pecas[p], arrastando.ox - s/2, arrastando.oy - s/2, s, s);
+    bctx.restore();
+  }
+
+  // referência (miniatura no canto)
+  if(mostrarRef){
+    const rs = board.width*0.24;
+    const rx = board.width - rs - 6*dpr, ry = 6*dpr;
+    bctx.save();
+    bctx.globalAlpha = 0.95;
+    bctx.fillStyle = "#12082b";
+    rr(bctx,rx-4*dpr,ry-4*dpr,rs+8*dpr,rs+8*dpr,8*dpr); bctx.fill();
+    bctx.beginPath(); rr(bctx,rx,ry,rs,rs,6*dpr); bctx.clip();
+    bctx.drawImage(cenaCanvases[imgIdx],rx,ry,rs,rs);
+    bctx.restore();
+    bctx.strokeStyle = "rgba(255,255,255,0.6)";
+    bctx.lineWidth = 2*dpr;
+    rr(bctx,rx,ry,rs,rs,6*dpr); bctx.stroke();
+  }
+}
+
+/* ============================================================
+   INTERAÇÃO (toque + mouse)
+   ============================================================ */
+function celDe(px,py){
+  const cell = board.width/nivel;
+  const cx = Math.floor(px/cell), cy = Math.floor(py/cell);
+  if(cx<0||cy<0||cx>=nivel||cy>=nivel) return null;
+  return cy*nivel+cx;
+}
+function ponteiro(e){
+  const r = board.getBoundingClientRect();
+  return [ (e.clientX-r.left)*dpr, (e.clientY-r.top)*dpr ];
+}
+
+board.addEventListener("pointerdown", e => {
+  if(terminado) return;
+  const [px,py] = ponteiro(e);
+  const c = celDe(px,py);
+  if(c===null) return;
+  e.preventDefault();
+  board.setPointerCapture(e.pointerId);
+  arrastando = { cel:c, ox:px, oy:py, moved:false, sx:px, sy:py };
+});
+board.addEventListener("pointermove", e => {
+  if(!arrastando) return;
+  const [px,py] = ponteiro(e);
+  arrastando.ox = px; arrastando.oy = py;
+  if(!arrastando.moved && Math.hypot(px-arrastando.sx, py-arrastando.sy) > 6*dpr){
+    arrastando.moved = true;
+  }
+  if(arrastando.moved) desenha();
+});
+board.addEventListener("pointerup", e => {
+  if(!arrastando) return;
+  const a = arrastando; arrastando = null;
+  const [px,py] = ponteiro(e);
+  if(a.moved){
+    const alvo = celDe(px,py);
+    if(alvo!==null && alvo!==a.cel) troca(a.cel, alvo);
+  } else {
+    if(selecionado===null){
+      selecionado = a.cel;
+    } else if(selecionado===a.cel){
+      selecionado = null;
+    } else {
+      troca(selecionado, a.cel);
+      selecionado = null;
+    }
+  }
+  desenha();
+});
+board.addEventListener("pointercancel", () => { arrastando = null; desenha(); });
+
+function troca(a,b){
+  const t = pos[a]; pos[a] = pos[b]; pos[b] = t;
+  jogadas++;
+  document.getElementById("jogadas").textContent = jogadas;
+  if(inicio===null){
+    inicio = performance.now();
+  }
+  if(pos.every((v,i)=>v===i)){
+    vencedor();
+  }
+}
+
+/* ============================================================
+   TEMPO / RECORDES
+   ============================================================ */
+function fmt(ms){
+  const s = Math.floor(ms/1000);
+  return Math.floor(s/60)+":"+String(s%60).padStart(2,"0");
+}
+function chaveRecorde(){ return "quebra-cabeca-best-"+nivel+"-"+imgIdx; }
+function atualizaRecordeLabel(){
+  const r = localStorage.getItem(chaveRecorde());
+  document.getElementById("recorde").textContent =
+    r ? Math.round(JSON.parse(r).j)+" jogadas" : "—";
+}
+function tempoAtual(){
+  if(terminado) return duracao;
+  return inicio ? performance.now()-inicio : 0;
+}
+
+function loop(){
+  if(!terminado && inicio){
+    document.getElementById("tempo").textContent = fmt(tempoAtual());
+  }
+  requestAnimationFrame(loop);
+}
+loop();
+
+/* ============================================================
+   VITÓRIA + CONFETE
+   ============================================================ */
+let confetes = [];
+function vencedor(){
+  terminado = true;
+  duracao = tempoAtual();
+  document.getElementById("tempo").textContent = fmt(duracao);
+
+  let novoRecord = false;
+  const k = chaveRecorde();
+  const antigo = localStorage.getItem(k);
+  if(!antigo || jogadas < JSON.parse(antigo).j){
+    novoRecord = true;
+  }
+  localStorage.setItem(k, JSON.stringify({j:jogadas, t:Math.round(duracao)}));
+  atualizaRecordeLabel();
+
+  // imagem final
+  const c = document.getElementById("img-final");
+  c.width = 220; c.height = 220;
+  const cx = c.getContext("2d");
+  renderCena(cx, CENAS[imgIdx], 220/S);
+
+  document.getElementById("resumo").innerHTML =
+    "Você montou <b>"+CENAS[imgIdx].nome+"</b> 🧩 em <b>"+jogadas+"</b> jogadas<br>e <b>"+fmt(duracao)+"</b> ("+NIVEIS.find(l=>l.id===nivel).desc+")";
+  document.getElementById("record-badge").style.display = novoRecord ? "block" : "none";
+  document.getElementById("vitoria").classList.add("mostra");
+
+  // confete
+  confetes = [];
+  const cores = ["#f472b6","#a78bfa","#34d399","#fde047","#22d3ee","#fb923c"];
+  for(let i=0;i<140;i++){
+    confetes.push({
+      x: board.width/2, y: board.height*0.35,
+      vx: (Math.random()-0.5)*14,
+      vy: -Math.random()*12-3,
+      c: cores[i%cores.length],
+      w: (4+Math.random()*6)*dpr,
+      h: (6+Math.random()*8)*dpr,
+      r: Math.random()*Math.PI,
+      vr: (Math.random()-0.5)*0.3,
+      vida: 100+Math.random()*60,
+    });
+  }
+  animaConfete();
+}
+function animaConfete(){
+  let t = 0;
+  function step(){
+    fctx.clearRect(0,0,fx.width,fx.height);
+    confetes.forEach(p=>{
+      p.x += p.vx; p.y += p.vy; p.vy += 0.35*dpr; p.r += p.vr;
+      if(p.vida>0){
+        fctx.save();
+        fctx.globalAlpha = Math.min(1, p.vida/40);
+        fctx.translate(p.x,p.y); fctx.rotate(p.r);
+        fctx.fillStyle = p.c;
+        fctx.fillRect(-p.w/2,-p.h/2,p.w,p.h);
+        fctx.restore();
+        p.vida--;
+      }
+    });
+    t++;
+    if(t < 240) requestAnimationFrame(step);
+    else fctx.clearRect(0,0,fx.width,fx.height);
+  }
+  step();
+}
+
+/* ============================================================
+   UI: dificuldade, galeria, botões
+   ============================================================ */
+const chipsEl = document.getElementById("chips");
+NIVEIS.forEach(niv=>{
+  const b = document.createElement("button");
+  b.className = "chip";
+  b.innerHTML = niv.rot+"<small>"+niv.desc+"</small>";
+  b.onclick = () => {
+    nivel = niv.id;
+    document.querySelectorAll(".chip").forEach(c=>c.classList.remove("ativo"));
+    b.classList.add("ativo");
+    novoJogo();
+  };
+  chipsEl.appendChild(b);
+});
+
+const galeriaEl = document.getElementById("galeria");
+CENAS.forEach((cena,i)=>{
+  const div = document.createElement("div");
+  div.className = "thumb";
+  div.title = cena.nome;
+  const c = document.createElement("canvas");
+  c.width = 96; c.height = 96;
+  c.getContext("2d").drawImage(cenaCanvases[i],0,0,96,96);
+  div.appendChild(c);
+  const nome = document.createElement("div");
+  nome.className = "nome";
+  nome.textContent = cena.nome;
+  div.appendChild(nome);
+  div.onclick = () => {
+    imgIdx = i;
+    document.querySelectorAll(".thumb").forEach(t=>t.classList.remove("ativo"));
+    div.classList.add("ativo");
+    novoJogo();
+  };
+  galeriaEl.appendChild(div);
+});
+
+document.getElementById("btn-novo").onclick = novoJogo;
+document.getElementById("btn-ref").onclick = (e) => {
+  mostrarRef = !mostrarRef;
+  e.currentTarget.setAttribute("aria-pressed", mostrarRef);
+  desenha();
+};
+document.getElementById("btn-reencontrar").onclick = novoJogo;
+document.getElementById("btn-proxima").onclick = () => {
+  imgIdx = (imgIdx+1)%CENAS.length;
+  document.querySelectorAll(".thumb").forEach((t,i)=>t.classList.toggle("ativo", i===imgIdx));
+  novoJogo();
+};
+
+window.addEventListener("resize", () => { layout(); regenerarPecas(); });
+
+function regenerarPecas(){
+  const n = nivel, N = n*n;
+  const src = cenaCanvases[imgIdx];
+  const pw = S/n;
+  pecas = [];
+  for(let i=0;i<N;i++){
+    const c2 = document.createElement("canvas");
+    c2.width = pw*dpr; c2.height = pw*dpr;
+    const cx = c2.getContext("2d");
+    cx.drawImage(src, (i%n)*pw, Math.floor(i/n)*pw, pw, pw, 0, 0, pw*dpr, pw*dpr);
+    pecas.push(c2);
+  }
+  desenha();
+}
+
+/* ---- Início ---- */
+const initIdx = NIVEIS.findIndex(l=>l.id===nivel);
+chipsEl.children[initIdx].classList.add("ativo");
+galeriaEl.children[0].classList.add("ativo");
+layout();
+novoJogo();
+</script>
+</body>
+</html>

@@ -119,6 +119,15 @@
     ]
   },
   {
+    "id": "quebra-cabeca",
+    "nome": "Quebra-Cabeça",
+    "descricao": "Monte a imagem trocando as peças de lugar! 🧩 São 20 cenas inspiradas nos nossos clássicos (minhoquinha, tetris, 2048, papai noel, samba da fruta...) e 4 níveis: 😊 Fácil 2×2 (para as crianças), 🙂 Médio 3×3, 😎 Normal 4×4 e 🤯 Avançado 6×6. Arraste as peças ou toque em duas para trocar — as que estão no lugar certo brilham em verde. Acompanhe tempo, jogadas e recorde! ⭐",
+    "categorias": [
+      "Puzzle",
+      "Casual"
+    ]
+  },
+  {
     "id": "flappy-varia",
     "nome": "Flappy Varia",
     "descricao": "O Flappy Bird que nunca te deixa entediado! 📎🚀🐠🌴 Um toque, clássico e viciante — mas com 4 temas para trocar a qualquer momento: um avião de papel escapando no escritório, um foguete entre asteroides no espaço, um peixinho entre corais no fundo do mar e um sapinho entre bambus na selva. Cada tema tem seu próprio recorde: qual você bate primeiro?",
