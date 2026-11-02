@@ -109,25 +109,32 @@
     .pik-card small { color: #cdeec0; font-size: 0.78rem; line-height: 1.35; }
     #best { color: #fde047; font-weight: 700; }
 
-    /* Botão de especial (visível sempre — clicável no desktop e no mobile) */
+    /* Botão de especial (mobile: botão | desktop: botão ou tecla E) */
     #abtns {
       position: fixed;
-      right: 18px;
-      bottom: 18px;
+      right: 14px;
+      bottom: 14px;
       display: flex;
-      z-index: 10;
+      z-index: 30;
     }
     #abtns button {
-      width: 76px; height: 76px;
+      width: 86px; height: 86px;
       border-radius: 50%;
-      border: 3px solid rgba(255,255,255,0.6);
+      border: 3px solid #fff;
       font-weight: 900;
-      font-size: 0.8rem;
+      font-size: 0.85rem;
+      line-height: 1.1;
       color: #fff;
       cursor: pointer;
       touch-action: none;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-      background: rgba(80,120,255,0.85);
+      background: radial-gradient(circle at 35% 30%, #82a7ff, #3d5afe);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.55), 0 0 0 4px rgba(130,170,255,0.25);
+      animation: sp-pulse 1.6s ease-in-out infinite;
+      transition: opacity 0.2s, transform 0.05s;
+    }
+    #abtns button:active { transform: scale(0.94); }
+    @keyframes sp-pulse {
+      50% { box-shadow: 0 4px 16px rgba(0,0,0,0.55), 0 0 0 9px rgba(130,170,255,0.12); }
     }
   </style>
 </head>
@@ -144,7 +151,7 @@
   </div>
 
   <canvas id="game" width="900" height="600"></canvas>
-  <div id="hint">📱 Toque: atirar &nbsp;•&nbsp; Arraste: mover &nbsp;•&nbsp; Duplo toque / botão ⚡: especial<br>⌨️ Setas/WASD: mover • Espaço ou J: atirar • K ou E: especial &nbsp;•&nbsp; Leve as frutas até a 🧅 Nave Mãe!</div>
+  <div id="hint">📱 Toque: atirar &nbsp;•&nbsp; Arraste: mover &nbsp;•&nbsp; Botão ⚡: especial<br>⌨️ Setas/WASD: mover • Espaço ou J: atirar • E ou K: especial &nbsp;•&nbsp; Leve as frutas até a 🧅 Nave Mãe!</div>
 
   <div id="abtns">
     <button id="btn-sp">⚡<br>ESPECIAL</button>
@@ -274,12 +281,25 @@ addEventListener("keyup", (e) => {
 
 // ----- Toque/clique no canvas (mobile e desktop) -----
 // Arrastar (dedo ou mouse) = mover na direção do arrasto
-// Toque/clique curto = atirar  |  Duplo toque/clique = especial
+// Toque/clique curto = atirar  |  Especial = botão ⚡ ou tecla E/K
 let drag = null;
-let lastTap = { t: -1, x: 0, y: 0 };
 let nowMs = () => performance.now();
+
+// Limpa qualquer input "presos" (tecla solta fora da janela, arrasto órfão...)
+// — sem isso o personagem pode "andar sozinho" no meio do jogo.
+function clearInput() {
+  for (const k in keys) keys[k] = false;
+  fireHeld = false;
+  specialQueued = false;
+  joyVec.x = 0; joyVec.y = 0;
+  drag = null;
+  tapFireT = 0;
+}
+addEventListener("blur", clearInput);
+document.addEventListener("visibilitychange", () => { if (document.hidden) clearInput(); });
+
 canvas.addEventListener("pointerdown", (e) => {
-  if (drag) return; // um dedo/tecla por vez
+  if (drag) drag = null; // arrasto antigo órfão: descarta e recomeça
   drag = { id: e.pointerId, sx: e.clientX, sy: e.clientY, moved: false, t0: nowMs() };
   canvas.setPointerCapture(e.pointerId);
 });
@@ -300,18 +320,13 @@ function endDrag(e) {
   const wasTap = !drag.moved && nowMs() - drag.t0 < 500;
   drag = null;
   joyVec.x = 0; joyVec.y = 0;
-  if (wasTap && state === "playing") {
-    const now = nowMs();
-    const dbl = now - lastTap.t < 320 && Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) < 44;
-    lastTap = { t: now, x: e.clientX, y: e.clientY };
-    tapFireT = 0.4; // dispara por 0.4s (1–2 tiros)
-    if (dbl) specialQueued = true;
-  }
+  if (wasTap && state === "playing") tapFireT = 0.4; // dispara por 0.4s (1–2 tiros)
 }
 canvas.addEventListener("pointerup", endDrag);
 canvas.addEventListener("pointercancel", endDrag);
 
-document.getElementById("btn-sp").addEventListener("pointerdown", (e) => { e.preventDefault(); specialQueued = true; });
+const spBtn = document.getElementById("btn-sp");
+spBtn.addEventListener("pointerdown", (e) => { e.preventDefault(); specialQueued = true; });
 
 /* ================= Menu ================= */
 const menu = document.getElementById("menu");
@@ -388,6 +403,7 @@ function randPos(minD, fromList) {
 }
 
 function generateLevel() {
+  clearInput(); // nunca começa nível com input do nível anterior
   delivered = 0;
   carrying = null;
   fruitGoal = 8 + Math.min(level - 1, 6);
@@ -1226,6 +1242,8 @@ function updateHud() {
   if (eff.speed > 0) effs.push(`👟 ${eff.speed.toFixed(0)}s`);
   if (eff.inv > 0) effs.push(`🛡️ ${eff.inv.toFixed(0)}s`);
   document.getElementById("h-eff").textContent = effs.join("  ");
+  // Botão ⚡ fica "apagado" durante o cooldown
+  spBtn.style.opacity = specialCd > 0 ? 0.4 : 1;
 }
 
 /* Prévia dos pikmins no menu */
