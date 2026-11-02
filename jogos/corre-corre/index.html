@@ -65,7 +65,7 @@
 
   .cards {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     gap: 10px;
     width: 100%;
     max-width: 640px;
@@ -353,6 +353,54 @@ const CHARS = [
       c.fillStyle = "#fff"; c.fillRect(22, -51, 2.4, 2.4);
       c.fillStyle = "#8a5c33"; c.fillRect(21, -44, 5, 2);
     }
+  },
+  {
+    id: "pikmin", nome: "Pikmin", tag: "Um bichinho verde corre-doido no jardim 🌿",
+    draw(c, t, duck) {
+      const f = Math.floor(t / 85) % 2;
+      const leaf = "#3fbf5f", dark = "#2e7d32", belly = "#7ed9a0";
+      if (duck) {
+        c.fillStyle = dark;
+        if (f) { c.fillRect(6, -8, 10, 8); c.fillRect(24, -6, 10, 6); }
+        else { c.fillRect(6, -6, 10, 6); c.fillRect(24, -8, 10, 8); }
+        // corpo agachado
+        c.fillStyle = leaf;
+        c.beginPath(); c.ellipse(20, -14, 17, 10, 0, 0, 7); c.fill();
+        c.fillStyle = belly;
+        c.beginPath(); c.ellipse(15, -13, 8, 5, 0, 0, 7); c.fill();
+        // broto
+        c.strokeStyle = dark; c.lineWidth = 2.5;
+        c.beginPath(); c.moveTo(22, -23); c.quadraticCurveTo(25, -30, 31, -31); c.stroke();
+        c.fillStyle = leaf;
+        c.beginPath(); c.ellipse(34, -32, 5.5, 2.8, -0.4, 0, 7); c.fill();
+        // olho
+        c.fillStyle = "#111";
+        c.beginPath(); c.ellipse(30, -16, 2.4, 4, 0, 0, 7); c.fill();
+        c.fillStyle = "#fff"; c.fillRect(30.6, -19, 1.6, 1.6);
+        return;
+      }
+      // pernas
+      c.fillStyle = dark;
+      if (f) { c.fillRect(8, -14, 8, 14); c.fillRect(22, -10, 8, 10); }
+      else { c.fillRect(8, -10, 8, 10); c.fillRect(22, -14, 8, 14); }
+      // corpo
+      c.fillStyle = leaf;
+      c.beginPath(); c.ellipse(20, -24, 15, 16, 0, 0, 7); c.fill();
+      c.fillStyle = belly;
+      c.beginPath(); c.ellipse(14, -22, 7, 9, 0, 0, 7); c.fill();
+      // broto no topo
+      c.strokeStyle = dark; c.lineWidth = 3;
+      c.beginPath(); c.moveTo(21, -39); c.quadraticCurveTo(24, -49, 31, -51); c.stroke();
+      c.fillStyle = leaf;
+      c.beginPath(); c.ellipse(35, -52, 6, 3, -0.4, 0, 7); c.fill();
+      // olhos (um maior e um menor, estilo pikmin)
+      c.fillStyle = "#111";
+      c.beginPath(); c.ellipse(28, -30, 3, 5, 0, 0, 7); c.fill();
+      c.beginPath(); c.ellipse(34, -29, 2.2, 4, 0, 0, 7); c.fill();
+      c.fillStyle = "#fff";
+      c.fillRect(28.4, -33, 1.8, 1.8);
+      c.fillRect(33.6, -32, 1.5, 1.5);
+    }
   }
 ];
 
@@ -403,6 +451,28 @@ function drawKind(kind, x, w, h, t) {
     ctx.strokeStyle = "#8a5c33"; ctx.lineWidth = 3;
     ctx.strokeRect(x + 2, gy - h + 2, w - 4, h - 4);
     ctx.beginPath(); ctx.moveTo(x + 2, gy - h + 2); ctx.lineTo(x + w - 2, gy - 2); ctx.moveTo(x + w - 2, gy - h + 2); ctx.lineTo(x + 2, gy - 2); ctx.stroke();
+  } else if (kind === "bush") {
+    ctx.fillStyle = "#2e7d32";
+    ctx.beginPath();
+    ctx.arc(x + w * 0.3, gy - h * 0.45, h * 0.5, 0, 7);
+    ctx.arc(x + w * 0.7, gy - h * 0.5, h * 0.5, 0, 7);
+    ctx.arc(x + w * 0.5, gy - h * 0.7, h * 0.45, 0, 7);
+    ctx.fill();
+    ctx.fillStyle = "#3fbf5f";
+    ctx.beginPath(); ctx.arc(x + w * 0.4, gy - h * 0.5, h * 0.3, 0, 7); ctx.fill();
+  } else if (kind === "vase") {
+    // plantinha no topo
+    ctx.fillStyle = "#3fbf5f";
+    ctx.beginPath(); ctx.ellipse(x + w / 2 - 6, gy - h + 6, 9, 4.5, -0.6, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(x + w / 2 + 6, gy - h + 6, 9, 4.5, 0.6, 0, 7); ctx.fill();
+    ctx.fillStyle = "#e85d75";
+    ctx.beginPath(); ctx.arc(x + w / 2, gy - h + 10, 4.5, 0, 7); ctx.fill();
+    // vaso
+    ctx.fillStyle = "#c96f3a";
+    ctx.beginPath();
+    ctx.moveTo(x + 3, gy - h * 0.5); ctx.lineTo(x + w - 3, gy - h * 0.5);
+    ctx.lineTo(x + w - 8, gy); ctx.lineTo(x + 8, gy); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "#a8552e"; ctx.fillRect(x + 1, gy - h * 0.5, w - 2, 6);
   } else if (kind === "cone") {
     ctx.fillStyle = "#f97316";
     ctx.beginPath(); ctx.moveTo(x + w / 2, gy - h); ctx.lineTo(x + w - 2, gy - 4); ctx.lineTo(x + 2, gy - 4); ctx.fill();
@@ -477,6 +547,16 @@ function resetGame() {
   }
   S.cityW = cx;
   S.cityX = 0;
+  // sebes do jardim (pista do Pikmin)
+  S.garden = [];
+  let gx = 0;
+  while (gx < W + 300) {
+    const bw = 60 + Math.random() * 80;
+    S.garden.push({ x: gx, w: bw, h: 26 + Math.random() * 44 });
+    gx += bw + 20 + Math.random() * 40;
+  }
+  S.gardenW = gx;
+  S.gardenX = 0;
   for (let i = 0; i < 4; i++) S.clouds.push({ x: Math.random() * W, y: 24 + Math.random() * 60, s: 0.4 + Math.random() * 0.5 });
 }
 
@@ -510,10 +590,15 @@ function spawnObstacle() {
       { k: "barreira", w: [50, 60], h: [34, 38], n: [1, 2] },
       { k: "police", w: [88, 96], h: [32, 34], n: [1, 1] }, // viatura grande
     ],
+    pikmin: [
+      { k: "bush", w: [26, 36], h: [24, 30], n: [1, 2] },
+      { k: "vase", w: [26, 30], h: [32, 40], n: [1, 3] },
+      { k: "bush", w: [44, 54], h: [46, 56], n: [1, 1] },   // arbusto grande
+    ],
   }[theme];
   const useBird = S.score > 250 && Math.random() < 0.28;
   if (useBird) {
-    S.obstacles.push({ type: "bird", x: W + 20, w: 26, h: 14, yOff: 32 });
+    S.obstacles.push({ type: "bird", x: W + 20, w: 26, h: 14, yOff: 28 + Math.random() * 10 });
   } else {
     const t = pools[Math.floor(Math.random() * pools.length)];
     const n = t.n[0] + (Math.random() < 0.5 ? 0 : (t.n[1] - t.n[0]));
@@ -603,8 +688,12 @@ function update(dt) {
   }
 
   // skyline desliza mais devagar que a pista (parallax)
-  if (CHARS[S.charIdx].id === "godzilla") {
+  const pid = CHARS[S.charIdx].id;
+  if (pid === "godzilla") {
     S.cityX = (S.cityX + S.speed * 0.32 * k) % S.cityW;
+  }
+  if (pid === "pikmin") {
+    S.gardenX = (S.gardenX + S.speed * 0.35 * k) % S.gardenW;
   }
 }
 
@@ -631,6 +720,21 @@ function render(ts) {
     ctx.fill();
   }
 
+  // sebes do jardim (pista do Pikmin)
+  if (CHARS[S.charIdx].id === "pikmin") {
+    for (const b of S.garden) {
+      let bx = b.x - S.gardenX;
+      if (bx < -b.w) bx += S.gardenW;
+      if (bx > W) continue;
+      ctx.fillStyle = "#1d4d2b";
+      ctx.beginPath();
+      ctx.arc(bx + b.w * 0.3, GROUND - b.h * 0.4, b.h * 0.5, 0, 7);
+      ctx.arc(bx + b.w * 0.6, GROUND - b.h * 0.55, b.h * 0.55, 0, 7);
+      ctx.arc(bx + b.w * 0.85, GROUND - b.h * 0.35, b.h * 0.4, 0, 7);
+      ctx.fill();
+    }
+  }
+
   // skyline da cidade (pista do Godzilla)
   if (CHARS[S.charIdx].id === "godzilla") {
     for (const b of S.city) {
@@ -647,14 +751,32 @@ function render(ts) {
   }
 
   // chão
-  ctx.fillStyle = "#3d2266";
+  const isGarden = CHARS[S.charIdx].id === "pikmin";
+  ctx.fillStyle = isGarden ? "#2c6b3f" : "#3d2266";
   ctx.fillRect(0, GROUND, W, H - GROUND);
-  ctx.fillStyle = "#5b3591";
+  ctx.fillStyle = isGarden ? "#3f9e5c" : "#5b3591";
   ctx.fillRect(0, GROUND, W, 3);
-  // marcas do chão
-  ctx.fillStyle = "rgba(255,255,255,0.14)";
   const off = (S.dist || 0) % 48;
-  for (let x = -off; x < W; x += 48) ctx.fillRect(x, GROUND + 16, 22, 2);
+  if (isGarden) {
+    // tufos de grama + flores
+    ctx.strokeStyle = "#5fc47f"; ctx.lineWidth = 2;
+    for (let x = -off; x < W; x += 24) {
+      ctx.beginPath();
+      ctx.moveTo(x + 4, GROUND + 12); ctx.lineTo(x + 2, GROUND + 4);
+      ctx.moveTo(x + 8, GROUND + 12); ctx.lineTo(x + 8, GROUND + 3);
+      ctx.moveTo(x + 12, GROUND + 12); ctx.lineTo(x + 14, GROUND + 5);
+      ctx.stroke();
+    }
+    for (let x = -off + 12; x < W; x += 96) {
+      ctx.fillStyle = "#ffd166";
+      ctx.beginPath(); ctx.arc(x, GROUND + 24, 3, 0, 7); ctx.fill();
+      ctx.fillStyle = "#ef8bb5";
+      ctx.beginPath(); ctx.arc(x + 36, GROUND + 30, 3, 0, 7); ctx.fill();
+    }
+  } else {
+    ctx.fillStyle = "rgba(255,255,255,0.14)";
+    for (let x = -off; x < W; x += 48) ctx.fillRect(x, GROUND + 16, 22, 2);
+  }
 
   // obstáculos
   for (const o of S.obstacles) drawObstacle(o, ts);

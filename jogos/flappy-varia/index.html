@@ -133,17 +133,17 @@
         // janelas fixas + prateleiras em parallax
         const posters = [];
         for (let i = 0; i < 6; i++)
-          posters.push({ x: i * 220 + Math.random() * 80, y: 60 + Math.random() * 120, w: 52, h: 66, c: ["#f87171", "#60a5fa", "#facc15", "#34d399"][i % 4] });
+          posters.push({ x: i * 220 + Math.random() * 80, y: 60 + Math.random() * 120, w: 52, h: 66, c: ["#f2cfcf", "#c4d4ee", "#efe4bd", "#cfe4da"][i % 4] });
         return { posters };
       },
       drawBg(t, dt, scroll, deco) {
         // paredes
-        ctx.fillStyle = "rgba(255,255,255,0.35)";
+        ctx.fillStyle = "rgba(255,255,255,0.20)";
         for (let i = 0; i < 3; i++) { // janelas
           const x = 20 + i * 120;
           ctx.fillRect(x, 20, 84, 96);
         }
-        ctx.fillStyle = "rgba(120,150,200,0.35)";
+        ctx.fillStyle = "rgba(120,150,200,0.18)";
         for (let i = 0; i < 3; i++) {
           const x = 20 + i * 120;
           ctx.fillRect(x, 20, 4, 96); ctx.fillRect(x + 42, 20, 4, 96);
@@ -153,10 +153,10 @@
         deco.posters.forEach((p) => {
           const x = ((p.x - scroll * 0.4) % (W + 240) + W + 240) % (W + 240) - 120;
           ctx.fillStyle = p.c;
-          ctx.globalAlpha = 0.55;
+          ctx.globalAlpha = 0.30;
           ctx.fillRect(x, p.y, p.w, p.h);
           ctx.globalAlpha = 1;
-          ctx.strokeStyle = "rgba(90,110,150,0.6)";
+          ctx.strokeStyle = "rgba(90,110,150,0.25)";
           ctx.strokeRect(x, p.y, p.w, p.h);
         });
         ctx.restore();

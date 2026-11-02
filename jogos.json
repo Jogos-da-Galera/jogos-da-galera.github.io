@@ -92,7 +92,7 @@
   {
     "id": "corre-corre",
     "nome": "Corre-Corre",
-    "descricao": "O clássico runner do modo offline, mas com estilo! 🏃 Escolha seu corredor — Godzilla, Ninjazinho, Entregador de comida ou Bandido fugindo da polícia — e pule nos obstáculos de cada pista: rochas, prédios (com a cidade inteira ao fundo!), caixas, toneis, cones, barreiras, viaturas... e alguns bem GIGANTES! Use o pulo duplo, abaixe para esquivar dos pássaros, faça near miss para ganhar bônus e veja o ritmo aumentar. Quanto mais longe você corre, melhor!",
+    "descricao": "O clássico runner do modo offline, mas com estilo! 🏃 Escolha seu corredor — Godzilla, Ninjazinho, Entregador de comida, Bandido fugindo da polícia ou o Pikmin correndo no jardim 🌿 — e pule nos obstáculos de cada pista: rochas, prédios (com a cidade inteira ao fundo!), caixas, toneis, cones, barreiras, viaturas, vasos e arbustos... e alguns bem GIGANTES! Use o pulo duplo, abaixe para esquivar dos pássaros, faça near miss para ganhar bônus e veja o ritmo aumentar. Quanto mais longe você corre, melhor!",
     "categorias": [
       "Arcade",
       "Reflexo",
@@ -128,6 +128,15 @@
     ]
   },
   {
+    "id": "show-do-milhao",
+    "nome": "Show do Milhão",
+    "descricao": "O quiz do Silvio, sem teletransportador! 🎉 15 perguntas e uma escada de R$ 1 mil até R$ 1 milhão. Use seus truques: Pular (3x), 50:50 e a opinião da Plateia. Errou? Fica com o último valor seguro — ou pare quando quiser e leve o que já acumulou!",
+    "categorias": [
+      "Quiz",
+      "Casual"
+    ]
+  },
+  {
     "id": "flappy-varia",
     "nome": "Flappy Varia",
     "descricao": "O Flappy Bird que nunca te deixa entediado! 📎🚀🐠🌴 Um toque, clássico e viciante — mas com 4 temas para trocar a qualquer momento: um avião de papel escapando no escritório, um foguete entre asteroides no espaço, um peixinho entre corais no fundo do mar e um sapinho entre bambus na selva. Cada tema tem seu próprio recorde: qual você bate primeiro?",
@@ -136,5 +145,31 @@
       "Clássicos",
       "Reflexo"
     ]
+  },
+  {
+    "id": "corrida-brick",
+    "nome": "Corrida Brick",
+    "descricao": "Corrida retrô inspirada nos brick games! 🏁 Troque de faixa para desviar do trânsito, colete munição para atirar nos carros à frente e pegue turbo para acelerar com invencibilidade por alguns segundos. Quanto mais tempo na pista, mais rápido fica!",
+    "categorias": [
+      "Arcade",
+      "Corrida",
+      "Reflexo"
+    ]
+  },
+  {
+    "id": "entregador-turbo",
+    "nome": "Entregador Turbo",
+    "descricao": "O clássico Paperboy, mas de comida! 🛵🍔 Rode de scooter pela cidade, busque o pedido no restaurante, encontre a casa certa (olha o 📍) e entregue antes do tempo acabar. Pule para desviar de pedestres e cachorros — mas cuidado: bater derruba a caixa e você perde uma vida! Quanto mais rápido entregar, maior a gorjeta. 5 níveis com cidades cada vez mais quentes (e mais perigosas).",
+    "categorias": [
+      "Arcade",
+      "Clássicos",
+      "Reflexo"
+    ]
+  },
+  {
+    "id": "perdidos-no-jardim",
+    "nome": "Perdidos no Jardim",
+    "descricao": "Acordou perdido num quintal gigante! 🌿 Escolha seu pikmin — Azul (água 💧), Vermelho (fogo 🔥) ou Amarelo (raio ⚡), cada um com seu tiro e especial — e explore o jardim de cima, estilo Pokémon clássico. Atire em joaninhas gigantes, besouros, baratas e insetos (uns têm MUITA vida!), pegue power-ups de tiro rápido, velocidade e invencibilidade, e carregue as frutas 🍓 até a Nave Mãe (uma cebola vermelha 🧅). O jardim é gerado aleatório: cada partida é diferente!",
+    "categorias": ["Arcade", "Ação", "Exploração"]
   }
 ]

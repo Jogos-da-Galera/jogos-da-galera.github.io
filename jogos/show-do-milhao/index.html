@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Show do Milhão 🎉</title>
+<style>
+  :root {
+    --bg: #0d0621;
+    --primary: #a855f7;
+    --accent: #e879f9;
+    --gold: #facc15;
+    --green: #4ade80;
+    --red: #f87171;
+    --card: #1e1140;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    background: radial-gradient(900px 500px at 50% -10%, #3b1a6e 0%, var(--bg) 60%);
+    color: #f5f0ff;
+    font-family: "Segoe UI", system-ui, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 14px;
+    user-select: none;
+  }
+  h1 {
+    font-size: 1.5rem;
+    background: linear-gradient(90deg, var(--gold), var(--accent));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    margin-bottom: 10px;
+    text-align: center;
+  }
+  .wrap {
+    display: flex;
+    gap: 14px;
+    width: 100%;
+    max-width: 980px;
+    flex: 1;
+    align-items: flex-start;
+  }
+  /* Escada de prêmios */
+  #ladder {
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 3px;
+    width: 150px;
+    flex-shrink: 0;
+  }
+  #ladder div {
+    background: var(--card);
+    border: 1px solid #3d2570;
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 0.78rem;
+    color: #9d8ac2;
+    text-align: right;
+    transition: all .2s;
+  }
+  #ladder div.safe { border-color: var(--gold); color: #e2d3a0; }
+  #ladder div.done { background: #2a1650; color: #c9b8f0; }
+  #ladder div.current {
+    background: var(--primary);
+    border-color: var(--accent);
+    color: #fff;
+    font-weight: 800;
+    transform: scale(1.06);
+    box-shadow: 0 0 12px rgba(168,85,247,.7);
+  }
+  /* Painel principal */
+  #panel {
+    flex: 1;
+    background: var(--card);
+    border: 2px solid #3d2570;
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,.5);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-height: 420px;
+  }
+  #topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  #prize {
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: var(--gold);
+  }
+  #qcount { color: #9d8ac2; font-weight: 700; font-size: .95rem; }
+  #question {
+    font-size: 1.25rem;
+    font-weight: 700;
+    line-height: 1.35;
+    min-height: 70px;
+  }
+  #answers { display: grid; gap: 10px; }
+  .ans {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #241352;
+    border: 2px solid #4c2d96;
+    border-radius: 12px;
+    color: #fff;
+    padding: 13px 14px;
+    font-size: 1.02rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .15s;
+    text-align: left;
+    font-family: inherit;
+  }
+  .ans:hover:not(:disabled) { border-color: var(--accent); transform: translateX(4px); }
+  .ans .letter {
+    background: var(--primary);
+    border-radius: 8px;
+    width: 32px; height: 32px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800;
+    flex-shrink: 0;
+  }
+  .ans.correct { border-color: var(--green); background: #14532d; }
+  .ans.wrong { border-color: var(--red); background: #5b1515; }
+  .ans.dim { opacity: 0; pointer-events: none; }
+  .ans:disabled { cursor: default; }
+  /* Bônus / lifelines */
+  #lifelines { display: flex; gap: 10px; flex-wrap: wrap; }
+  .life {
+    flex: 1;
+    min-width: 120px;
+    background: linear-gradient(135deg, #3d1d78, #6d28d9);
+    border: 2px solid var(--accent);
+    border-radius: 12px;
+    color: #fff;
+    padding: 12px 10px;
+    font-size: .95rem;
+    font-weight: 800;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all .15s;
+  }
+  .life:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(232,121,249,.35); }
+  .life:disabled { opacity: .3; cursor: default; }
+  .life small { display: block; font-weight: 600; opacity: .8; margin-top: 2px; font-size: .75rem; }
+  /* Plateia */
+  #poll { display: none; grid-template-columns: 1fr 1fr; gap: 10px; }
+  #poll.show { display: grid; }
+  .pollbar {
+    background: #241352;
+    border-radius: 10px;
+    border: 1px solid #4c2d96;
+    padding: 8px 12px;
+    font-weight: 700;
+    font-size: .9rem;
+  }
+  .pollbar .bar {
+    height: 8px;
+    background: var(--accent);
+    border-radius: 4px;
+    margin-top: 6px;
+  }
+  /* Botões grandes */
+  .btn {
+    background: linear-gradient(135deg, var(--primary), #7c3aed);
+    border: none;
+    border-radius: 14px;
+    color: #fff;
+    font-size: 1.2rem;
+    font-weight: 800;
+    padding: 16px 28px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: transform .15s;
+  }
+  .btn:hover { transform: scale(1.04); }
+  .btn.ghost {
+    background: transparent;
+    border: 2px solid var(--accent);
+    font-size: 1rem;
+    padding: 12px 20px;
+  }
+  .center { display: flex; flex-direction: column; align-items: center; gap: 16px; flex: 1; justify-content: center; text-align: center; }
+  .big { font-size: 3rem; }
+  .money-big {
+    font-size: 2.6rem;
+    font-weight: 900;
+    color: var(--gold);
+    text-shadow: 0 0 20px rgba(250,204,21,.5);
+  }
+  .msg { color: #c9b8f0; font-size: 1.05rem; max-width: 420px; line-height: 1.4; }
+  #feedback { min-height: 24px; font-weight: 800; font-size: 1.05rem; text-align: center; }
+  #feedback.ok { color: var(--green); }
+  #feedback.bad { color: var(--red); }
+  #feedback.skip { color: var(--accent); }
+  #record { color: #9d8ac2; font-size: .9rem; margin-top: 4px; }
+  @media (max-width: 720px) {
+    #ladder { display: none; }
+    .wrap { max-width: 560px; }
+    #question { font-size: 1.1rem; }
+  }
+  @media (max-width: 720px) {
+    /* escada compacta no topo */
+    #mobileLadder { display: flex !important; gap: 6px; margin-bottom: 6px; width: 100%; max-width: 560px; align-items: center; }
+  }
+  #mobileLadder { display: none; gap: 6px; align-items: center; }
+  #mobileLadder span { font-size: .95rem; font-weight: 800; color: var(--gold); }
+  #mobileLadder em { font-style: normal; color: #9d8ac2; font-size: .8rem; }
+</style>
+</head>
+<body>
+<h1>💰 Show do Milhão</h1>
+<div id="mobileLadder"><span id="mPrize">R$ 0</span><em id="mCount">0/15</em></div>
+<div class="wrap">
+  <div id="ladder"></div>
+  <div id="panel"></div>
+</div>
+<script>
+const PRIZES = [1000,2000,3000,5000,10000,20000,30000,40000,50000,100000,200000,300000,400000,500000,1000000];
+const SAFE = {5:10000, 10:100000, 15:1000000}; // pergunta -> valor seguro
+
+const POOL = [
+  // Nível 1 — R$ 1.000
+  [
+    { q: "Qual é a cor de uma banana quando está madura?", a: ["Verde", "Amarela", "Rosa", "Azul"], c: 1 },
+    { q: "Quantos dias tem um ano comum?", a: ["360", "365", "370", "356"], c: 1 },
+    { q: "Quantas cores tem o arco-íris?", a: ["5", "6", "7", "8"], c: 2 },
+    { q: "O que as abelhas produzem?", a: ["Mel", "Chocolate", "Melaço", "Rapadura"], c: 0 },
+    { q: "Quantas pernas tem uma aranha?", a: ["4", "6", "8", "10"], c: 2 },
+    { q: "Quanto é 2 + 2?", a: ["3", "4", "5", "6"], c: 1 },
+    { q: "Quanto é 7 + 5?", a: ["11", "12", "13", "14"], c: 1 },
+    { q: "Quanto é 10 − 4?", a: ["4", "5", "6", "8"], c: 2 },
+    { q: "Quantos minutos tem 2 horas?", a: ["90", "100", "120", "140"], c: 2 },
+    { q: "Quantos lados tem um quadrado?", a: ["3", "4", "5", "6"], c: 1 }
+  ,
+    { q: "Quantos meses tem um ano?", a: ["10", "11", "12", "13"], c: 2 },
+    { q: "Qual é a cor do céu num dia limpo?", a: ["Azul", "Verde", "Amarelo", "Rosa"], c: 0 },
+    { q: "Quantos dedos tem uma mão?", a: ["3", "4", "5", "6"], c: 2 },
+    { q: "Quantas pernas tem uma cadeira?", a: ["3", "4", "5", "6"], c: 1 }
+    ],
+  // Nível 2 — R$ 2.000
+  [
+    { q: "Quantos lados tem um triângulo?", a: ["3", "4", "5", "6"], c: 0 },
+    { q: "Qual é a cor de um elefante?", a: ["Marrom", "Preto", "Cinza", "Branco"], c: 2 },
+    { q: "Quantos minutos tem uma hora?", a: ["60", "100", "90", "30"], c: 0 },
+    { q: "Qual é a chamada 'fruta dos incas'?", a: ["Manga", "Maracujá", "Kiwifruta", "Jabuticaba"], c: 2 },
+    { q: "Quantas semanas tem um ano?", a: ["36", "48", "52", "60"], c: 2 },
+    { q: "Quanto é 3 × 3?", a: ["6", "7", "9", "12"], c: 2 },
+    { q: "Quanto é 12 + 8?", a: ["18", "20", "22", "24"], c: 1 },
+    { q: "Quanto é 8 × 2?", a: ["14", "16", "18", "20"], c: 1 },
+    { q: "Qual é a metade de 30?", a: ["10", "15", "20", "25"], c: 1 },
+    { q: "Quantas cores tem a bandeira do Brasil?", a: ["2", "3", "4", "5"], c: 1 }
+  ,
+    { q: "Quantos zeros tem um cem?", a: ["1", "2", "3", "4"], c: 1 },
+    { q: "Quantas horas tem meio dia?", a: ["6", "12", "18", "24"], c: 1 },
+    { q: "Quantos meses tem um trimestre?", a: ["2", "3", "4", "5"], c: 1 },
+    { q: "Qual animal é chamado de 'melhor amigo do homem'?", a: ["Cão", "Gato", "Cavalo", "Papagaio"], c: 0 }
+    ],
+  // Nível 3 — R$ 3.000
+  [
+    { q: "Qual é a fórmula química da água?", a: ["CO2", "H2O", "O2", "NaCl"], c: 1 },
+    { q: "Quantos continentes tem o mundo?", a: ["5", "6", "7", "8"], c: 2 },
+    { q: "Qual é o maior rio da América do Sul?", a: ["Nilo", "Níger", "Amazonas", "Reno"], c: 2 },
+    { q: "Quantos jogadores um time de futebol tem em campo?", a: ["9", "10", "11", "12"], c: 2 },
+    { q: "Qual animal diz 'mu'?", a: ["Gato", "Vaca", "Cão", "Pato"], c: 1 },
+    { q: "Quanto é 6 × 7?", a: ["42", "48", "36", "45"], c: 0 },
+    { q: "Qual é a metade de 50?", a: ["20", "25", "30", "50"], c: 1 },
+    { q: "Quanto é 100 − 37?", a: ["63", "57", "67", "47"], c: 1 },
+    { q: "Quantos minutos tem 3 horas?", a: ["130", "150", "180", "200"], c: 2 },
+    { q: "Quantos dias tem fevereiro em um ano comum?", a: ["27", "28", "29", "30"], c: 1 }
+  ,
+    { q: "Quantos lados tem um pentágono?", a: ["4", "5", "6", "7"], c: 1 },
+    { q: "Quanto é o quadrado de 4?", a: ["8", "12", "16", "20"], c: 2 },
+    { q: "Em qual continente fica o Egito?", a: ["Ásia", "África", "Europa", "Oceania"], c: 1 }
+    ],
+  // Nível 4 — R$ 5.000
+  [
+    { q: "Qual estado brasileiro é apelidado de 'Terra Paulista'?", a: ["Rio de Janeiro", "Minas Gerais", "São Paulo", "Bahia"], c: 2 },
+    { q: "Quantos minutos tem um dia inteiro?", a: ["1240", "1360", "1440", "1500"], c: 2 },
+    { q: "Qual é o maior oceano do mundo?", a: ["Atlântico", "Índico", "Pacífico", "Ártico"], c: 2 },
+    { q: "Em qual cidade fica o Coliseu?", a: ["Roma", "Atenas", "Madrid", "Lisboa"], c: 0 },
+    { q: "Quantas cordas tem um violão tradicional?", a: ["4", "5", "6", "7"], c: 2 },
+    { q: "Quanto é 9 × 6?", a: ["54", "48", "64", "56"], c: 0 },
+    { q: "Quanto é 3 × 3 × 3?", a: ["27", "36", "45", "81"], c: 0 },
+    { q: "Quanto é 20% de 50?", a: ["5", "10", "15", "20"], c: 1 },
+    { q: "Quantas horas tem 2 dias?", a: ["24", "36", "48", "60"], c: 2 },
+    { q: "Quantos lados tem um hexágono?", a: ["5", "6", "7", "8"], c: 1 }
+  ,
+    { q: "Qual é a raiz quadrada de 81?", a: ["7", "8", "9", "10"], c: 2 },
+    { q: "Quantos minutos tem meia hora?", a: ["15", "20", "30", "45"], c: 2 },
+    { q: "Quantos lados tem um octógono?", a: ["6", "7", "8", "9"], c: 2 },
+    { q: "Qual rio atravessa o Egito?", a: ["Nilo", "Amazonas", "Danúbio", "Tigre"], c: 0 }
+    ],
+  // Nível 5 — R$ 10.000 (seguro)
+  [
+    { q: "Qual é a capital da França?", a: ["Lisboa", "Madrid", "Roma", "Paris"], c: 3 },
+    { q: "Qual é o maior planeta do sistema solar?", a: ["Terra", "Júpiter", "Saturno", "Marte"], c: 1 },
+    { q: "Qual é o animal terrestre mais rápido?", a: ["Leão", "Guepardo", "Antílope", "Cavalo"], c: 1 },
+    { q: "Quantos zeros tem um milhão?", a: ["3", "4", "5", "6"], c: 3 },
+    { q: "Qual planeta é conhecido como 'Planeta Vermelho'?", a: ["Vênus", "Marte", "Júpiter", "Netuno"], c: 1 },
+    { q: "Quanto é 7 × 8?", a: ["54", "56", "64", "48"], c: 1 },
+    { q: "Quanto é 25% de 80?", a: ["10", "15", "20", "25"], c: 2 },
+    { q: "Quanto é 1000 ÷ 4?", a: ["200", "240", "250", "300"], c: 2 },
+    { q: "Quantos dias tem um ano bissexto?", a: ["364", "365", "366", "367"], c: 2 },
+    { q: "Quanto é 10 × 10?", a: ["90", "100", "110", "120"], c: 1 }
+  ,
+    { q: "Quantos estados tem o Brasil?", a: ["24", "25", "26", "27"], c: 2 },
+    { q: "Quantos jogadores de basquete ficam em quadra?", a: ["4", "5", "6", "7"], c: 1 },
+    { q: "Quanto é o quadrado de 11?", a: ["111", "121", "131", "144"], c: 1 },
+    { q: "Qual é o maior estado do Brasil em área?", a: ["Mato Grosso", "Amazonas", "Pará", "Bahia"], c: 1 }
+    ],
+  // Nível 6 — R$ 20.000
+  [
+    { q: "Quem escreveu o livro 'Dom Casmurro'?", a: ["Jorge Amado", "Machado de Assis", "Clarice Lispector", "Carlos Drummond"], c: 1 },
+    { q: "Qual desses pássaros não voa?", a: ["Águia", "Pomba", "Avestruz", "Andorinha"], c: 2 },
+    { q: "Em qual esporte se faz um 'slam dunk'?", a: ["Futebol", "Vôlei", "Basquete", "Tênis"], c: 2 },
+    { q: "Qual gás respiramos para viver?", a: ["CO2", "O2", "N2", "H2"], c: 1 },
+    { q: "Qual é o maior deserto quente do mundo?", a: ["Gobi", "Saara", "Kalahari", "Atacama"], c: 1 },
+    { q: "Quanto é 15% de 200?", a: ["20", "30", "25", "15"], c: 1 },
+    { q: "Quantos centímetros tem 1 metro?", a: ["10", "100", "1000", "10000"], c: 1 }
+  ,
+    { q: "Quantos quilômetros tem uma maratona?", a: ["35", "42", "50", "45"], c: 1 },
+    { q: "Qual destes NÃO é um mamífero?", a: ["Golfinho", "Tubarão", "Baleia", "Morcego"], c: 1 },
+    { q: "Qual é a soma dos ângulos internos de um triângulo?", a: ["90°", "180°", "270°", "360°"], c: 1 },
+    { q: "Em qual estado fica o parque nacional de Lençóis?", a: ["Maranhão", "Bahia", "Ceará", "Piauí"], c: 0 }
+    ],
+  // Nível 7 — R$ 30.000
+  [
+    { q: "Em qual esporte se joga com peteca e raquetes?", a: ["Vôlei", "Golfe", "Badminton", "Pingue-pongue"], c: 2 },
+    { q: "Qual era o nome do navio que afundou em 1912?", a: ["Titanic", "Santa Maria", "Queen Mary", "Viking"], c: 0 },
+    { q: "Em qual cidade fica o Cristo Redentor?", a: ["Salvador", "Rio de Janeiro", "São Paulo", "Recife"], c: 1 },
+    { q: "Quantos corações tem um polvo?", a: ["1", "2", "3", "4"], c: 2 },
+    { q: "Quem comandou a esquadra que chegou ao 'novo continente' em 1500?", a: ["Cabral", "Colombo", "Vasco da Gama", "Magalhães"], c: 0 },
+    { q: "Quanto é 12 × 12?", a: ["124", "144", "134", "154"], c: 1 }
+  ,
+    { q: "Quantas cordas tem um violoncelo?", a: ["3", "4", "5", "6"], c: 1 },
+    { q: "Em que ano terminou a Segunda Guerra Mundial?", a: ["1943", "1945", "1947", "1950"], c: 1 },
+    { q: "Qual destas NÃO é capital de estado brasileiro?", a: ["Campo Grande", "Santos", "Belém", "Cuiabá"], c: 1 },
+    { q: "Qual é o valor aproximado de π?", a: ["2,71", "3,14", "3,41", "3,62"], c: 1 }
+    ],
+  // Nível 8 — R$ 40.000
+  [
+    { q: "Qual é a capital do Canadá?", a: ["Toronto", "Vancouver", "Ottawa", "Montreal"], c: 2 },
+    { q: "Quem é conhecido como 'o rei do rock and roll'?", a: ["Mick Jagger", "Elvis Presley", "Freddie Mercury", "John Lennon"], c: 1 },
+    { q: "Quantos ossos tem o corpo humano adulto?", a: ["186", "206", "226", "246"], c: 1 },
+    { q: "Qual é o mais alto pico da Terra?", a: ["Everest", "K2", "Aconcágua", "Monte Branco"], c: 0 },
+    { q: "Qual instrumento musical tem 88 teclas?", a: ["Violino", "Piano", "Órgão", "Acordeon"], c: 1 },
+    { q: "Quanto é 15 × 15?", a: ["205", "225", "250", "275"], c: 1 }
+  ,
+    { q: "Quem escreveu o romance 'Iracema'?", a: ["José de Alencar", "Machado de Assis", "Jorge Amado", "Monterio Lobato"], c: 0 },
+    { q: "Quantos fusos horários atravessa a Rússia?", a: ["4", "6", "8", "11"], c: 3 },
+    { q: "Quanto é 13 × 13?", a: ["156", "169", "182", "196"], c: 1 },
+    { q: "Quantos zeros tem um bilhão?", a: ["6", "8", "9", "12"], c: 2 }
+    ],
+  // Nível 9 — R$ 50.000
+  [
+    { q: "Quem pintou a 'Mona Lisa'?", a: ["Michelangelo", "Rafael", "Leonardo da Vinci", "Van Gogh"], c: 2 },
+    { q: "Em que ano o ser humano pisou na Lua pela primeira vez?", a: ["1965", "1969", "1972", "1975"], c: 1 },
+    { q: "Qual é o símbolo químico do ouro?", a: ["Ag", "Au", "Go", "Gd"], c: 1 },
+    { q: "Qual é o menor estado do Brasil em área?", a: ["Amapá", "Roraima", "Rio Grande do Norte", "Tocantins"], c: 2 },
+    { q: "Quem proclamou a Independência do Brasil em 1822?", a: ["Dom Pedro I", "Dom Pedro II", "Deodoro da Fonseca", "Getúlio Vargas"], c: 0 }
+,
+    { q: "Qual era o nome oficial do governo brasileiro em 1822?", a: ["Império do Brasil", "Estados Unidos do Brasil", "República do Brasil", "Reino do Brasil"], c: 0 },
+    { q: "Quem escreveu o romance 'A Hora da Estrela'?", a: ["Jorge Amado", "Clarice Lispector", "Lya Luft", "Lygia Fagundes"], c: 1 },
+    { q: "Quantos zeros tem um milhão de milhões (um tri)?", a: ["6", "9", "12", "15"], c: 2 },
+    { q: "Em qual país fica o monte Kilimanjaro?", a: ["Quênia", "Tanzânia", "Etiópia", "África do Sul"], c: 1 }
+    ],
+  // Nível 10 — R$ 100.000 (seguro)
+  [
+    { q: "Qual é a capital da Austrália?", a: ["Sydney", "Melbourne", "Canberra", "Perth"], c: 2 },
+    { q: "Quantos jogadores de vôlei ficam em campo?", a: ["4", "5", "6", "7"], c: 2 },
+    { q: "Qual linha imaginária divide a Terra em hemisférios Norte e Sul?", a: ["Trópico de Capricórnio", "Equador", "Meridiano de Greenwich", "Círculo Polar"], c: 1 },
+    { q: "Em que século o Brasil foi independente?", a: ["XV", "XVI", "XVIII", "XIX"], c: 3 },
+    { q: "Quem foi o primeiro presidente da República do Brasil?", a: ["Prudente de Morais", "Deodoro da Fonseca", "Floriano Peixoto", "Filinto Müller"], c: 1 }
+,
+    { q: "Qual moeda era usada no Brasil logo antes do real?", a: ["Cruzeiro", "Escudo", "Peso", "Libra"], c: 0 },
+    { q: "Em que ano foi proclamada a República no Brasil?", a: ["1888", "1889", "1890", "1891"], c: 1 },
+    { q: "Quantos estados fazem fronteira com o estado de São Paulo?", a: ["3", "4", "5", "6"], c: 2 },
+    { q: "Quem escreveu o livro 'Vidas Secas'?", a: ["Graciliano Ramos", "Machado de Assis", "José Lins", "Rachel de Queiroz"], c: 0 }
+    ],
+  // Nível 11 — R$ 200.000
+  [
+    { q: "Qual gás as plantas absorvem principalmente?", a: ["Oxigênio (O2)", "Gás carbônico (CO2)", "Nitrogênio (N2)", "Hidrogênio (H2)"], c: 1 },
+    { q: "Qual é a velocidade aproximada da luz?", a: ["3.000 km/s", "30.000 km/s", "300.000 km/s", "3.000.000 km/s"], c: 2 },
+    { q: "Quem escreveu o livro 'Os Sertões'?", a: ["Euclides da Cunha", "José de Alencar", "Graciliano Ramos", "Machado de Assis"], c: 0 },
+    { q: "Qual é a capital da Nova Zelândia?", a: ["Auckland", "Wellington", "Christchurch", "Sydney"], c: 1 },
+    { q: "Qual destes NÃO é um continente?", a: ["África", "Oceania", "Groenlândia", "Europa"], c: 2 }
+,
+    { q: "Qual é a maior floresta tropical do mundo?", a: ["Amazonas", "Congo", "Sudeste Asiático", "Daintree"], c: 0 },
+    { q: "Qual é o único físico brasileiro premiado com o Nobel?", a: ["de Medeiros", "Jorge Luís Borges", "Rui Barbosa", "Milton Campos"], c: 0 },
+    { q: "A que distância aproximada fica o mar do centro de São Paulo?", a: ["100 km", "200 km", "300 km", "400 km"], c: 2 },
+    { q: "Quantas línguas oficiais tem a ONU?", a: ["4", "5", "6", "7"], c: 2 }
+    ],
+  // Nível 12 — R$ 300.000
+  [
+    { q: "Qual destes NÃO é um gás nobre?", a: ["Hélio", "Neônio", "Oxigênio", "Kriptônio"], c: 2 },
+    { q: "Em que ano aconteceu o 'Descobrimento do Mar Oceano'?", a: ["1500", "1501", "1502", "1503"], c: 2 },
+    { q: "Quantos fusos horários tem o Brasil hoje?", a: ["2", "3", "4", "5"], c: 1 },
+    { q: "Quem foi a primeira mulher a ir ao espaço?", a: ["Sally Ride", "Mae Jemison", "Valentina Tereshkova", "Wally Funk"], c: 2 },
+    { q: "Qual é o menor planeta do sistema solar?", a: ["Vênus", "Mercúrio", "Marte", "Plutão"], c: 1 }
+,
+    { q: "Qual presidente foi deposto pela Revolução de 1930?", a: ["Vargas", "Floriano", "Brito Malheiro", "Washington Luís"], c: 0 },
+    { q: "Qual é a cachoeira mais alta do mundo?", a: ["Iguaçu", "Niágara", "Salto Angel", "Victoria"], c: 2 },
+    { q: "Em quanto tempo a luz do Sol chega à Terra?", a: ["8 segundos", "8 minutos", "8 horas", "8 dias"], c: 1 },
+    { q: "Quem foi o primeiro presidente militar do Brasil?", a: ["Getulio", "Floriano", "Vargas", "Brito Malheiro"], c: 3 }
+    ],
+  // Nível 13 — R$ 400.000
+  [
+    { q: "Qual tratado encerrou a Primeira Guerra Mundial?", a: ["Versalhes", "Tordesilhas", "Viena", "Paris"], c: 0 },
+    { q: "Quem pintou 'A Noite Estrelada'?", a: ["Monet", "Picasso", "Van Gogh", "Dalí"], c: 2 },
+    { q: "Qual é o gás mais abundante na atmosfera da Terra?", a: ["Oxigênio", "Nitrogênio", "Gás carbônico", "Hélio"], c: 1 },
+    { q: "Em que ano houve o primeiro voo do avião dos Irmãos Wright?", a: ["1899", "1903", "1912", "1920"], c: 1 },
+    { q: "Qual destas NÃO é cor primária (em RGB)?", a: ["Vermelho", "Azul", "Verde", "Amarelo"], c: 3 }
+,
+    { q: "Quem escreveu 'Triste Fim de Policarpo Quaresma'?", a: ["Lima Barreto", "Machado de Assis", "Graciliano Ramos", "Rubem Braga"], c: 0 },
+    { q: "Quem proclamou a República no terreiro da Academia Militar?", a: ["Brito Malheiro", "Deodoro", "Floriano", "Vargas"], c: 0 },
+    { q: "Com quantos estados faz fronteira o Distrito Federal?", a: ["1", "2", "3", "4"], c: 1 },
+    { q: "Qual é o ponto mais profundo dos oceanos?", a: ["Fossa das Marianas", "Fossa de Porto Rico", "Fossa de Java", "Fossa de Tonga"], c: 0 }
+    ],
+  // Nível 14 — R$ 500.000
+  [
+    { q: "Quem foi o último imperador do Brasil?", a: ["Dom Pedro I", "Dom Pedro II", "Prudente de Morais", "Deodoro da Fonseca"], c: 1 },
+    { q: "Quem escreveu o romance 'O Alquimista'?", a: ["Jorge Amado", "Machado de Assis", "Paulo Coelho", "Clarice Lispector"], c: 2 },
+    { q: "Qual é a moeda oficial do Japão?", a: ["Won", "Yuan", "Iene", "Ringgit"], c: 2 },
+    { q: "Em que cidade fica o relógio de 'Big Ben'?", a: ["Paris", "Londres", "Berlim", "Roma"], c: 1 },
+    { q: "Qual é o osso mais longo do corpo humano?", a: ["Úmero", "Fêmur", "Tíbia", "Rádio"], c: 1 }
+,
+    { q: "Qual foi a última região do Brasil a abolir a escravidão?", a: ["Ceará", "Vale do Ribeira", "Minas Gerais", "Rio de Janeiro"], c: 1 },
+    { q: "Qual foi a primeira eleição presidencial direta após a ditadura?", a: ["Tancredo", "Sarney", "Collor", "Itamar"], c: 2 },
+    { q: "Qual a distância média da Terra à Lua?", a: ["384.400 km", "100.000 km", "1,5 milhão km", "50 milhões km"], c: 0 },
+    { q: "Quantas versões oficiais a bandeira do Brasil já teve?", a: ["2", "3", "4", "5"], c: 1 }
+    ],
+  // Nível 15 — R$ 1.000.000
+  [
+    { q: "Qual é o único mamífero capaz de voar de verdade?", a: ["Cervo-voador", "Morcego", "Rato-fugitivo", "Lemur"], c: 1 },
+    { q: "Em que ano caiu o Muro de Berlim?", a: ["1985", "1987", "1989", "1991"], c: 2 },
+    { q: "Qual é o osso mais pequeno do corpo humano?", a: ["Estribo", "Martelo", "Bigorna", "Clavícula"], c: 0 },
+    { q: "Quem compôs as 'Quatro Estações'?", a: ["Mozart", "Vivaldi", "Beethoven", "Bach"], c: 1 },
+    { q: "Qual destes elementos é líquido à temperatura ambiente?", a: ["Ferro", "Mercúrio", "Enxofre", "Cobre"], c: 1 }
+,
+    { q: "Qual é o menor país do mundo?", a: ["Vaticano", "Mônaco", "San Marino", "Liechtenstein"], c: 0 },
+    { q: "Quem foi o primeiro secretário-geral da ONU?", a: ["Trygve Lie", "Dag Hammarskjöld", "Kurt Waldheim", "Kofi Annan"], c: 0 },
+    { q: "Qual é a montanha mais alta fora da Ásia?", a: ["Aconcágua", "Everest", "K2", "Monte Branco"], c: 0 },
+    { q: "Em que ano foi promulgada a atual Constituição do Brasil?", a: ["1985", "1986", "1987", "1988"], c: 3 }
+    ]
+];
+
+const fmt = v => "R$ " + v.toLocaleString("pt-BR");
+const $ = s => document.querySelector(s);
+let state;
+
+function newState() {
+  return {
+    i: 0,            // índice da pergunta atual (0..15)
+    current: 0,      // prêmio acumulado
+    skips: 3,
+    fifty: 1,
+    audience: 1,
+    poll: false,
+    over: false,
+    questions: buildGame()
+  };
+}
+
+function shuffle(a) {
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// sorteia uma pergunta de cada nível de dificuldade e embaralha as alternativas
+function buildGame() {
+  return POOL.map(tier => {
+    const q = tier[Math.floor(Math.random() * tier.length)];
+    const order = shuffle([0, 1, 2, 3]);
+    return { q: q.q, a: order.map(i => q.a[i]), c: order.indexOf(q.c) };
+  });
+}
+
+function renderLadder() {
+  const el = $("#ladder");
+  el.innerHTML = "";
+  if (!state) { $("#mPrize").textContent = "R$ 0"; $("#mCount").textContent = "0/15"; return; }
+  for (let i = 14; i >= 0; i--) {
+    const d = document.createElement("div");
+    d.textContent = fmt(PRIZES[i]);
+    const n = i + 1;
+    if (SAFE[n]) d.classList.add("safe");
+    if (n < state.i || state.over) d.classList.add("done");
+    if (n === state.i && !state.over) d.classList.add("current");
+    el.appendChild(d);
+  }
+  $("#mPrize").textContent = fmt(state.current);
+  $("#mCount").textContent = Math.min(state.i, 15) + "/15";
+}
+
+function render() {
+  renderLadder();
+  const p = $("#panel");
+  if (!state || state.i === 0) return renderStart(p);
+  if (state.over) return renderEnd(p);
+
+  const n = state.i; // pergunta atual (1..15)
+  const Q = state.questions[n - 1];
+  const canSkip = n < 15; // na última não faz sentido pular
+  p.innerHTML = `
+    <div id="topbar">
+      <div id="prize">${fmt(PRIZES[n-1])}</div>
+      <div id="qcount">Pergunta ${n} de 15</div>
+    </div>
+    <div id="question">${Q.q}</div>
+    <div id="poll"></div>
+    <div id="answers"></div>
+    <div id="lifelines">
+      <button class="life" id="lf-skip">⏭️ PULAR (x${state.skips})<small>${canSkip ? "salta a pergunta e avança sem risco" : "não dá pra pular a última!"}</small></button>
+      <button class="life" id="lf-50">✂️ 50:50 (x${state.fifty})<small>elimina 2 alternativas</small></button>
+      <button class="life" id="lf-aud">👥 Plateia (x${state.audience})<small>opinião do público</small></button>
+    </div>
+    <div id="feedback"></div>
+    <button class="btn ghost" id="btn-stop">🛑 Parar e levar ${fmt(state.current)}</button>
+  `;
+
+  const box = $("#answers");
+  Q.a.forEach((txt, i) => {
+    const b = document.createElement("button");
+    b.className = "ans";
+    b.innerHTML = `<span class="letter">${"ABCD"[i]}</span><span>${txt}</span>`;
+    b.onclick = () => answer(i);
+    box.appendChild(b);
+  });
+
+  $("#lf-skip").disabled = state.skips <= 0 || !canSkip;
+  $("#lf-50").disabled = state.fifty <= 0;
+  $("#lf-aud").disabled = state.audience <= 0;
+  $("#lf-skip").onclick = skip;
+  $("#lf-50").onclick = fifty;
+  $("#lf-aud").onclick = poll;
+  $("#btn-stop").onclick = () => { state.over = true; state.stopped = true; render(); };
+}
+
+function lockAnswers() {
+  document.querySelectorAll(".ans").forEach(b => b.disabled = true);
+}
+
+function answer(i) {
+  const n = state.i;
+  const Q = state.questions[n - 1];
+  const btns = document.querySelectorAll(".ans");
+  lockAnswers();
+  const fb = $("#feedback");
+  if (i === Q.c) {
+    btns[i].classList.add("correct");
+    state.current = PRIZES[n - 1];
+    fb.textContent = "✅ Resposta certa! Você garantiu " + fmt(state.current) + "!";
+    fb.className = "ok";
+    if (n === 15) { setTimeout(() => { state.over = true; state.won = true; render(); }, 1600); return; }
+    setTimeout(() => { state.i++; render(); }, 1700);
+  } else {
+    btns[i].classList.add("wrong");
+    btns[Q.c].classList.add("correct");
+    const safe = lastSafe(n);
+    state.over = true;
+    state.lost = fmt(PRIZES[n-1]) === fmt(safe) ? state.current : safe;
+    fb.textContent = `❌ Errou! A resposta era "${Q.a[Q.c]}"...`;
+    fb.className = "bad";
+    setTimeout(render, 2000);
+  }
+}
+
+function lastSafe(n) {
+  // valor seguro = o maior marco seguro estritamente antes da pergunta atual
+  let r = 0;
+  for (let k = 1; k < n; k++) if (SAFE[k]) r = SAFE[k];
+  return r;
+}
+
+function skip() {
+  if (state.skips <= 0) return;
+  state.skips--;
+  lockAnswers();
+  const fb = $("#feedback");
+  fb.textContent = "⏭️ Pergunta pulada! Sem risco, e você já sobe na escada pra próxima.";
+  fb.className = "skip";
+  setTimeout(() => { state.i++; render(); }, 1400);
+}
+
+function fifty() {
+  if (state.fifty <= 0) return;
+  state.fifty--;
+  const Q = state.questions[state.i - 1];
+  const wrongs = [0,1,2,3].filter(i => i !== Q.c);
+  wrongs.sort(() => Math.random() - 0.5);
+  const kill = wrongs.slice(0, 2);
+  kill.forEach(i => document.querySelectorAll(".ans")[i].classList.add("dim"));
+  document.getElementById("lf-50").disabled = true;
+}
+
+function poll() {
+  if (state.audience <= 0) return;
+  state.audience--;
+  const Q = state.questions[state.i - 1];
+  const box = $("#poll");
+  box.classList.add("show");
+  let base = 40 + Math.floor(Math.random() * 35); // 40-74% para a certa
+  const shares = [0,0,0,0];
+  shares[Q.c] = base;
+  let rest = 100 - base;
+  const others = [0,1,2,3].filter(i => i !== Q.c);
+  others.forEach((i, idx) => {
+    const take = idx === 2 ? rest : Math.floor(rest * 0.5);
+    shares[i] = take;
+    rest -= take;
+  });
+  shares.forEach((s, i) => {
+    const d = document.createElement("div");
+    d.className = "pollbar";
+    d.innerHTML = `${"ABCD"[i]}: ${s}%<div class="bar" style="width:${s}%"></div>`;
+    box.appendChild(d);
+  });
+  document.getElementById("lf-aud").disabled = true;
+}
+
+function renderStart(p) {
+  const best = localStorage.getItem("show-do-milhao-high") || 0;
+  p.innerHTML = `
+    <div class="center">
+      <div class="big">💰🎉</div>
+      <div class="msg">Responda 15 perguntas e ganhe <b style="color:var(--gold)">R$ 1.000.000</b>!</div>
+      <div class="msg">Truques disponíveis: <b>⏭️ Pular</b> (3x), <b>✂️ 50:50</b> (1x) e <b>👥 Plateia</b> (1x). Errou? Fica com o último valor seguro (R$ 10 mil, R$ 100 mil ou o milhão) — ou pare quando quiser e leve o que já tem!</div>
+      ${best ? `<div class="msg">🏆 Recorde: <b style="color:var(--gold)">${fmt(+best)}</b></div>` : ""}
+      <button class="btn" id="btn-start">🎬 COMEÇAR</button>
+    </div>`;
+  $("#btn-start").onclick = () => { state = newState(); state.i = 1; render(); };
+}
+
+function renderEnd(p) {
+  let won = state.won, stopped = state.stopped;
+  let amount = won ? PRIZES[14] : (stopped ? state.current : lastSafe(state.i));
+  const best = +(localStorage.getItem("show-do-milhao-high") || 0);
+  if (amount > best) localStorage.setItem("show-do-milhao-high", String(amount));
+  const isRec = amount >= best && amount > 0;
+  const title = won ? "🏆 VOCÊ GANHOU O MILHÃO!" : stopped ? "🛑 Você parou!" : "💥 Fim de jogo!";
+  const msg = won
+    ? "Inacreditável! Você subiu a escada inteira e levou o prêmio máximo!"
+    : stopped
+      ? "Decisão corajosa: você garantiu o prêmio que acumulou."
+      : `Você caiu na pergunta ${state.i}. O valor seguro que ficou foi...`;
+  p.innerHTML = `
+    <div class="center">
+      <div class="big">${won ? "🎉💰🎉" : stopped ? "🤝" : "😅"}</div>
+      <div class="msg">${title}<br>${msg}</div>
+      <div class="money-big">${fmt(amount)}</div>
+      ${isRec ? `<div class="msg">🏆 <b>Novo recorde pessoal!</b></div>` : ""}
+      <div class="msg" style="color:#9d8ac2">Recorde: ${fmt(Math.max(best, amount))}</div>
+      <button class="btn" id="btn-again">🔁 JOGAR DE NOVO</button>
+    </div>`;
+  $("#btn-again").onclick = () => { state = null; render(); };
+}
+
+state = null;
+render();
+</script>
+</body>
+</html>

@@ -436,24 +436,18 @@ function update(dt){
   }
   bombs=bombs.filter(b=>!b.dead);
 
-  /* presentes */
+  /* presentes: entrega assim que encostar no telhado ou cair na casa-alvo */
   for(const p of presents){
     p.vy+=760*dt; p.x+=p.vx*dt; p.y+=p.vy*dt;
-    if(p.y>=GROUND-9){
-      let ok=null;
-      for(const t of targets) if(!t.delivered&&!t.skip&&p.x>ex(t)+10&&p.x<ex(t)+t.w-10){ok=t;break;}
-      if(ok){
-        ok.delivered=true;ok.kidT=0;delivered++;score+=500;sfx.deliver();
-        explode(p.x,GROUND-14,20,"#ffd43b");explode(p.x,GROUND-20,12,"#ff8787");
-        banner="ENTREGA FEITA! +500";bannerT=1.4;
-        if(delivered>=cfg.deliveries&&!cfg.boss)beginClear();
-        if(delivered>=cfg.deliveries&&cfg.boss&&!bossTriggered){
-          bossTriggered=true;bossDone=false;boss={hp:26,max:26,t:0,shootT:2.2,radT:4.5,miniT:8,y:200,hurtT:0};
-          banner="O GRINCH CHEGOU!!";bannerT=2.4;sfx.boss();
-        }
-      }else{
-        explode(p.x,GROUND-8,10,"#e0e7ff",110);beep(150,.12,"sine",.1);
-      }
+    if(!p.dead)for(const t of targets){
+      if(t.delivered||t.skip)continue;
+      const sx=ex(t);
+      const half=t.w/2+8, dx=Math.abs(p.x-(sx+t.w/2));   /* beiral do telhado (8px de avanço) */
+      const yRoof=(GROUND-t.h)-26*(1-clamp(dx/half,0,1)); /* linha do telhado (pico no centro) */
+      if(dx<half&&p.y>yRoof-8){deliverGift(t,p.x,p.y);p.dead=true;break;}
+    }
+    if(!p.dead&&p.y>=GROUND-9){
+      explode(p.x,GROUND-8,10,"#e0e7ff",110);beep(150,.12,"sine",.1);
       p.dead=true;
     }
   }
@@ -554,6 +548,17 @@ function killBoss(){
   sfx.boom();sfx.boom();score+=2000;
   banner="GRINCH DERROTADO! +2000";bannerT=2.2;shake=.8;
   boss=null;bossDone=true;beginClear();
+}
+function deliverGift(t,px,py){
+  t.delivered=true;t.kidT=0;delivered++;score+=500;sfx.deliver();
+  explode(px,py,20,"#ffd43b");explode(px,py-6,12,"#ff8787");
+  banner="ENTREGA FEITA! +500";bannerT=1.4;
+  const cfg=LEVELS[levelIdx];
+  if(delivered>=cfg.deliveries&&!cfg.boss)beginClear();
+  if(delivered>=cfg.deliveries&&cfg.boss&&!bossTriggered){
+    bossTriggered=true;bossDone=false;boss={hp:26,max:26,t:0,shootT:2.2,radT:4.5,miniT:8,y:200,hurtT:0};
+    banner="O GRINCH CHEGOU!!";bannerT=2.4;sfx.boss();
+  }
 }
 function beginClear(){
   if(clearT>0)return;

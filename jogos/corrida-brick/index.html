@@ -1,0 +1,519 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Corrida Brick</title>
+  <style>
+    :root {
+      --bg: #10141f;
+      --panel: #151d2c;
+      --lcd: #b8d46d;
+      --lcd-dark: #1d2b22;
+      --ink: #27351f;
+      --accent: #8cff7a;
+      --danger: #ff5b6e;
+      --turbo: #5ee7ff;
+      --shot: #ffd75e;
+      --text: #eef7d8;
+    }
+
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      width: 100%;
+      min-height: 100%;
+      background:
+        radial-gradient(circle at top, rgba(140,255,122,.14), transparent 34rem),
+        linear-gradient(180deg, #10141f, #070a10 72%);
+      color: var(--text);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      overflow: hidden;
+      touch-action: none;
+      user-select: none;
+    }
+
+    .wrap {
+      min-height: 100dvh;
+      display: grid;
+      place-items: center;
+      padding: 12px;
+    }
+
+    .cabinet {
+      width: min(100%, 520px);
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 10px 12px;
+      border: 2px solid rgba(184,212,109,.24);
+      border-radius: 18px;
+      background: rgba(21,29,44,.86);
+      box-shadow: 0 18px 40px rgba(0,0,0,.25);
+      font-weight: 900;
+      letter-spacing: .03em;
+    }
+    .title { color: var(--accent); text-transform: uppercase; }
+    .mini { opacity: .82; font-size: 13px; text-align: right; }
+
+    .screenShell {
+      position: relative;
+      margin: 0 auto;
+      width: min(100%, 420px, 43dvh);
+      border-radius: 28px;
+      padding: 14px;
+      background: linear-gradient(145deg, #222c40, #0d1320);
+      border: 2px solid rgba(255,255,255,.09);
+      box-shadow:
+        inset 0 0 0 2px rgba(0,0,0,.25),
+        0 24px 60px rgba(0,0,0,.45);
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      aspect-ratio: 9 / 16;
+      border-radius: 18px;
+      background: var(--lcd);
+      image-rendering: pixelated;
+      box-shadow: inset 0 0 32px rgba(29,43,34,.3);
+    }
+
+    .overlay {
+      position: absolute;
+      inset: 14px;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+      border-radius: 18px;
+      background: rgba(10, 14, 20, .70);
+      backdrop-filter: blur(3px);
+      text-align: center;
+    }
+    .overlay[hidden] { display: none; }
+    .card {
+      max-width: 320px;
+      padding: 18px;
+      border-radius: 20px;
+      background: rgba(21,29,44,.92);
+      border: 2px solid rgba(140,255,122,.24);
+      box-shadow: 0 20px 60px rgba(0,0,0,.32);
+    }
+    .card h1 { margin: 0 0 8px; color: var(--accent); font-size: 28px; }
+    .card p { margin: 8px 0; line-height: 1.35; }
+    .kbd { color: var(--shot); font-weight: 900; }
+
+    button {
+      border: 0;
+      border-radius: 14px;
+      padding: 12px 16px;
+      background: linear-gradient(180deg, #8cff7a, #45cf62);
+      color: #0a2613;
+      font: inherit;
+      font-weight: 1000;
+      cursor: pointer;
+      box-shadow: 0 8px 0 #1d7e39, 0 14px 24px rgba(0,0,0,.25);
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+    button:active { transform: translateY(5px); box-shadow: 0 3px 0 #1d7e39; }
+
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .controls button { padding: 14px 8px; min-height: 52px; }
+    .fire { background: linear-gradient(180deg, #ffd75e, #f09b2a); box-shadow: 0 8px 0 #9c5a15, 0 14px 24px rgba(0,0,0,.25); }
+    .turbo { background: linear-gradient(180deg, #5ee7ff, #3b8dff); box-shadow: 0 8px 0 #1b4e9c, 0 14px 24px rgba(0,0,0,.25); }
+
+    .hint {
+      text-align: center;
+      opacity: .72;
+      font-size: 12px;
+      line-height: 1.25;
+    }
+
+    @media (min-width: 760px) {
+      .cabinet { grid-template-columns: 1fr auto; max-width: 920px; }
+      .topbar, .hint { grid-column: 1 / -1; }
+      .controls { grid-template-columns: 1fr; width: 135px; }
+      .screenShell { width: min(420px, 52dvh); }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="cabinet" aria-label="Corrida Brick">
+      <div class="topbar">
+        <div class="title">🏁 Corrida Brick</div>
+        <div class="mini" id="status">Recorde: 0</div>
+      </div>
+
+      <div class="screenShell" id="touchArea">
+        <canvas id="game" width="360" height="640" aria-label="Jogo de corrida em canvas"></canvas>
+        <div class="overlay" id="overlay">
+          <div class="card">
+            <h1>Corrida Brick</h1>
+            <p>Desvie dos carros, pegue <span class="kbd">munição</span> para atirar e <span class="kbd">turbo</span> para atravessar o trânsito!</p>
+            <p><span class="kbd">← →</span> ou <span class="kbd">A/D</span> mudam de faixa · toque no lado da tela para trocar de faixa · <span class="kbd">Espaço</span> atira · <span class="kbd">Shift</span> turbo</p>
+            <button id="startBtn">Jogar</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="controls" aria-label="Controles">
+        <button id="fireBtn" class="fire" aria-label="Atirar">🔥</button>
+        <button id="turboBtn" class="turbo" aria-label="Turbo">⚡</button>
+      </div>
+
+      <div class="hint">Toque no lado esquerdo ou direito da tela para trocar de faixa. Turbo deixa o carro invencível por alguns segundos.</div>
+    </section>
+  </main>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const canvas = document.getElementById("game");
+      const ctx = canvas.getContext("2d");
+      const overlay = document.getElementById("overlay");
+      const startBtn = document.getElementById("startBtn");
+      const statusEl = document.getElementById("status");
+      const touchArea = document.getElementById("touchArea");
+
+      const W = canvas.width;
+      const H = canvas.height;
+      const ROAD_X = 54;
+      const ROAD_W = 252;
+      const LANES = 4;
+      const LANE_W = ROAD_W / LANES;
+      const laneX = (lane) => ROAD_X + LANE_W * lane + LANE_W / 2;
+      const rand = (min, max) => min + Math.random() * (max - min);
+      const safeStore = {
+        get(key, fallback) { try { return localStorage.getItem(key) ?? fallback; } catch { return fallback; } },
+        set(key, value) { try { localStorage.setItem(key, value); } catch {} }
+      };
+
+      let best = Number(safeStore.get("corrida-brick-best", "0")) || 0;
+      statusEl.textContent = `Recorde: ${best}`;
+
+      const game = {
+        state: "menu",
+        time: 0,
+        score: 0,
+        speed: 155,
+        scroll: 0,
+        spawn: 0,
+        pickupSpawn: 2.8,
+        shake: 0,
+        flash: 0,
+        player: { lane: 1, y: 536, w: 38, h: 56, targetX: laneX(1), x: laneX(1), cooldown: 0, ammo: 0, turbo: 0, turboTimer: 0 },
+        enemies: [],
+        shots: [],
+        pickups: []
+      };
+
+      function reset() {
+        game.state = "playing";
+        game.time = 0;
+        game.score = 0;
+        game.speed = 155;
+        game.scroll = 0;
+        game.spawn = 0.9;
+        game.pickupSpawn = 2.2;
+        game.shake = 0;
+        game.flash = 0;
+        game.enemies.length = 0;
+        game.shots.length = 0;
+        game.pickups.length = 0;
+        Object.assign(game.player, { lane: 1, y: 536, x: laneX(1), targetX: laneX(1), cooldown: 0, ammo: 3, turbo: 1, turboTimer: 0 });
+        overlay.hidden = true;
+      }
+
+      function endGame() {
+        game.state = "over";
+        game.shake = 0.35;
+        game.flash = 0.45;
+        best = Math.max(best, Math.floor(game.score));
+        safeStore.set("corrida-brick-best", String(best));
+        statusEl.textContent = `Recorde: ${best}`;
+        overlay.hidden = false;
+        overlay.querySelector("h1").textContent = "Bateu!";
+        overlay.querySelector("p").innerHTML = `Pontuação: <span class="kbd">${Math.floor(game.score)}</span><br>Recorde: <span class="kbd">${best}</span>`;
+        startBtn.textContent = "Jogar de novo";
+      }
+
+      function move(dir) {
+        if (game.state !== "playing") return;
+        const p = game.player;
+        p.lane = Math.max(0, Math.min(LANES - 1, p.lane + dir));
+        p.targetX = laneX(p.lane);
+      }
+
+      function fire() {
+        if (game.state !== "playing") return;
+        const p = game.player;
+        if (p.ammo <= 0 || p.cooldown > 0) return;
+        p.ammo--;
+        p.cooldown = 0.22;
+        game.shots.push({ x: p.x, y: p.y - 34, r: 7, vy: -520 });
+      }
+
+      function turbo() {
+        if (game.state !== "playing") return;
+        const p = game.player;
+        if (p.turbo <= 0 || p.turboTimer > 0) return;
+        p.turbo--;
+        p.turboTimer = 2.15;
+        game.flash = 0.12;
+      }
+
+      function spawnEnemy() {
+        const occupied = new Set(game.enemies.filter(e => e.y < 145).map(e => e.lane));
+        const choices = [0, 1, 2, 3].filter(l => !occupied.has(l));
+        if (!choices.length) return;
+        const lane = choices[Math.floor(Math.random() * choices.length)];
+        const type = Math.random() < 0.14 ? "truck" : "car";
+        game.enemies.push({
+          lane,
+          x: laneX(lane),
+          y: -70,
+          w: type === "truck" ? 46 : 38,
+          h: type === "truck" ? 72 : 54,
+          vy: rand(36, 82),
+          type
+        });
+      }
+
+      function spawnPickup() {
+        const lane = Math.floor(Math.random() * LANES);
+        const type = Math.random() < 0.58 ? "ammo" : "turbo";
+        game.pickups.push({ lane, x: laneX(lane), y: -40, w: 34, h: 34, type, spin: 0 });
+      }
+
+      function rects(a, b, pad = 0) {
+        return Math.abs(a.x - b.x) * 2 < (a.w + b.w - pad) && Math.abs(a.y - b.y) * 2 < (a.h + b.h - pad);
+      }
+
+      function update(dt) {
+        if (game.state !== "playing") return;
+        const p = game.player;
+        game.time += dt;
+        game.speed = Math.min(330, 155 + game.time * 4.8 + game.score * 0.018);
+        const turboOn = p.turboTimer > 0;
+        const roadSpeed = game.speed * (turboOn ? 1.95 : 1);
+        game.score += dt * roadSpeed * 0.105;
+        game.scroll = (game.scroll + roadSpeed * dt) % 64;
+        game.spawn -= dt;
+        game.pickupSpawn -= dt;
+        game.shake = Math.max(0, game.shake - dt);
+        game.flash = Math.max(0, game.flash - dt);
+        p.cooldown = Math.max(0, p.cooldown - dt);
+        p.turboTimer = Math.max(0, p.turboTimer - dt);
+        p.x += (p.targetX - p.x) * Math.min(1, dt * 16);
+
+        if (game.spawn <= 0) {
+          spawnEnemy();
+          game.spawn = Math.max(0.38, rand(0.72, 1.22) - game.time * 0.006);
+          if (Math.random() < Math.min(0.38, game.time * 0.006)) spawnEnemy();
+        }
+        if (game.pickupSpawn <= 0) {
+          spawnPickup();
+          game.pickupSpawn = rand(4.0, 6.8);
+        }
+
+        for (const e of game.enemies) e.y += (roadSpeed + e.vy) * dt;
+        for (const s of game.shots) s.y += s.vy * dt;
+        for (const u of game.pickups) {
+          u.y += roadSpeed * dt;
+          u.spin += dt * 5;
+        }
+
+        for (const s of game.shots) {
+          for (const e of game.enemies) {
+            if (e.dead) continue;
+            if (Math.abs(s.x - e.x) < e.w / 2 && Math.abs(s.y - e.y) < e.h / 2) {
+              e.dead = true;
+              s.dead = true;
+              game.score += e.type === "truck" ? 90 : 55;
+              game.flash = 0.06;
+              break;
+            }
+          }
+        }
+
+        for (const u of game.pickups) {
+          if (u.dead) continue;
+          if (rects({ x: p.x, y: p.y, w: p.w, h: p.h }, u, 8)) {
+            u.dead = true;
+            if (u.type === "ammo") p.ammo = Math.min(12, p.ammo + 4);
+            else p.turbo = Math.min(4, p.turbo + 1);
+            game.score += 35;
+          }
+        }
+
+        for (const e of game.enemies) {
+          if (e.dead) continue;
+          if (rects({ x: p.x, y: p.y, w: p.w, h: p.h }, e, 12)) {
+            if (turboOn) {
+              e.dead = true;
+              game.score += e.type === "truck" ? 120 : 75;
+              game.shake = 0.08;
+            } else {
+              endGame();
+              break;
+            }
+          }
+        }
+
+        game.enemies = game.enemies.filter(e => !e.dead && e.y < H + 90);
+        game.shots = game.shots.filter(s => !s.dead && s.y > -30);
+        game.pickups = game.pickups.filter(u => !u.dead && u.y < H + 60);
+        statusEl.textContent = `Pontos: ${Math.floor(game.score)} · Recorde: ${best}`;
+      }
+
+      function pxRect(x, y, w, h, color = "#27351f") {
+        ctx.fillStyle = color;
+        ctx.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h));
+      }
+
+      function drawCar(x, y, w, h, color, isPlayer = false) {
+        ctx.save();
+        ctx.translate(Math.round(x), Math.round(y));
+        const c = color;
+        const dark = "#1d2b22";
+        pxRect(-w * .32, -h * .46, w * .64, h * .92, c);
+        pxRect(-w * .46, -h * .22, w * .18, h * .22, c);
+        pxRect(w * .28, -h * .22, w * .18, h * .22, c);
+        pxRect(-w * .46, h * .16, w * .18, h * .22, c);
+        pxRect(w * .28, h * .16, w * .18, h * .22, c);
+        pxRect(-w * .2, -h * .28, w * .4, h * .18, dark);
+        pxRect(-w * .18, h * .10, w * .36, h * .20, dark);
+        pxRect(-w * .35, -h * .52, w * .18, h * .09, isPlayer ? "#ffd75e" : "#b8d46d");
+        pxRect(w * .17, -h * .52, w * .18, h * .09, isPlayer ? "#ffd75e" : "#b8d46d");
+        if (isPlayer && game.player.turboTimer > 0) {
+          pxRect(-w * .25, h * .47, w * .18, h * .22, "#5ee7ff");
+          pxRect(w * .07, h * .47, w * .18, h * .22, "#5ee7ff");
+        }
+        ctx.restore();
+      }
+
+      function drawPickup(u) {
+        ctx.save();
+        ctx.translate(u.x, u.y);
+        ctx.rotate(Math.sin(u.spin) * 0.12);
+        if (u.type === "ammo") {
+          pxRect(-15, -15, 30, 30, "#ffd75e");
+          pxRect(-11, -11, 22, 22, "#27351f");
+          pxRect(-3, -18, 6, 36, "#ffd75e");
+          pxRect(-18, -3, 36, 6, "#ffd75e");
+        } else {
+          pxRect(-16, -16, 32, 32, "#5ee7ff");
+          pxRect(-3, -14, 9, 13, "#27351f");
+          pxRect(-10, -1, 11, 5, "#27351f");
+          pxRect(-4, 2, 9, 14, "#27351f");
+        }
+        ctx.restore();
+      }
+
+      function draw() {
+        const p = game.player;
+        ctx.save();
+        if (game.shake > 0) ctx.translate(rand(-4, 4), rand(-4, 4));
+
+        ctx.fillStyle = "#b8d46d";
+        ctx.fillRect(0, 0, W, H);
+
+        ctx.fillStyle = "#27351f";
+        ctx.fillRect(ROAD_X - 8, 0, 8, H);
+        ctx.fillRect(ROAD_X + ROAD_W, 0, 8, H);
+        ctx.globalAlpha = .17;
+        ctx.fillRect(ROAD_X, 0, ROAD_W, H);
+        ctx.globalAlpha = 1;
+
+        for (let i = 1; i < LANES; i++) {
+          const x = ROAD_X + LANE_W * i;
+          for (let y = -64 + game.scroll; y < H + 64; y += 64) {
+            pxRect(x - 3, y, 6, 34, "#27351f");
+          }
+        }
+
+        // HUD estilo LCD
+        pxRect(8, 8, 98, 48, "#27351f");
+        pxRect(10, 10, 94, 44, "#b8d46d");
+        ctx.fillStyle = "#27351f";
+        ctx.font = "900 14px monospace";
+        ctx.fillText("PTS", 18, 27);
+        ctx.fillText(String(Math.floor(game.score)).padStart(5, "0"), 18, 45);
+
+        pxRect(254, 8, 98, 66, "#27351f");
+        pxRect(256, 10, 94, 62, "#b8d46d");
+        ctx.fillStyle = "#27351f";
+        ctx.fillText("AMMO " + p.ammo, 264, 29);
+        ctx.fillText("TURB " + p.turbo, 264, 49);
+        if (p.turboTimer > 0) ctx.fillText("BOOST", 264, 67);
+
+        for (const u of game.pickups) drawPickup(u);
+        for (const s of game.shots) {
+          pxRect(s.x - 4, s.y - 11, 8, 22, "#ffd75e");
+          pxRect(s.x - 2, s.y - 15, 4, 5, "#27351f");
+        }
+        for (const e of game.enemies) drawCar(e.x, e.y, e.w, e.h, e.type === "truck" ? "#1d2b22" : "#27351f");
+        drawCar(p.x, p.y, p.w, p.h, p.turboTimer > 0 ? "#245565" : "#27351f", true);
+
+        if (game.flash > 0) {
+          ctx.globalAlpha = Math.min(.42, game.flash * 2.6);
+          ctx.fillStyle = "#eef7d8";
+          ctx.fillRect(0, 0, W, H);
+          ctx.globalAlpha = 1;
+        }
+        ctx.restore();
+      }
+
+      let last = performance.now();
+      function loop(now) {
+        const dt = Math.min(0.033, (now - last) / 1000 || 0);
+        last = now;
+        update(dt);
+        draw();
+        requestAnimationFrame(loop);
+      }
+
+      startBtn.addEventListener("click", reset);
+      document.addEventListener("keydown", (ev) => {
+        if (["ArrowLeft", "ArrowRight", " ", "Space", "Shift", "Enter", "a", "A", "d", "D"].includes(ev.key)) ev.preventDefault();
+        if (game.state !== "playing" && (ev.key === "Enter" || ev.key === " ")) { reset(); return; }
+        if (ev.key === "ArrowLeft" || ev.key === "a" || ev.key === "A") move(-1);
+        if (ev.key === "ArrowRight" || ev.key === "d" || ev.key === "D") move(1);
+        if (ev.key === " " || ev.key === "Space") fire();
+        if (ev.key === "Shift") turbo();
+      }, { passive: false });
+
+      const bindHold = (id, fn) => {
+        const el = document.getElementById(id);
+        el.addEventListener("pointerdown", (ev) => { ev.preventDefault(); if (game.state !== "playing") reset(); fn(); });
+      };
+      bindHold("fireBtn", fire);
+      bindHold("turboBtn", turbo);
+
+      touchArea.addEventListener("pointerdown", (ev) => {
+        if (game.state !== "playing") return;
+        const rect = touchArea.getBoundingClientRect();
+        move(ev.clientX - rect.left < rect.width / 2 ? -1 : 1);
+      }, { passive: true });
+
+      draw();
+      requestAnimationFrame(loop);
+    })();
+  </script>
+</body>
+</html>

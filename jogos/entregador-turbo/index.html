@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Entregador Turbo</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    height: 100%;
+    background: #1a1030;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: system-ui, -apple-system, sans-serif;
+    overflow: hidden;
+    touch-action: none;
+  }
+  #wrap { position: relative; width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; }
+  canvas {
+    width: 100%; height: 100%;
+    object-fit: contain;
+    image-rendering: pixelated;
+    background: #87ceeb;
+  }
+  #touch {
+    position: absolute; inset: 0;
+    display: none;
+    pointer-events: none;
+  }
+  #touch button {
+    position: absolute;
+    pointer-events: auto;
+    width: 74px; height: 74px;
+    border: none; border-radius: 18px;
+    background: rgba(255,255,255,0.35);
+    color: #222;
+    font-size: 30px;
+    backdrop-filter: blur(2px);
+    -webkit-user-select: none; user-select: none;
+    touch-action: none;
+  }
+  #touch button:active { background: rgba(255,255,255,0.65); }
+  #b-left  { left: 18px;  bottom: 22px; }
+  #b-right { left: 104px; bottom: 22px; }
+  #b-jump  { right: 104px; bottom: 22px; font-size: 24px; }
+  #b-del   { right: 18px;  bottom: 22px; font-size: 30px; }
+  @media (pointer: coarse) { #touch { display: block; } }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="c" width="800" height="480"></canvas>
+  <div id="touch">
+    <button id="b-left">◀</button>
+    <button id="b-right">▶</button>
+    <button id="b-jump">PULAR</button>
+    <button id="b-del">📦</button>
+  </div>
+</div>
+<script>
+"use strict";
+const cvs = document.getElementById("c");
+const ctx = cvs.getContext("2d");
+const W = 800, H = 480;
+const WORLD = 4200;          // largura do mundo
+const GROUND = 400;          // linha do chão (topo da rua)
+const REST = { x: 90, w: 340 };            // restaurante
+const HOUSE_X0 = 640, HOUSE_W = 170, HOUSE_STEP = 220, HOUSES = 14;
+const houseX = i => HOUSE_X0 + i * HOUSE_STEP;
+
+const SKIES = [
+  ["#8ec9f5", "#e3f2ff"],
+  ["#7fb8f0", "#ffe9c9"],
+  ["#5f9fe8", "#ffd9a0"],
+  ["#4a7bc8", "#ff9e6b"],
+  ["#3b4d8f", "#ff7e5f"],
+];
+const HOUSE_COLORS = ["#e8867a", "#f2b96b", "#8fc9a0", "#7fb0d9", "#c79ad9", "#e6c07b", "#9ad1d4"];
+const HOUSE_TRIMS  = ["#a85548", "#b98a3e", "#5f9878", "#5481a8", "#8f68a8", "#a8905a", "#6ba8aa"];
+
+// ---------------- áudio ----------------
+let AC = null;
+function ac() {
+  if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
+  if (AC && AC.state === "suspended") AC.resume();
+}
+function beep(f, d, type, v, when) {
+  if (!AC) return;
+  type = type || "square"; v = v || 0.12; when = when || 0;
+  const t0 = AC.currentTime + when;
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.type = type; o.frequency.value = f;
+  g.gain.setValueAtTime(v, t0);
+  g.gain.exponentialRampToValueAtTime(0.001, t0 + d);
+  o.connect(g); g.connect(AC.destination);
+  o.start(t0); o.stop(t0 + d);
+}
+const sfx = {
+  jump:    () => beep(300, 0.08, "square", 0.08),
+  pickup:  () => { beep(520, 0.09); beep(780, 0.12, "square", 0.12, 0.09); },
+  deliver: () => { beep(523, 0.09); beep(659, 0.09, "square", 0.12, 0.09); beep(784, 0.18, "square", 0.14, 0.18); },
+  hurt:    () => { beep(180, 0.2, "sawtooth", 0.18); beep(120, 0.25, "sawtooth", 0.15, 0.08); },
+  timeout: () => { beep(400, 0.15, "triangle", 0.15); beep(250, 0.3, "triangle", 0.15, 0.15); },
+  levelup: () => { [440, 554, 659, 880].forEach((f, i) => beep(f, 0.12, "square", 0.12, i * 0.1)); },
+  over:    () => { [400, 330, 262, 196].forEach((f, i) => beep(f, 0.18, "triangle", 0.14, i * 0.15)); },
+};
+
+// ---------------- estado ----------------
+let state = "menu";   // menu | playing | over
+let score = 0, lives = 3, level = 1, delivered = 0;
+let high = 0;
+try { high = +(localStorage.getItem("entregador-turbo-high") || 0); } catch (e) {}
+
+let player, order, obstacles, particles, floats, cam, inv, shake, banner, tGlobal;
+
+function reset() {
+  score = 0; lives = 3; level = 1; delivered = 0;
+  player = { x: 250, vx: 0, jumpH: 0, vy: 0, onGround: true, facing: 1, carrying: false };
+  order = null;
+  obstacles = [];
+  particles = [];
+  floats = [];
+  cam = 0; inv = 0; shake = 0; banner = null;
+  spawnObstacles();
+}
+reset();
+tGlobal = 0;
+
+function baseTime() { return Math.max(22, 50 - (level - 1) * 5); }
+function targetObs() { return Math.min(12, 2 + level * 2); }
+
+function spawnObstacles() {
+  while (obstacles.length < targetObs()) {
+    const x = 550 + Math.random() * (WORLD - 700);
+    if (Math.abs(x - player.x) < 250) continue;
+    obstacles.push({
+      x: x,
+      dir: Math.random() < 0.5 ? -1 : 1,
+      type: Math.random() < 0.25 ? "dog" : "walk",
+      speed: 30 + Math.random() * 35,
+      flipT: 1 + Math.random() * 3,
+    });
+  }
+}
+
+function newOrder() {
+  order = {
+    house: Math.floor(Math.random() * HOUSES),
+    time: baseTime(),
+    total: baseTime(),
+  };
+}
+
+// ---------------- input ----------------
+const keys = { left: false, right: false, jump: false, del: false };
+function setKey(k, v) {
+  if (k === "jump" || k === "del") {
+    if (v && state === "playing") doAction(k);
+  } else keys[k] = v;
+}
+function doAction(k) {
+  if (state !== "playing") return;
+  if (k === "jump" && player.onGround) {
+    player.vy = 480; player.onGround = false;
+    sfx.jump();
+  }
+  if (k === "del") tryDeliver();
+}
+function startGame() {
+  reset();
+  state = "playing";
+}
+
+addEventListener("keydown", e => {
+  ac();
+  if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", " ", "Enter"].includes(e.key)) e.preventDefault();
+  if (state !== "playing") {
+    if (e.key === " " || e.key === "Enter") { startGame(); e.preventDefault(); }
+    return;
+  }
+  switch (e.key) {
+    case "ArrowLeft": case "a": case "A": setKey("left", true); break;
+    case "ArrowRight": case "d": case "D": setKey("right", true); break;
+    case " ": case "ArrowUp": case "w": case "W": if (!e.repeat) doAction("jump"); break;
+    case "x": case "X": case "k": case "K": case "j": case "J": case "Enter": if (!e.repeat) doAction("del"); break;
+  }
+});
+addEventListener("keyup", e => {
+  switch (e.key) {
+    case "ArrowLeft": case "a": case "A": setKey("left", false); break;
+    case "ArrowRight": case "d": case "D": setKey("right", false); break;
+  }
+});
+// solta as teclas se o foco sair (senão a scooter não para)
+addEventListener("blur", () => { keys.left = false; keys.right = false; });
+// toque no canvas = iniciar
+cvs.addEventListener("pointerdown", e => {
+  ac();
+  if (state !== "playing") { startGame(); }
+});
+// botões touch
+function bindBtn(id, k) {
+  const b = document.getElementById(id);
+  const dn = e => { e.preventDefault(); ac(); if (state === "playing") doAction(k); setKey(k, true); };
+  const up = e => { e.preventDefault(); setKey(k, false); };
+  b.addEventListener("pointerdown", dn);
+  b.addEventListener("pointerup", up);
+  b.addEventListener("pointercancel", up);
+  b.addEventListener("pointerleave", up);
+  b.addEventListener("contextmenu", e => e.preventDefault());
+}
+bindBtn("b-left", "left");
+bindBtn("b-right", "right");
+bindBtn("b-jump", "jump");
+bindBtn("b-del", "del");
+
+// ---------------- lógica ----------------
+function inRest() { return player.x > REST.x && player.x < REST.x + REST.w; }
+function inDeliverZone() {
+  if (!order || !player.carrying) return false;
+  const hx = houseX(order.house);
+  return player.x > hx - 20 && player.x < hx + HOUSE_W + 20;
+}
+
+function tryDeliver() {
+  if (!inDeliverZone()) return;
+  const tip = Math.max(0, Math.round(order.time));
+  score += 100 + tip;
+  delivered++;
+  floatText(player.x, GROUND - 130, "+" + (100 + tip) + "  (dica: " + tip + ")");
+  confetti(player.x, GROUND - 90);
+  sfx.deliver();
+  player.carrying = false;
+  order = null;
+  if (delivered % 3 === 0 && level < 5) {
+    level++;
+    sfx.levelup();
+    banner = { text: "NÍVEL " + level + "!", t: 2 };
+  }
+}
+
+function loseLife(why) {
+  lives--;
+  inv = 2;
+  shake = 0.4;
+  player.carrying = false;
+  order = null;
+  floatText(player.x, GROUND - 140, why, "#ff6b6b");
+  sfx.hurt();
+  if (lives <= 0) gameOver();
+}
+
+function gameOver() {
+  state = "over";
+  if (score > high) {
+    high = score;
+    try { localStorage.setItem("entregador-turbo-high", String(high)); } catch (e) {}
+  }
+  sfx.over();
+}
+
+function confetti(x, y) {
+  const cols = ["#ff5d5d", "#ffd93d", "#6bcb77", "#4d96ff", "#c58aff"];
+  for (let i = 0; i < 26; i++) {
+    particles.push({
+      x: x, y: y,
+      vx: (Math.random() - 0.5) * 320,
+      vy: -Math.random() * 320 - 60,
+      t: 1.4,
+      c: cols[i % cols.length],
+      r: 3 + Math.random() * 3,
+    });
+  }
+}
+function floatText(x, y, text, color) {
+  floats.push({ x: x, y: y, text: text, t: 1.4, c: color || "#fff" });
+}
+
+function update(dt) {
+  tGlobal += dt;
+  if (banner) { banner.t -= dt; if (banner.t <= 0) banner = null; }
+  // partículas
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.t -= dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 900 * dt;
+    if (p.t <= 0) particles.splice(i, 1);
+  }
+  for (let i = floats.length - 1; i >= 0; i--) {
+    const f = floats[i];
+    f.t -= dt; f.y -= 40 * dt;
+    if (f.t <= 0) floats.splice(i, 1);
+  }
+  if (shake > 0) shake -= dt;
+  if (state !== "playing") return;
+
+  if (inv > 0) inv -= dt;
+
+  // movimento
+  const speed = 240;
+  let dx = 0;
+  if (keys.left) dx -= 1;
+  if (keys.right) dx += 1;
+  player.vx = dx * speed;
+  if (dx !== 0) player.facing = dx;
+  player.x += player.vx * dt;
+  player.x = Math.max(30, Math.min(WORLD - 30, player.x));
+
+  // pulo
+  if (!player.onGround) {
+    player.jumpH += player.vy * dt;
+    player.vy -= 1350 * dt;
+    if (player.jumpH <= 0) { player.jumpH = 0; player.vy = 0; player.onGround = true; }
+  }
+
+  // câmera
+  const target = Math.max(0, Math.min(WORLD - W, player.x - W * 0.45));
+  cam += (target - cam) * Math.min(1, dt * 8);
+
+  // pegar pedido no restaurante
+  if (!player.carrying && inRest()) {
+    player.carrying = true;
+    newOrder();
+    sfx.pickup();
+    floatText(player.x, GROUND - 140, "PEDIDO #P" + (delivered + 1) + "!", "#ffd93d");
+  }
+
+  // timer do pedido
+  if (player.carrying && order) {
+    order.time -= dt;
+    if (order.time <= 0) {
+      loseLife("CHEGOU ATRASADO!");
+    }
+  }
+
+  // obstáculos
+  spawnObstacles();
+  const bottom = GROUND - player.jumpH;
+  for (const o of obstacles) {
+    let sp = o.speed;
+    if (o.type === "dog") {
+      const d = player.x - o.x;
+      if (Math.abs(d) < 280 && Math.sign(d) === o.dir) sp = 150;
+      else if (Math.abs(d) < 280) o.dir = Math.sign(d) || 1;
+    } else {
+      o.flipT -= dt;
+      if (o.flipT <= 0) { o.dir *= -1; o.flipT = 1.5 + Math.random() * 3; }
+    }
+    o.x += o.dir * sp * dt;
+    if (o.x < 480) { o.x = 480; o.dir = 1; }
+    if (o.x > WORLD - 40) { o.x = WORLD - 40; o.dir = -1; }
+
+    // colisão
+    if (inv <= 0 && player.carrying && Math.abs(player.x - o.x) < 32 && bottom > GROUND - 38) {
+      loseLife("BATIDA! PEDIDO NO CHÃO 😵");
+      break;
+    }
+  }
+}
+
+// ---------------- desenho ----------------
+function emo(ch, x, y, size, flip) {
+  ctx.save();
+  ctx.translate(x, y);
+  if (flip) ctx.scale(-1, 1);
+  ctx.font = size + "px system-ui, 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(ch, 0, 0);
+  ctx.restore();
+}
+function rr(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+function drawSky() {
+  const [c1, c2] = SKIES[level - 1];
+  const g = ctx.createLinearGradient(0, 0, 0, GROUND);
+  g.addColorStop(0, c1); g.addColorStop(1, c2);
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H);
+  // sol
+  ctx.fillStyle = "rgba(255,240,180,0.9)";
+  ctx.beginPath(); ctx.arc(680, 70, 34, 0, 7); ctx.fill();
+  // nuvens
+  ctx.fillStyle = "rgba(255,255,255,0.75)";
+  for (let i = 0; i < 6; i++) {
+    const cx = ((i * 460 + 120 - cam * 0.25) % (W + 300)) - 150;
+    const cy = 50 + (i * 53) % 120;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 22, 0, 7);
+    ctx.arc(cx + 26, cy - 8, 20, 0, 7);
+    ctx.arc(cx + 52, cy, 20, 0, 7);
+    ctx.fill();
+  }
+  // skyline de fundo
+  ctx.fillStyle = "rgba(60,60,110,0.25)";
+  for (let i = 0; i < 14; i++) {
+    const bx = ((i * 340 - cam * 0.5) % (W + 400)) - 200;
+    const bh = 90 + (i * 97) % 120;
+    ctx.fillRect(bx, GROUND - bh - 60, 90 + (i * 31) % 70, bh + 60);
+  }
+}
+
+function drawRestaurant(x) {
+  const w = REST.w;
+  ctx.fillStyle = "#5b4636";
+  ctx.fillRect(x + 20, 160, w - 40, GROUND - 160);
+  // tolda
+  for (let i = 0; i < 6; i++) {
+    ctx.fillStyle = i % 2 ? "#ffffff" : "#e0483e";
+    ctx.beginPath();
+    ctx.moveTo(x + 20 + i * (w - 40) / 6, 160);
+    ctx.lineTo(x + 20 + (i + 1) * (w - 40) / 6, 160);
+    ctx.lineTo(x + 20 + (i + 1) * (w - 40) / 6, 195);
+    ctx.lineTo(x + 20 + i * (w - 40) / 6, 195);
+    ctx.fill();
+  }
+  // letreiro
+  ctx.fillStyle = "#2c2233";
+  rr(x + 40, 100, w - 80, 56, 10); ctx.fill();
+  ctx.fillStyle = "#ffd93d";
+  ctx.font = "bold 22px system-ui, sans-serif";
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText("RESTAURANTE", x + w / 2, 118);
+  ctx.font = "20px system-ui, sans-serif";
+  ctx.fillText("🍔 🌭 🍟", x + w / 2, 142);
+  // janelão
+  ctx.fillStyle = "#bfe6ff";
+  ctx.fillRect(x + 50, 220, w - 100, 70);
+  ctx.strokeStyle = "#2c2233"; ctx.lineWidth = 4;
+  ctx.strokeRect(x + 50, 220, w - 100, 70);
+  // balcão de pedidos
+  if (!player.carrying) {
+    ctx.fillStyle = "#7a5c44";
+    rr(x + w / 2 - 45, 300, 90, 100, 8); ctx.fill();
+    ctx.fillStyle = "#fff";
+    ctx.font = "bold 16px system-ui, sans-serif";
+    ctx.fillText("PEDIDOS", x + w / 2, 330);
+    const bob = Math.sin(tGlobal * 5) * 5;
+    emo("📦", x + w / 2, 300 - 26 + bob, 34);
+    ctx.fillStyle = "#ffd93d";
+    ctx.font = "bold 15px system-ui, sans-serif";
+    ctx.fillText("vêm buscar!", x + w / 2, 270 + bob);
+  } else {
+    ctx.fillStyle = "#7a5c44";
+    rr(x + w / 2 - 45, 300, 90, 100, 8); ctx.fill();
+    ctx.fillStyle = "#fff";
+    ctx.font = "bold 16px system-ui, sans-serif";
+    ctx.fillText("OBRIGADO!", x + w / 2, 350);
+  }
+}
+
+function drawHouse(i) {
+  const x = houseX(i), y = 180, w = HOUSE_W;
+  const c = HOUSE_COLORS[i % HOUSE_COLORS.length];
+  const t = HOUSE_TRIMS[i % HOUSE_TRIMS.length];
+  const isTarget = order && player.carrying && order.house === i;
+  // corpo
+  ctx.fillStyle = c;
+  ctx.fillRect(x, y, w, GROUND - y);
+  // telhado
+  ctx.fillStyle = t;
+  ctx.beginPath();
+  ctx.moveTo(x - 12, y);
+  ctx.lineTo(x + w / 2, y - 55);
+  ctx.lineTo(x + w + 12, y);
+  ctx.fill();
+  // janela
+  ctx.fillStyle = "#d9f1ff";
+  ctx.fillRect(x + w / 2 - 28, y + 22, 56, 44);
+  ctx.strokeStyle = "rgba(0,0,0,0.35)"; ctx.lineWidth = 3;
+  ctx.strokeRect(x + w / 2 - 28, y + 22, 56, 44);
+  ctx.beginPath();
+  ctx.moveTo(x + w / 2, y + 22); ctx.lineTo(x + w / 2, y + 66);
+  ctx.moveTo(x + w / 2 - 28, y + 44); ctx.lineTo(x + w / 2 + 28, y + 44);
+  ctx.stroke();
+  // porta
+  ctx.fillStyle = t;
+  rr(x + w / 2 - 20, GROUND - 70, 40, 70, 6); ctx.fill();
+  ctx.fillStyle = "#ffd93d";
+  ctx.beginPath(); ctx.arc(x + w / 2 + 11, GROUND - 36, 3, 0, 7); ctx.fill();
+  // número da casa
+  ctx.fillStyle = "#fff";
+  rr(x + w / 2 - 22, y + 78, 44, 30, 8); ctx.fill();
+  ctx.fillStyle = "#333";
+  ctx.font = "bold 20px system-ui, sans-serif";
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText(String(i + 1), x + w / 2, y + 94);
+  // alvo
+  if (isTarget) {
+    const pulse = 0.6 + 0.4 * Math.sin(tGlobal * 6);
+    ctx.strokeStyle = "rgba(255,217,61," + pulse + ")";
+    ctx.lineWidth = 5;
+    rr(x - 8, y - 66, w + 16, GROUND - y + 66, 10); ctx.stroke();
+    const bob = Math.sin(tGlobal * 5) * 6;
+    emo("📍", x + w / 2, y - 92 + bob, 34);
+    ctx.fillStyle = "#ffd93d";
+    ctx.font = "bold 16px system-ui, sans-serif";
+    ctx.fillText("SUA CASA!", x + w / 2, y - 60 + bob);
+  }
+}
+
+function drawRoad() {
+  ctx.fillStyle = "#565666";
+  ctx.fillRect(0, GROUND, W, H - GROUND);
+  ctx.fillStyle = "#6e6e80";
+  ctx.fillRect(0, GROUND, W, 8);
+  ctx.fillStyle = "#ffd93d";
+  for (let i = 0; i < W / 60 + 2; i++) {
+    const lx = i * 60 - (cam % 60);
+    ctx.fillRect(lx, H - 30, 32, 6);
+  }
+}
+
+function drawObstacle(o) {
+  const flip = o.dir > 0;
+  if (o.type === "dog") emo("🐕", o.x, GROUND - 17, 36, flip);
+  else emo("🚶", o.x, GROUND - 24, 48, flip);
+}
+
+function drawPlayer() {
+  const x = player.x;
+  const bottom = GROUND - player.jumpH;
+  // sombra
+  ctx.fillStyle = "rgba(0,0,0,0.25)";
+  ctx.beginPath();
+  ctx.ellipse(x, GROUND + 6, 30 - player.jumpH * 0.05, 7, 0, 0, 7);
+  ctx.fill();
+  // piscar quando invulnerável
+  if (inv > 0 && Math.floor(tGlobal * 12) % 2 === 0) return;
+  const bob = player.onGround && player.vx !== 0 ? Math.sin(tGlobal * 18) * 1.5 : 0;
+  // scooter (emoji aponta p/ esquerda nativamente → inverte quando vai p/ direita)
+  ctx.save();
+  ctx.translate(x, bottom - 24 + bob);
+  if (player.facing > 0) ctx.scale(-1, 1);
+  ctx.font = "46px system-ui, 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif";
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText("🛵", 0, 0);
+  ctx.restore();
+  // caixa de entrega
+  if (player.carrying) {
+    const bx = x - player.facing * 24;
+    ctx.fillStyle = "#c98d4f";
+    rr(bx - 14, bottom - 52 + bob, 28, 24, 4); ctx.fill();
+    ctx.fillStyle = "#e0483e";
+    ctx.fillRect(bx - 14, bottom - 44 + bob, 28, 6);
+    ctx.fillStyle = "#fff";
+    ctx.font = "bold 12px system-ui, sans-serif";
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText("🍔", bx, bottom - 40 + bob);
+  }
+}
+
+function drawHUD() {
+  // painel topo
+  ctx.fillStyle = "rgba(20,14,40,0.75)";
+  rr(10, 10, 250, 64, 12); ctx.fill();
+  ctx.fillStyle = "#fff";
+  ctx.font = "bold 17px system-ui, sans-serif";
+  ctx.textAlign = "left"; ctx.textBaseline = "middle";
+  ctx.fillText("🪙 " + score, 24, 32);
+  ctx.fillText("❤️".repeat(Math.max(0, lives)) + "🖤".repeat(Math.max(0, 3 - lives)), 24, 58);
+  ctx.fillStyle = "#ffd93d";
+  ctx.textAlign = "right";
+  ctx.fillText("Nv " + level, 248, 32);
+  ctx.fillStyle = "#9be89b";
+  ctx.fillText("entregas: " + delivered, 248, 58);
+  // recorde
+  ctx.fillStyle = "rgba(255,255,255,0.65)";
+  ctx.font = "13px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText("recorde: " + high, W / 2, 22);
+
+  // cartão do pedido
+  const cw = 320;
+  ctx.fillStyle = "rgba(20,14,40,0.75)";
+  rr(W - cw - 12, 10, cw, 64, 12); ctx.fill();
+  if (!player.carrying) {
+    ctx.fillStyle = "#ffd93d";
+    ctx.font = "bold 17px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("🍔 VÁ BUSCAR O PEDIDO", W - cw / 2 - 12, 34);
+    ctx.fillStyle = "#fff";
+    ctx.font = "14px system-ui, sans-serif";
+    const dir = inRest() ? "agora!" : (player.x > REST.x + REST.w ? "◀ restaurante à esquerda" : "restaurante →");
+    ctx.fillText(dir, W - cw / 2 - 12, 58);
+  } else {
+    const hx = houseX(order.house);
+    const dir = player.x < hx ? "▶" : "◀";
+    ctx.fillStyle = "#fff";
+    ctx.font = "bold 17px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("📦 Entrega → Casa " + (order.house + 1) + "  " + dir, W - cw / 2 - 12, 32);
+    // barra de tempo
+    const frac = Math.max(0, order.time / order.total);
+    ctx.fillStyle = "rgba(255,255,255,0.2)";
+    rr(W - cw + 8, 50, cw - 40, 14, 7); ctx.fill();
+    ctx.fillStyle = frac > 0.4 ? "#6bcb77" : frac > 0.18 ? "#ffd93d" : "#ff5d5d";
+    if (frac > 0) { rr(W - cw + 8, 50, (cw - 40) * frac, 14, 7); ctx.fill(); }
+    ctx.fillStyle = "#fff";
+    ctx.font = "bold 13px system-ui, sans-serif";
+    ctx.fillText(Math.ceil(order.time) + "s", W - cw / 2 - 12, 57);
+  }
+
+  // dica de entrega
+  if (inDeliverZone()) {
+    const pulse = 0.6 + 0.4 * Math.sin(tGlobal * 8);
+    ctx.fillStyle = "rgba(20,14,40,0.85)";
+    rr(W / 2 - 130, H - 66, 260, 40, 12); ctx.fill();
+    ctx.fillStyle = "rgba(255,217,61," + pulse + ")";
+    ctx.font = "bold 19px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("📦 PRESSIONE X  (entregar)", W / 2, H - 46);
+  }
+  if (!player.carrying && inRest()) {
+    ctx.fillStyle = "rgba(20,14,40,0.85)";
+    rr(W / 2 - 130, H - 66, 260, 40, 12); ctx.fill();
+    ctx.fillStyle = "#6bcb77";
+    ctx.font = "bold 18px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("pegando o pedido... 📦", W / 2, H - 46);
+  }
+
+  // banner de nível
+  if (banner) {
+    const a = Math.min(1, banner.t);
+    ctx.fillStyle = "rgba(20,14,40," + 0.85 * a + ")";
+    rr(W / 2 - 150, 96, 300, 52, 14); ctx.fill();
+    ctx.fillStyle = "rgba(255,217,61," + a + ")";
+    ctx.font = "bold 26px system-ui, sans-serif";
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText(banner.text, W / 2, 122);
+  }
+}
+
+function drawParticles() {
+  for (const p of particles) {
+    ctx.globalAlpha = Math.min(1, p.t);
+    ctx.fillStyle = p.c;
+    ctx.fillRect(p.x - p.r / 2, p.y - p.r / 2, p.r, p.r);
+  }
+  ctx.globalAlpha = 1;
+  for (const f of floats) {
+    ctx.globalAlpha = Math.min(1, f.t);
+    ctx.fillStyle = f.c;
+    ctx.font = "bold 18px system-ui, sans-serif";
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.strokeStyle = "rgba(0,0,0,0.5)"; ctx.lineWidth = 3;
+    ctx.strokeText(f.text, f.x, f.y);
+    ctx.fillText(f.text, f.x, f.y);
+  }
+  ctx.globalAlpha = 1;
+}
+
+function centerText(text, y, size, color, bg) {
+  ctx.font = "bold " + size + "px system-ui, sans-serif";
+  const w = ctx.measureText(text).width;
+  if (bg) {
+    ctx.fillStyle = bg;
+    rr(W / 2 - w / 2 - 24, y - size, w + 48, size * 2, 14); ctx.fill();
+  }
+  ctx.fillStyle = color;
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText(text, W / 2, y);
+}
+
+function drawMenu() {
+  drawSky();
+  ctx.save(); ctx.translate(-cam, 0);
+  drawRoad();
+  drawRestaurant(REST.x);
+  for (let i = 0; i < HOUSES; i++) drawHouse(i);
+  ctx.restore();
+  ctx.fillStyle = "rgba(15,10,35,0.72)";
+  ctx.fillRect(0, 0, W, H);
+  emo("🛵", W / 2, 96, 64);
+  centerText("ENTREGADOR TURBO", 170, 40, "#ffd93d");
+  ctx.fillStyle = "#fff";
+  ctx.font = "19px system-ui, sans-serif";
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText("Busque o pedido no restaurante, ache a casa certa", W / 2, 235);
+  ctx.fillText("e entregue antes do tempo acabar — de scooter! 🍔", W / 2, 262);
+  ctx.fillStyle = "#c9c2e8";
+  ctx.font = "16px system-ui, sans-serif";
+  ctx.fillText("← → mover    espaço = pular    X = entregar", W / 2, 315);
+  ctx.fillText("Cuidado com pedestres e cachorros — bater derruba o pedido!", W / 2, 342);
+  const pulse = 0.5 + 0.5 * Math.sin(tGlobal * 4);
+  ctx.fillStyle = "rgba(255,255,255," + (0.5 + pulse * 0.5) + ")";
+  ctx.font = "bold 20px system-ui, sans-serif";
+  ctx.fillText("PRESSIONE ESPAÇO  ou  TOQUE  PARA COMEÇAR", W / 2, 410);
+  if (high > 0) {
+    ctx.fillStyle = "#ffd93d";
+    ctx.font = "15px system-ui, sans-serif";
+    ctx.fillText("recorde: " + high, W / 2, 445);
+  }
+}
+
+function drawOver() {
+  ctx.fillStyle = "rgba(15,10,35,0.75)";
+  ctx.fillRect(0, 0, W, H);
+  centerText("FIM DE TURNO!", 170, 42, "#ff8f8f");
+  ctx.fillStyle = "#fff";
+  ctx.font = "22px system-ui, sans-serif";
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText("Pontos: " + score, W / 2, 240);
+  ctx.fillText("Entregas: " + delivered, W / 2, 272);
+  ctx.fillStyle = "#ffd93d";
+  ctx.fillText("Recorde: " + high, W / 2, 304);
+  const pulse = 0.5 + 0.5 * Math.sin(tGlobal * 4);
+  ctx.fillStyle = "rgba(255,255,255," + (0.5 + pulse * 0.5) + ")";
+  ctx.font = "bold 20px system-ui, sans-serif";
+  ctx.fillText("ESPAÇO  ou  TOQUE  PARA JOGAR DE NOVO", W / 2, 380);
+}
+
+function draw() {
+  if (state === "menu") { drawMenu(); return; }
+  drawSky();
+  ctx.save();
+  let sx = 0, sy = 0;
+  if (shake > 0) { sx = (Math.random() - 0.5) * 14; sy = (Math.random() - 0.5) * 14; }
+  ctx.translate(Math.round(-cam + sx), Math.round(sy));
+  drawRoad();
+  drawRestaurant(REST.x);
+  for (let i = 0; i < HOUSES; i++) drawHouse(i);
+  for (const o of obstacles) drawObstacle(o);
+  drawPlayer();
+  drawParticles();
+  ctx.restore();
+  drawHUD();
+  if (state === "over") drawOver();
+}
+
+// ---------------- loop ----------------
+let last = performance.now();
+function loop(now) {
+  requestAnimationFrame(loop);
+  const dt = Math.min(0.05, (now - last) / 1000);
+  last = now;
+  update(dt);
+  draw();
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

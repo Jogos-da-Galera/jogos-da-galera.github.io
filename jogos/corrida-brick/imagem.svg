@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="300" viewBox="0 0 480 300" role="img" aria-labelledby="title desc">
+  <title id="title">Corrida Brick</title>
+  <desc id="desc">Miniatura de um jogo de corrida estilo brick game com carros, tiro e turbo.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#26125f"/>
+      <stop offset="0.55" stop-color="#511aa0"/>
+      <stop offset="1" stop-color="#0b1020"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="12" stdDeviation="10" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <rect width="480" height="300" rx="28" fill="url(#bg)"/>
+  <circle cx="92" cy="58" r="72" fill="#8cff7a" opacity="0.14"/>
+  <circle cx="414" cy="250" r="96" fill="#5ee7ff" opacity="0.13"/>
+
+  <g filter="url(#shadow)">
+    <rect x="120" y="20" width="240" height="260" rx="26" fill="#182235" stroke="#ffffff" stroke-opacity="0.13" stroke-width="4"/>
+    <rect x="143" y="40" width="194" height="220" rx="12" fill="#b8d46d"/>
+    <rect x="166" y="40" width="8" height="220" fill="#27351f"/>
+    <rect x="306" y="40" width="8" height="220" fill="#27351f"/>
+
+    <g fill="#27351f" opacity="0.92">
+      <rect x="212" y="40" width="6" height="30"/>
+      <rect x="212" y="92" width="6" height="30"/>
+      <rect x="212" y="144" width="6" height="30"/>
+      <rect x="212" y="196" width="6" height="30"/>
+      <rect x="262" y="66" width="6" height="30"/>
+      <rect x="262" y="118" width="6" height="30"/>
+      <rect x="262" y="170" width="6" height="30"/>
+      <rect x="262" y="222" width="6" height="30"/>
+    </g>
+
+    <g id="enemy" fill="#27351f">
+      <rect x="181" y="70" width="28" height="44"/>
+      <rect x="174" y="82" width="8" height="13"/>
+      <rect x="208" y="82" width="8" height="13"/>
+      <rect x="174" y="102" width="8" height="13"/>
+      <rect x="208" y="102" width="8" height="13"/>
+      <rect x="187" y="78" width="16" height="10" fill="#b8d46d"/>
+    </g>
+
+    <g fill="#1d2b22">
+      <rect x="268" y="106" width="32" height="58"/>
+      <rect x="260" y="121" width="9" height="15"/>
+      <rect x="299" y="121" width="9" height="15"/>
+      <rect x="260" y="145" width="9" height="15"/>
+      <rect x="299" y="145" width="9" height="15"/>
+      <rect x="276" y="117" width="16" height="11" fill="#b8d46d"/>
+    </g>
+
+    <g>
+      <rect x="181" y="188" width="38" height="56" fill="#27351f"/>
+      <rect x="172" y="202" width="10" height="16" fill="#27351f"/>
+      <rect x="218" y="202" width="10" height="16" fill="#27351f"/>
+      <rect x="172" y="226" width="10" height="16" fill="#27351f"/>
+      <rect x="218" y="226" width="10" height="16" fill="#27351f"/>
+      <rect x="189" y="199" width="22" height="12" fill="#b8d46d"/>
+      <rect x="188" y="246" width="8" height="15" fill="#5ee7ff"/>
+      <rect x="204" y="246" width="8" height="15" fill="#5ee7ff"/>
+    </g>
+
+    <g fill="#ffd75e">
+      <rect x="244" y="178" width="30" height="30"/>
+      <rect x="256" y="171" width="6" height="44"/>
+      <rect x="237" y="190" width="44" height="6"/>
+    </g>
+    <g fill="#5ee7ff">
+      <rect x="268" y="64" width="30" height="30"/>
+      <path d="M283 68h8l-7 16h9l-17 23 5-18h-8z" fill="#27351f"/>
+    </g>
+    <rect x="197" y="160" width="8" height="24" fill="#ffd75e"/>
+  </g>
+
+  <text x="240" y="38" text-anchor="middle" font-family="system-ui,Segoe UI,sans-serif" font-size="29" font-weight="900" fill="#ffffff">CORRIDA BRICK</text>
+  <text x="240" y="285" text-anchor="middle" font-family="system-ui,Segoe UI,sans-serif" font-size="18" font-weight="800" fill="#8cff7a">desvie • atire • use turbo</text>
+</svg>
