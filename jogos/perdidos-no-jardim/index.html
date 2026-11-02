@@ -151,7 +151,7 @@
   </div>
 
   <canvas id="game" width="900" height="600"></canvas>
-  <div id="hint">📱 Toque: atirar &nbsp;•&nbsp; Arraste: mover &nbsp;•&nbsp; Botão ⚡: especial<br>⌨️ Setas/WASD: mover • Espaço ou J: atirar • E ou K: especial &nbsp;•&nbsp; Leve as frutas até a 🧅 Nave Mãe!</div>
+  <div id="hint">📱 Toque e segure: mover na direção do dedo (atira sozinho) &nbsp;•&nbsp; Botão ⚡: especial<br>⌨️ Setas/WASD: mover • Espaço ou J: atirar • E ou K: especial &nbsp;•&nbsp; Leve as frutas até a 🧅 Nave Mãe!</div>
 
   <div id="abtns">
     <button id="btn-sp">⚡<br>ESPECIAL</button>
@@ -280,10 +280,22 @@ addEventListener("keyup", (e) => {
 });
 
 // ----- Toque/clique no canvas (mobile e desktop) -----
-// Arrastar (dedo ou mouse) = mover na direção do arrasto
+// Segurar = mover na direção do dedo (e atirar sozinho — a mira é automática)
 // Toque/clique curto = atirar  |  Especial = botão ⚡ ou tecla E/K
 let drag = null;
 let nowMs = () => performance.now();
+
+// Direção do pikmin até o ponto tocado (em coordenadas do canvas)
+function pressVec(e) {
+  const r = canvas.getBoundingClientRect();
+  const cx = (e.clientX - r.left) * (canvas.width / r.width);
+  const cy = (e.clientY - r.top) * (canvas.height / r.height);
+  const wx = cx + cam.x, wy = cy + cam.y;
+  const dx = wx - player.x, dy = wy - player.y;
+  const m = Math.hypot(dx, dy);
+  if (m < 30) return { x: 0, y: 0 }; // deadzone: dedo em cima do pikmin = parado
+  return { x: dx / m, y: dy / m };
+}
 
 // Limpa qualquer input "presos" (tecla solta fora da janela, arrasto órfão...)
 // — sem isso o personagem pode "andar sozinho" no meio do jogo.
@@ -299,28 +311,36 @@ addEventListener("blur", clearInput);
 document.addEventListener("visibilitychange", () => { if (document.hidden) clearInput(); });
 
 canvas.addEventListener("pointerdown", (e) => {
-  if (drag) drag = null; // arrasto antigo órfão: descarta e recomeça
-  drag = { id: e.pointerId, sx: e.clientX, sy: e.clientY, moved: false, t0: nowMs() };
+  if (drag) drag = null; // toque antigo órfão: descarta e recomeça
+  drag = { id: e.pointerId, sx: e.clientX, sy: e.clientY, t0: nowMs(), dir: null };
   canvas.setPointerCapture(e.pointerId);
+  if (state === "playing") {
+    const v = pressVec(e);
+    drag.dir = v;
+    joyVec.x = v.x; joyVec.y = v.y;
+    fireHeld = true; // segurar = mover + atirar (mira automática)
+  }
 });
 canvas.addEventListener("pointermove", (e) => {
   if (!drag || e.pointerId !== drag.id) return;
-  const dx = e.clientX - drag.sx, dy = e.clientY - drag.sy;
-  const m = Math.hypot(dx, dy);
-  if (m > 14) drag.moved = true; // acima do limite conta como arrasto
-  if (drag.moved) {
-    let jx = dx / Math.max(m, 70), jy = dy / Math.max(m, 70);
-    const jm = Math.hypot(jx, jy);
-    if (jm > 1) { jx /= jm; jy /= jm; }
-    joyVec.x = jx; joyVec.y = jy;
+  if (state !== "playing") return;
+  // dedo parado: continua na última direção (movimento contínuo)
+  const movedPx = Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy);
+  if (movedPx > 20 && drag.dir) {
+    const v = pressVec(e);
+    if (v.x || v.y) drag.dir = v; // dedo se moveu: nova direção
   }
+  joyVec.x = drag.dir.x; joyVec.y = drag.dir.y;
 });
 function endDrag(e) {
   if (!drag || e.pointerId !== drag.id) return;
-  const wasTap = !drag.moved && nowMs() - drag.t0 < 500;
+  const wasTap = nowMs() - drag.t0 < 350;
   drag = null;
   joyVec.x = 0; joyVec.y = 0;
-  if (wasTap && state === "playing") tapFireT = 0.4; // dispara por 0.4s (1–2 tiros)
+  if (state === "playing") {
+    if (!keys[" "]) fireHeld = false; // não corta atirada iniciada por tecla
+    if (wasTap) tapFireT = 0.4; // toque rápido garante 1–2 tiros
+  }
 }
 canvas.addEventListener("pointerup", endDrag);
 canvas.addEventListener("pointercancel", endDrag);
@@ -549,7 +569,7 @@ function update(dt) {
   const mag = Math.hypot(ix, iy);
   if (mag > 1) { ix /= mag; iy /= mag; }
 
-  const spd = 175 * (eff.speed > 0 ? 1.55 : 1);
+  const spd = 250 * (eff.speed > 0 ? 1.55 : 1);
   if (mag > 0.1) {
     player.x = clamp(player.x + ix * spd * dt, 25, WORLD.w - 25);
     player.y = clamp(player.y + iy * spd * dt, 25, WORLD.h - 25);

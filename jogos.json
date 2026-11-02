@@ -171,5 +171,15 @@
     "nome": "Perdidos no Jardim",
     "descricao": "Acordou perdido num quintal gigante! 🌿 Escolha seu pikmin — Azul (água 💧), Vermelho (fogo 🔥) ou Amarelo (raio ⚡), cada um com seu tiro e especial — e explore o jardim de cima, estilo Pokémon clássico. Atire em joaninhas gigantes, besouros, baratas e insetos (uns têm MUITA vida!), pegue power-ups de tiro rápido, velocidade e invencibilidade, e carregue as frutas 🍓 até a Nave Mãe (uma cebola vermelha 🧅). O jardim é gerado aleatório: cada partida é diferente!",
     "categorias": ["Arcade", "Ação", "Exploração"]
+  },
+  {
+    "id": "aldeia",
+    "nome": "Aldeia",
+    "descricao": "Um RTS minimalista inspirado em Age of Empires: crie aldeões, colete comida, madeira e ouro, construa quartéis, treine infantaria e arqueiros e ataque a aldeia inimiga controlada por IA. O mapa é ortogonal e gerado aleatoriamente a cada partida.",
+    "categorias": [
+      "Estratégia",
+      "Simulação",
+      "RTS"
+    ]
   }
 ]

@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Aldeia</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #171225;
+      --panel: rgba(28, 20, 44, .9);
+      --panel2: rgba(255, 255, 255, .08);
+      --text: #fff8e8;
+      --muted: #d9c7ff;
+      --accent: #ffd166;
+      --good: #68e391;
+      --bad: #ff6b6b;
+      --blue: #55aaff;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); font-family: system-ui, -apple-system, Segoe UI, sans-serif; color: var(--text); }
+    #game { width: 100vw; height: 100vh; display: block; background: #24331f; touch-action: none; cursor: crosshair; }
+    .hud { position: fixed; inset: 0; pointer-events: none; }
+    .topbar, .help, .commands, .status, .toast {
+      position: absolute; pointer-events: auto; border: 1px solid rgba(255,255,255,.14); box-shadow: 0 10px 30px rgba(0,0,0,.28); backdrop-filter: blur(10px);
+      background: var(--panel); border-radius: 16px;
+    }
+    .topbar { left: 10px; top: 10px; right: 10px; min-height: 54px; display: flex; align-items: center; gap: 8px; padding: 8px 10px; flex-wrap: wrap; }
+    .title { font-weight: 900; letter-spacing: .2px; margin-right: 8px; }
+    .res { display: inline-flex; align-items: center; gap: 4px; padding: 7px 10px; border-radius: 999px; background: var(--panel2); font-weight: 800; }
+    .spacer { flex: 1; }
+    button { border: 0; border-radius: 12px; padding: 10px 12px; font-weight: 900; color: #21172f; background: linear-gradient(180deg, #ffe08b, #ffb703); box-shadow: inset 0 -2px 0 rgba(0,0,0,.18); cursor: pointer; }
+    button:disabled { opacity: .45; filter: grayscale(.5); cursor: not-allowed; }
+    button.danger { background: linear-gradient(180deg, #ff9f9f, #ff595e); color: #26090a; }
+    button.ghost { background: rgba(255,255,255,.12); color: var(--text); box-shadow: none; border: 1px solid rgba(255,255,255,.12); }
+    .help { right: 10px; top: 76px; width: min(320px, calc(100vw - 20px)); padding: 12px; font-size: 13px; line-height: 1.35; color: var(--muted); }
+    .help b { color: var(--text); }
+    .commands { left: 10px; right: 10px; bottom: 10px; min-height: 88px; padding: 10px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .portrait { width: 64px; height: 64px; border-radius: 16px; display: grid; place-items: center; font-size: 32px; background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.12); }
+    .info { min-width: 180px; max-width: 360px; }
+    .info strong { display: block; font-size: 16px; }
+    .info small { color: var(--muted); }
+    .cmds { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .status { left: 10px; top: 76px; padding: 8px 10px; color: var(--muted); font-size: 13px; max-width: min(470px, calc(100vw - 20px)); }
+    .toast { left: 50%; top: 50%; transform: translate(-50%, -50%); padding: 18px 20px; text-align: center; max-width: 420px; display: none; }
+    .toast h1 { margin: 0 0 8px; font-size: 28px; }
+    .toast p { margin: 0 0 14px; color: var(--muted); }
+    .mini { color: var(--muted); font-size: 12px; }
+    @media (max-width: 720px) {
+      .help { display: none; }
+      .status { top: 70px; font-size: 12px; }
+      .topbar { font-size: 13px; }
+      .res { padding: 6px 8px; }
+      .commands { min-height: 120px; }
+      button { padding: 9px 10px; }
+      .portrait { width: 52px; height: 52px; font-size: 26px; }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="game"></canvas>
+  <div class="hud">
+    <div class="topbar">
+      <span class="title">🏰 Aldeia</span>
+      <span class="res">🍞 <span id="food">0</span></span>
+      <span class="res">🪵 <span id="wood">0</span></span>
+      <span class="res">🟡 <span id="gold">0</span></span>
+      <span class="res">👥 <span id="pop">0/0</span></span>
+      <span class="spacer"></span>
+      <button class="ghost" id="newGame">Novo mapa</button>
+    </div>
+    <div class="status" id="status">Selecione aldeões, colete recursos e destrua o Centro da Aldeia inimigo.</div>
+    <div class="help">
+      <b>Como jogar</b><br>
+      Clique para selecionar. Clique com unidade selecionada em recursos/inimigos/chão para agir. Botão direito também dá ordem rápida.<br><br>
+      👨‍🌾 Aldeões coletam madeira, comida (caça/horta) e ouro.<br>
+      🏛️ Centro cria aldeões. ⚔️ Quartel treina infantaria e arqueiros.<br>
+      Objetivo: destruir a aldeia vermelha.
+    </div>
+    <div class="commands">
+      <div class="portrait" id="portrait">❔</div>
+      <div class="info">
+        <strong id="selName">Nada selecionado</strong>
+        <small id="selDesc">Clique em uma unidade ou construção azul.</small>
+      </div>
+      <div class="cmds" id="cmds"></div>
+      <div class="mini" id="hint"></div>
+    </div>
+    <div class="toast" id="toast">
+      <h1 id="toastTitle"></h1>
+      <p id="toastText"></p>
+      <button id="toastBtn">Jogar de novo</button>
+    </div>
+  </div>
+
+<script>
+(() => {
+  'use strict';
+
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const ui = {
+    food: document.getElementById('food'), wood: document.getElementById('wood'), gold: document.getElementById('gold'), pop: document.getElementById('pop'),
+    status: document.getElementById('status'), portrait: document.getElementById('portrait'), selName: document.getElementById('selName'), selDesc: document.getElementById('selDesc'), cmds: document.getElementById('cmds'), hint: document.getElementById('hint'),
+    toast: document.getElementById('toast'), toastTitle: document.getElementById('toastTitle'), toastText: document.getElementById('toastText')
+  };
+
+  const TILE = 34;
+  const MAP_W = 44;
+  const MAP_H = 32;
+  const TYPES = {
+    villager: { name: 'Aldeão', icon: '👨‍🌾', hp: 45, speed: 58, dmg: 4, range: 18, cd: .9, cost: { food: 50 }, pop: 1 },
+    infantry: { name: 'Infantaria', icon: '🛡️', hp: 85, speed: 50, dmg: 10, range: 22, cd: .8, cost: { food: 60, gold: 30 }, pop: 1 },
+    archer: { name: 'Arqueiro', icon: '🏹', hp: 45, speed: 54, dmg: 8, range: 145, cd: 1.1, cost: { wood: 40, gold: 40 }, pop: 1 },
+    town: { name: 'Centro da Aldeia', icon: '🏰', hp: 650, size: 2 },
+    barracks: { name: 'Quartel', icon: '⚔️', hp: 360, size: 2, cost: { wood: 150 } }
+  };
+  const RES_INFO = {
+    tree: { name: 'Bosque', icon: '🌲', kind: 'wood', amount: 120 },
+    hunt: { name: 'Caça', icon: '🦌', kind: 'food', amount: 90 },
+    farm: { name: 'Horta', icon: '🥕', kind: 'food', amount: 160 },
+    gold: { name: 'Veio de ouro', icon: '⛏️', kind: 'gold', amount: 130 }
+  };
+
+  let state, last = 0, selected = null, buildMode = null, cam = { x: 0, y: 0 }, mouse = { x: 0, y: 0 }, dragging = false, dragStart = null;
+
+  function rnd(seed) {
+    let s = seed >>> 0;
+    return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296);
+  }
+  function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+  function dist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
+  function canPay(cost, owner = 'player') { const r = state.res[owner]; return Object.entries(cost || {}).every(([k,v]) => r[k] >= v); }
+  function pay(cost, owner = 'player') { if (!canPay(cost, owner)) return false; for (const [k,v] of Object.entries(cost || {})) state.res[owner][k] -= v; return true; }
+  function tileToWorld(tx, ty) { return { x: tx * TILE + TILE/2, y: ty * TILE + TILE/2 }; }
+  function worldToTile(x, y) { return { tx: Math.floor(x / TILE), ty: Math.floor(y / TILE) }; }
+  function screenToWorld(e) {
+    const r = canvas.getBoundingClientRect();
+    return { x: (e.clientX - r.left) * canvas.width / r.width + cam.x, y: (e.clientY - r.top) * canvas.height / r.height + cam.y };
+  }
+  function worldToScreen(p) { return { x: p.x - cam.x, y: p.y - cam.y }; }
+
+  function reset(seed = Date.now()) {
+    const random = rnd(seed);
+    state = {
+      seed, time: 0, over: false,
+      res: { player: { food: 180, wood: 220, gold: 80 }, enemy: { food: 260, wood: 260, gold: 160 } },
+      popCap: { player: 12, enemy: 18 },
+      units: [], buildings: [], resources: [], nextId: 1, ai: { t: 0, wave: 18, train: 6 }
+    };
+    selected = null; buildMode = null; ui.toast.style.display = 'none';
+
+    // Recursos em aglomerados, sempre com bastante coisa perto das duas aldeias.
+    addCluster('tree', 7, 8, 16, random); addCluster('farm', 9, 12, 5, random); addCluster('hunt', 12, 8, 4, random); addCluster('gold', 13, 14, 5, random);
+    addCluster('tree', 35, 23, 16, random); addCluster('farm', 33, 20, 5, random); addCluster('hunt', 31, 24, 4, random); addCluster('gold', 30, 18, 5, random);
+    for (let i = 0; i < 18; i++) addCluster(['tree','hunt','farm','gold'][Math.floor(random()*4)], 4 + random()*36, 4 + random()*24, 2 + Math.floor(random()*4), random);
+
+    addBuilding('town', 'player', 5.5*TILE, 5.5*TILE);
+    addBuilding('barracks', 'player', 8.2*TILE, 5.8*TILE);
+    addUnit('villager', 'player', 4*TILE, 8*TILE); addUnit('villager', 'player', 5*TILE, 8*TILE); addUnit('villager', 'player', 6*TILE, 8*TILE);
+    addBuilding('town', 'enemy', 38*TILE, 26*TILE);
+    addBuilding('barracks', 'enemy', 35*TILE, 25*TILE);
+    addUnit('villager', 'enemy', 39*TILE, 23*TILE); addUnit('villager', 'enemy', 37*TILE, 23*TILE);
+    addUnit('infantry', 'enemy', 36*TILE, 27*TILE); addUnit('archer', 'enemy', 37*TILE, 27*TILE);
+    cam.x = 0; cam.y = 0;
+    setStatus('Mapa novo gerado. Construa economia e ataque a aldeia vermelha!');
+    updateUI();
+  }
+
+  function addCluster(type, cx, cy, n, random) {
+    for (let i = 0; i < n; i++) {
+      const tx = clamp(Math.round(cx + (random()-.5)*5), 1, MAP_W-2);
+      const ty = clamp(Math.round(cy + (random()-.5)*5), 1, MAP_H-2);
+      if (nearBase(tx, ty)) continue;
+      if (state.resources.some(r => r.tx === tx && r.ty === ty)) continue;
+      const info = RES_INFO[type];
+      state.resources.push({ id: state.nextId++, kind: 'resource', type, tx, ty, x: tx*TILE+TILE/2, y: ty*TILE+TILE/2, amount: info.amount + Math.floor(random()*50), maxAmount: info.amount + 50, radius: 15 });
+    }
+  }
+  function nearBase(tx, ty) { return Math.hypot(tx-5, ty-6) < 4 || Math.hypot(tx-38, ty-26) < 4; }
+  function addUnit(type, owner, x, y) { const t = TYPES[type]; const u = { id: state.nextId++, kind: 'unit', type, owner, x, y, r: type === 'villager' ? 10 : 12, hp: t.hp, maxHp: t.hp, target: null, action: 'idle', gatherT: 0, attackT: 0 }; state.units.push(u); return u; }
+  function addBuilding(type, owner, x, y) { const t = TYPES[type]; const b = { id: state.nextId++, kind: 'building', type, owner, x, y, w: t.size*TILE, h: t.size*TILE, hp: t.hp, maxHp: t.hp, train: [] }; state.buildings.push(b); return b; }
+  function pop(owner='player') { return state.units.filter(u => u.owner === owner).reduce((s,u)=>s+(TYPES[u.type].pop||0),0); }
+
+  function issue(target) {
+    if (!selected || selected.owner !== 'player' || state.over) return;
+    if (selected.kind === 'unit') {
+      if (selected.type === 'villager' && target && target.kind === 'resource') {
+        selected.target = target; selected.action = 'gather'; setStatus(`${TYPES[selected.type].name} coletando ${RES_INFO[target.type].name}.`); return;
+      }
+      if (target && (target.kind === 'unit' || target.kind === 'building') && target.owner === 'enemy') {
+        selected.target = target; selected.action = 'attack'; setStatus(`${TYPES[selected.type].name} atacando ${label(target)}.`); return;
+      }
+      selected.target = { x: target.x, y: target.y, kind: 'point' }; selected.action = 'move'; setStatus('Movendo.');
+    }
+  }
+
+  function label(o) { return o.kind === 'resource' ? RES_INFO[o.type].name : TYPES[o.type].name; }
+  function setStatus(txt) { ui.status.textContent = txt; }
+
+  function train(building, type) {
+    if (!building || building.owner !== 'player') return;
+    if (pop('player') + (TYPES[type].pop || 0) > state.popCap.player) return setStatus('População cheia. Destrua o inimigo com o que tem!');
+    if (!pay(TYPES[type].cost)) return setStatus('Recursos insuficientes.');
+    building.train.push({ type, t: type === 'villager' ? 4.2 : 5.5, total: type === 'villager' ? 4.2 : 5.5 });
+    setStatus(`Treinando ${TYPES[type].name}...`); updateUI();
+  }
+  function startBuild(type) {
+    if (!selected || selected.type !== 'villager') return;
+    buildMode = type;
+    setStatus('Modo construção: clique em um espaço livre para colocar o Quartel.');
+    updateUI();
+  }
+  function placeBuilding(x, y) {
+    if (!buildMode || !selected || selected.type !== 'villager') return;
+    const type = buildMode, cost = TYPES[type].cost;
+    if (!pay(cost)) return setStatus('Madeira insuficiente para construir.');
+    const t = worldToTile(x, y);
+    const p = tileToWorld(clamp(t.tx, 2, MAP_W-3), clamp(t.ty, 2, MAP_H-3));
+    const b = addBuilding(type, 'player', p.x, p.y);
+    b.hp = Math.floor(b.maxHp * .35);
+    selected.target = b; selected.action = 'build'; buildMode = null; setStatus('Aldeão construindo Quartel.'); updateUI();
+  }
+
+  function update(dt) {
+    if (state.over) return;
+    state.time += dt;
+    updateCamera(dt);
+    for (const u of state.units) updateUnit(u, dt);
+    for (const b of state.buildings) updateBuilding(b, dt);
+    updateAI(dt);
+    cleanup();
+    checkEnd();
+  }
+  function updateCamera(dt) {
+    const pad = 30, speed = 430 * dt;
+    if (mouse.sx < pad) cam.x -= speed; if (mouse.sx > canvas.width - pad) cam.x += speed;
+    if (mouse.sy < pad) cam.y -= speed; if (mouse.sy > canvas.height - pad) cam.y += speed;
+    cam.x = clamp(cam.x, 0, MAP_W*TILE - canvas.width); cam.y = clamp(cam.y, 0, MAP_H*TILE - canvas.height);
+  }
+  function updateUnit(u, dt) {
+    if (u.hp <= 0) return;
+    const t = TYPES[u.type];
+    u.attackT = Math.max(0, u.attackT - dt);
+    if (u.action === 'move' && u.target) moveToward(u, u.target, t.speed, dt, 4);
+    if (u.action === 'gather') {
+      const r = u.target;
+      if (!r || r.amount <= 0) { u.action = 'idle'; u.target = null; return; }
+      if (dist(u, r) > 23) moveToward(u, r, t.speed, dt, 20);
+      else { u.gatherT += dt; if (u.gatherT >= 1) { u.gatherT = 0; const take = Math.min(5, r.amount); r.amount -= take; state.res[u.owner][RES_INFO[r.type].kind] += take; if (u.owner === 'player') updateUI(); } }
+    }
+    if (u.action === 'build') {
+      const b = u.target;
+      if (!b || b.hp <= 0) { u.action = 'idle'; return; }
+      if (dist(u,b) > 35) moveToward(u,b,t.speed,dt,32); else { b.hp = Math.min(b.maxHp, b.hp + 28*dt); if (b.hp >= b.maxHp) { u.action = 'idle'; setStatus('Construção concluída!'); } }
+    }
+    if (u.action === 'attack') {
+      const e = u.target;
+      if (!e || e.hp <= 0) { u.action = 'idle'; u.target = null; return; }
+      const range = t.range + (e.kind === 'building' ? 25 : 0);
+      if (dist(u, e) > range) moveToward(u, e, t.speed, dt, range-5);
+      else if (u.attackT <= 0) { e.hp -= t.dmg; u.attackT = t.cd; }
+    }
+    if (u.owner === 'enemy' && u.action === 'idle') enemyAuto(u);
+  }
+  function moveToward(u, p, speed, dt, stop) {
+    const dx = p.x - u.x, dy = p.y - u.y, d = Math.hypot(dx,dy) || 1;
+    if (d <= stop) { if (u.action === 'move') u.action = 'idle'; return; }
+    u.x += dx/d * speed * dt; u.y += dy/d * speed * dt;
+    u.x = clamp(u.x, 10, MAP_W*TILE-10); u.y = clamp(u.y, 10, MAP_H*TILE-10);
+  }
+  function updateBuilding(b, dt) {
+    if (!b.train.length || b.hp < b.maxHp*.9) return;
+    b.train[0].t -= dt;
+    if (b.train[0].t <= 0) {
+      const job = b.train.shift();
+      const u = addUnit(job.type, b.owner, b.x + b.w/2 + (b.owner === 'player' ? 38 : -38), b.y + b.h/2 + 20);
+      if (b.owner === 'player') { selected = u; setStatus(`${TYPES[job.type].name} pronto!`); updateUI(); }
+    }
+  }
+  function enemyAuto(u) {
+    if (u.type === 'villager') {
+      const r = nearest(state.resources.filter(r => r.amount > 0), u);
+      if (r) { u.target = r; u.action = 'gather'; }
+    }
+  }
+  function updateAI(dt) {
+    state.ai.t += dt; state.ai.train -= dt; state.ai.wave -= dt;
+    // renda mínima para a IA não travar completamente neste esboço
+    state.res.enemy.food += dt * 1.4; state.res.enemy.wood += dt * .9; state.res.enemy.gold += dt * .8;
+    const eb = state.buildings.find(b => b.owner === 'enemy' && b.type === 'barracks');
+    if (eb && state.ai.train <= 0 && pop('enemy') < state.popCap.enemy) {
+      const type = Math.random() < .55 ? 'infantry' : 'archer';
+      if (canPay(TYPES[type].cost, 'enemy')) { pay(TYPES[type].cost, 'enemy'); eb.train.push({ type, t: 5, total: 5 }); }
+      state.ai.train = 5 + Math.random()*4;
+    }
+    if (state.ai.wave <= 0) {
+      const army = state.units.filter(u => u.owner === 'enemy' && u.type !== 'villager');
+      const target = state.buildings.find(b => b.owner === 'player' && b.type === 'town') || state.buildings.find(b => b.owner === 'player');
+      if (target && army.length) { army.forEach(u => { u.target = target; u.action = 'attack'; }); setStatus('A aldeia inimiga lançou um ataque!'); }
+      state.ai.wave = 24 + Math.random()*16;
+    }
+  }
+  function nearest(arr, p) { let best = null, bd = Infinity; for (const a of arr) { const d = dist(a,p); if (d < bd) { bd=d; best=a; } } return best; }
+  function cleanup() {
+    state.resources = state.resources.filter(r => r.amount > 0);
+    state.units = state.units.filter(u => u.hp > 0);
+    state.buildings = state.buildings.filter(b => b.hp > 0);
+    if (selected && selected.hp <= 0) selected = null;
+  }
+  function checkEnd() {
+    const pt = state.buildings.some(b => b.owner === 'player' && b.type === 'town');
+    const et = state.buildings.some(b => b.owner === 'enemy' && b.type === 'town');
+    if (!et) end(true); else if (!pt) end(false);
+  }
+  function end(win) {
+    state.over = true;
+    ui.toastTitle.textContent = win ? 'Vitória! 🏆' : 'Derrota...';
+    ui.toastText.textContent = win ? 'O Centro da Aldeia inimigo caiu. Sua aldeia domina o mapa!' : 'Seu Centro da Aldeia foi destruído. Tente expandir a economia mais cedo.';
+    ui.toast.style.display = 'block';
+  }
+
+  function hitTest(x, y) {
+    for (let i = state.units.length-1; i >= 0; i--) { const u = state.units[i]; if (Math.hypot(u.x-x,u.y-y) <= u.r+6) return u; }
+    for (let i = state.buildings.length-1; i >= 0; i--) { const b = state.buildings[i]; if (x >= b.x-b.w/2 && x <= b.x+b.w/2 && y >= b.y-b.h/2 && y <= b.y+b.h/2) return b; }
+    for (let i = state.resources.length-1; i >= 0; i--) { const r = state.resources[i]; if (Math.hypot(r.x-x,r.y-y) <= 20) return r; }
+    return { x, y, kind: 'point' };
+  }
+
+  canvas.addEventListener('mousemove', e => { const p = screenToWorld(e); mouse = { x:p.x, y:p.y, sx:e.clientX, sy:e.clientY }; });
+  canvas.addEventListener('contextmenu', e => { e.preventDefault(); const p = screenToWorld(e); issue(hitTest(p.x,p.y)); });
+  canvas.addEventListener('pointerdown', e => { dragging = true; dragStart = screenToWorld(e); canvas.setPointerCapture(e.pointerId); });
+  canvas.addEventListener('pointerup', e => {
+    dragging = false;
+    const p = screenToWorld(e);
+    if (buildMode) { placeBuilding(p.x, p.y); return; }
+    const obj = hitTest(p.x,p.y);
+    if (e.button === 2) { issue(obj); return; }
+    if (obj.owner === 'player') { selected = obj; setStatus(`${label(obj)} selecionado.`); updateUI(); }
+    else if (selected) issue(obj);
+  });
+  window.addEventListener('keydown', e => {
+    const step = 38;
+    if (e.key === 'Escape') { buildMode = null; selected = null; updateUI(); }
+    if (e.key === 'ArrowLeft' || e.key.toLowerCase() === 'a') cam.x -= step;
+    if (e.key === 'ArrowRight' || e.key.toLowerCase() === 'd') cam.x += step;
+    if (e.key === 'ArrowUp' || e.key.toLowerCase() === 'w') cam.y -= step;
+    if (e.key === 'ArrowDown' || e.key.toLowerCase() === 's') cam.y += step;
+  });
+
+  function updateUI() {
+    ui.food.textContent = Math.floor(state.res.player.food); ui.wood.textContent = Math.floor(state.res.player.wood); ui.gold.textContent = Math.floor(state.res.player.gold); ui.pop.textContent = `${pop('player')}/${state.popCap.player}`;
+    ui.cmds.innerHTML = ''; ui.hint.textContent = '';
+    if (!selected || selected.owner !== 'player') { ui.portrait.textContent = '❔'; ui.selName.textContent = 'Nada selecionado'; ui.selDesc.textContent = 'Clique em uma unidade ou construção azul.'; return; }
+    ui.portrait.textContent = TYPES[selected.type].icon; ui.selName.textContent = TYPES[selected.type].name;
+    ui.selDesc.textContent = `Vida ${Math.ceil(selected.hp)}/${selected.maxHp}` + (selected.action ? ` • ${selected.action}` : '');
+    if (selected.type === 'town') addButton('Criar aldeão 🍞50', () => train(selected, 'villager'), !canPay(TYPES.villager.cost) || pop('player')>=state.popCap.player);
+    if (selected.type === 'villager') addButton('Construir Quartel 🪵150', () => startBuild('barracks'), !canPay(TYPES.barracks.cost));
+    if (selected.type === 'barracks') { addButton('Infantaria 🍞60 🟡30', () => train(selected, 'infantry'), !canPay(TYPES.infantry.cost) || pop('player')>=state.popCap.player || selected.hp < selected.maxHp*.9); addButton('Arqueiro 🪵40 🟡40', () => train(selected, 'archer'), !canPay(TYPES.archer.cost) || pop('player')>=state.popCap.player || selected.hp < selected.maxHp*.9); }
+    if (selected.train && selected.train.length) ui.hint.textContent = `Fila: ${selected.train.map(j => TYPES[j.type].name).join(', ')} (${Math.ceil(selected.train[0].t)}s)`;
+    if (buildMode) ui.hint.textContent = 'Clique no mapa para posicionar a construção. Esc cancela.';
+  }
+  function addButton(text, fn, disabled=false) { const b = document.createElement('button'); b.textContent = text; b.disabled = disabled; b.onclick = fn; ui.cmds.appendChild(b); }
+
+  function draw() {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.save(); ctx.translate(-cam.x, -cam.y);
+    drawMap();
+    state.resources.forEach(drawResource);
+    state.buildings.slice().sort((a,b)=>a.y-b.y).forEach(drawBuilding);
+    state.units.slice().sort((a,b)=>a.y-b.y).forEach(drawUnit);
+    if (buildMode) drawBuildGhost();
+    ctx.restore();
+    drawFogFrame();
+  }
+  function drawMap() {
+    ctx.fillStyle = '#355d2d'; ctx.fillRect(0,0,MAP_W*TILE,MAP_H*TILE);
+    for (let y=0; y<MAP_H; y++) for (let x=0; x<MAP_W; x++) {
+      ctx.fillStyle = (x+y)%2 ? '#396632' : '#3f7137'; ctx.fillRect(x*TILE, y*TILE, TILE, TILE);
+      ctx.strokeStyle = 'rgba(0,0,0,.07)'; ctx.strokeRect(x*TILE, y*TILE, TILE, TILE);
+    }
+    // caminho central de terra
+    ctx.strokeStyle = 'rgba(159, 108, 54, .45)'; ctx.lineWidth = 22; ctx.beginPath(); ctx.moveTo(5*TILE,6*TILE); ctx.bezierCurveTo(16*TILE,10*TILE,25*TILE,20*TILE,38*TILE,26*TILE); ctx.stroke(); ctx.lineWidth = 1;
+  }
+  function drawResource(r) {
+    const info = RES_INFO[r.type];
+    ctx.font = '24px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(info.icon, r.x, r.y);
+    ctx.fillStyle = 'rgba(0,0,0,.45)'; ctx.fillRect(r.x-16, r.y+14, 32, 4); ctx.fillStyle = '#8ff0a4'; ctx.fillRect(r.x-16, r.y+14, 32*clamp(r.amount/(r.maxAmount || info.amount), 0, 1), 4);
+  }
+  function drawBuilding(b) {
+    const blue = b.owner === 'player';
+    ctx.fillStyle = blue ? '#2e7bd8' : '#b93a3a'; ctx.fillRect(b.x-b.w/2, b.y-b.h/2, b.w, b.h);
+    ctx.fillStyle = blue ? '#72b7ff' : '#ff8a8a'; ctx.fillRect(b.x-b.w/2+5, b.y-b.h/2+5, b.w-10, b.h-10);
+    ctx.font = '30px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(TYPES[b.type].icon, b.x, b.y);
+    hpbar(b, b.x-b.w/2, b.y-b.h/2-9, b.w);
+    if (selected === b) selectRing(b.x, b.y, Math.max(b.w,b.h)*.7, blue);
+  }
+  function drawUnit(u) {
+    const blue = u.owner === 'player';
+    ctx.beginPath(); ctx.arc(u.x, u.y, u.r, 0, Math.PI*2); ctx.fillStyle = blue ? '#45a3ff' : '#ef5350'; ctx.fill(); ctx.strokeStyle = '#101018'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.font = '17px serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(TYPES[u.type].icon, u.x, u.y-1);
+    hpbar(u, u.x-14, u.y-22, 28);
+    if (selected === u) selectRing(u.x, u.y, 18, blue);
+    if (u.target && (u.action === 'move' || u.action === 'attack' || u.action === 'gather')) { ctx.strokeStyle = blue ? 'rgba(85,170,255,.35)' : 'rgba(255,90,90,.25)'; ctx.beginPath(); ctx.moveTo(u.x,u.y); ctx.lineTo(u.target.x,u.target.y); ctx.stroke(); }
+  }
+  function hpbar(o, x, y, w) { ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillRect(x,y,w,5); ctx.fillStyle = o.hp/o.maxHp > .45 ? '#68e391' : '#ff6b6b'; ctx.fillRect(x,y,w*clamp(o.hp/o.maxHp,0,1),5); }
+  function selectRing(x,y,r,blue) { ctx.strokeStyle = blue ? '#ffd166' : '#ff6b6b'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.stroke(); ctx.lineWidth = 1; }
+  function drawBuildGhost() { const p = { x: mouse.x || cam.x+canvas.width/2, y: mouse.y || cam.y+canvas.height/2 }; ctx.globalAlpha = .65; ctx.fillStyle = canPay(TYPES[buildMode].cost) ? '#ffd166' : '#ff6b6b'; ctx.fillRect(p.x-TILE, p.y-TILE, TILE*2, TILE*2); ctx.globalAlpha = 1; }
+  function drawFogFrame() { ctx.strokeStyle = 'rgba(255,255,255,.08)'; ctx.lineWidth = 3; ctx.strokeRect(1.5,1.5,canvas.width-3,canvas.height-3); }
+
+  function resize() { canvas.width = Math.floor(innerWidth * devicePixelRatio); canvas.height = Math.floor(innerHeight * devicePixelRatio); ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0); canvas.width = innerWidth; canvas.height = innerHeight; cam.x = clamp(cam.x,0,MAP_W*TILE-canvas.width); cam.y = clamp(cam.y,0,MAP_H*TILE-canvas.height); }
+  window.addEventListener('resize', resize);
+  document.getElementById('newGame').onclick = () => reset();
+  document.getElementById('toastBtn').onclick = () => reset();
+
+  function loop(ts) { const dt = Math.min(.05, (ts-last)/1000 || 0); last = ts; update(dt); draw(); if (Math.floor(state.time*4)%4===0) updateUI(); requestAnimationFrame(loop); }
+  resize(); reset(); requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
