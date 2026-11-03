@@ -61,12 +61,6 @@
     border-radius: 8px; padding: 6px 12px; font-size: 15px; cursor: pointer;
   }
   #btnPause:hover { background: rgba(0,0,0,.8); }
-  #btnNew {
-    position: fixed; top: 10px; right: 10px; z-index: 11;
-    background: rgba(0,0,0,.55); color: #fff; border: 1px solid rgba(255,255,255,.4);
-    border-radius: 8px; padding: 6px 12px; font-size: 13px; cursor: pointer;
-  }
-  #btnNew:hover { background: rgba(0,0,0,.8); }
 
   /* overlay (menu / pausa) */
   #overlay {
@@ -128,7 +122,6 @@
 <div id="hotbar"></div>
 <div id="saveflash">💾 mundo salvo</div>
 <button id="btnPause" title="Pausa (menu)">⏸️</button>
-<button id="btnNew" title="Apagar o mundo atual e gerar um novo">🔄 Novo mundo</button>
 
 <div id="touch">
   <div id="stick"><div id="stickdot"></div></div>
@@ -886,9 +879,6 @@ let playing = false;
 
 document.getElementById("btnPlay").addEventListener("click", () => startGame());
 document.getElementById("btnReset").addEventListener("click", resetWorld);
-document.getElementById("btnNew").addEventListener("click", () => {
-  if (confirm("Apagar o mundo atual e gerar um novo?")) resetWorld();
-});
 document.getElementById("btnPause").addEventListener("click", () => { if (playing) pauseGame(); });
 document.getElementById("btnRespawn").addEventListener("click", () => { respawn(); startGame(); });
 
