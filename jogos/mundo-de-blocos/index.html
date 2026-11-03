@@ -807,6 +807,7 @@ function render() {
 const hotbarEl = document.getElementById("hotbar");
 function buildHotbarIcons() {
   hotbarEl.innerHTML = "";
+  hotbarEl.style.pointerEvents = "auto";   // slots precisam receber toque/click
   HOTBAR.forEach((t, i) => {
     const s = document.createElement("div");
     s.className = "slot" + (i === sel ? " sel" : "");
@@ -822,6 +823,12 @@ function buildHotbarIcons() {
     const n = document.createElement("span");
     n.className = "cnt"; n.textContent = inv[t] || 0;
     s.appendChild(cv); s.appendChild(k); s.appendChild(n);
+    // seleção por toque (celular) e clique (mouse, sem pointer lock)
+    s.addEventListener("touchstart", e => {
+      e.preventDefault(); e.stopPropagation();
+      sel = i; renderHotbar();
+    }, { passive: false });
+    s.addEventListener("click", () => { sel = i; renderHotbar(); });
     hotbarEl.appendChild(s);
   });
 }
@@ -1053,15 +1060,6 @@ function showTouchControls() {
       lookId = null;
     }
   }, { passive: true });
-
-  // hotbar: tocar no slot seleciona
-  hotbarEl.style.pointerEvents = "auto";
-  hotbarEl.querySelectorAll(".slot").forEach((s, i) => {
-    s.addEventListener("touchstart", e => {
-      e.preventDefault(); e.stopPropagation();
-      sel = i; renderHotbar();
-    }, { passive: false });
-  });
 
   // botões
   const hold = (el, fn) => {
