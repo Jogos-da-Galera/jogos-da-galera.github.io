@@ -173,6 +173,16 @@
     "categorias": ["Arcade", "Ação", "Exploração"]
   },
   {
+    "id": "mundo-de-blocos",
+    "nome": "Mundo de Blocos",
+    "descricao": "Um mini-Minecraft de construção em 3D! 🧱 Explore um mundo de blocos gerado com colinas, areia e árvores, quebre blocos para colher madeira, terra, pedra e mais, e use a hotbar para construir casas, torres e o que sua imaginação mandar. O mundo é limitado e salva automaticamente — suas construções ficam lá! Funciona no celular com alavanca virtual e botões.",
+    "categorias": [
+      "Construção",
+      "Sandbox",
+      "Exploração"
+    ]
+  },
+  {
     "id": "aldeia",
     "nome": "Aldeia",
     "descricao": "Um RTS minimalista inspirado em Age of Empires: crie aldeões, colete comida, madeira e ouro, construa quartéis, treine infantaria e arqueiros e ataque a aldeia inimiga controlada por IA. O mapa é ortogonal e gerado aleatoriamente a cada partida.",

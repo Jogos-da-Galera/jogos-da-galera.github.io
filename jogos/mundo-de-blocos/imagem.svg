@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="300" viewBox="0 0 480 300">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7ec8f2"/>
+      <stop offset="1" stop-color="#cfeaff"/>
+    </linearGradient>
+    <linearGradient id="ground" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#6db94e"/>
+      <stop offset="1" stop-color="#4c8f33"/>
+    </linearGradient>
+  </defs>
+  <rect width="480" height="300" fill="url(#sky)"/>
+  <ellipse cx="392" cy="52" rx="26" ry="26" fill="#fff59b"/>
+  <ellipse cx="120" cy="48" rx="42" ry="14" fill="#ffffff" opacity=".85"/>
+  <ellipse cx="160" cy="56" rx="34" ry="12" fill="#ffffff" opacity=".7"/>
+  <rect y="210" width="480" height="90" fill="url(#ground)"/>
+  <!-- cubo grama (centro) -->
+  <g>
+    <polygon points="240,86 316,124 240,162 164,124" fill="#5cb340"/>
+    <polygon points="164,124 240,162 240,238 164,200" fill="#7a573a"/>
+    <polygon points="240,162 316,124 316,200 240,238" fill="#5f4128"/>
+    <polygon points="164,124 240,86 240,110 164,148" fill="#7fd45f" opacity=".0"/>
+    <rect x="164" y="124" width="0" height="0" fill="none"/>
+    <polygon points="164,124 240,162 240,172 164,134" fill="#5cb340"/>
+    <polygon points="240,162 316,124 316,134 240,172" fill="#5cb340"/>
+    <polygon points="240,86 316,124 240,162 164,124" fill="none" stroke="#3f7d2a" stroke-width="3"/>
+  </g>
+  <!-- cubo madeira (esquerda) -->
+  <g>
+    <polygon points="110,150 160,175 110,200 60,175" fill="#9a744a"/>
+    <polygon points="60,175 110,200 110,250 60,225" fill="#6b4a2a"/>
+    <polygon points="110,200 160,175 160,225 110,250" fill="#5a3d22"/>
+    <polygon points="60,175 110,150 110,200 60,225" fill="none" stroke="#4a3018" stroke-width="2.5" opacity=".5"/>
+  </g>
+  <!-- cubo tijolo (direita) -->
+  <g>
+    <polygon points="368,150 418,175 368,200 318,175" fill="#a8452f"/>
+    <polygon points="318,175 368,200 368,250 318,225" fill="#8f3625"/>
+    <polygon points="368,200 418,175 418,225 368,250" fill="#7a2d1e"/>
+    <g stroke="#d8c8bc" stroke-width="2">
+      <line x1="333" y1="187" x2="368" y2="205"/>
+      <line x1="383" y1="187" x2="418" y2="205"/>
+      <line x1="333" y1="205" x2="368" y2="223"/>
+      <line x1="383" y1="205" x2="418" y2="223"/>
+    </g>
+    <g stroke="#d8c8bc" stroke-width="2">
+      <line x1="333" y1="163" x2="368" y2="145"/>
+      <line x1="383" y1="163" x2="418" y2="145"/>
+    </g>
+  </g>
+</svg>

@@ -78,6 +78,7 @@
       👷 Aldeões coletam 🌲 madeira, 🦌🥕 comida e ✨ ouro.<br>
       🏰 Centro cria aldeões. 🏕️ Quartel treina 🛡️ infantaria e 🏹 arqueiros.<br>
       🎥 Use “Seguir” para a câmera acompanhar suas tropas. O aviso vermelho no topo mostra onde está a batalha.<br>
+      ⚔️ Seus militares percebem inimigos que chegam perto e contra-atacam sozinhos.<br>
       Objetivo: destruir o castelo vermelho!
     </div>
     <div class="commands">
@@ -338,13 +339,21 @@
         else {
           u.facing = e.x >= u.x ? 1 : -1;
           if (u.attackT <= 0) {
-            e.hp -= t.dmg; e.flash = .2;
+            e.hp -= t.dmg; e.flash = .2; e.lastHitBy = u; e.lastHitAt = state.time;
             if (t.range < 60) spawnParticle(e.x, e.y - 18, '#ffffff', '💥');
             else spawnParticle(e.x, e.y - 18, '#fff3b0', '➶');
             u.attackT = t.cd;
           }
         }
       }
+    }
+    // modo ataque natural: militares parados caçam quem chega perto; quem leva
+    // um golpe contra-ataca o agressor
+    if (u.owner === 'player' && u.action === 'idle') {
+      let tgt = null;
+      if (u.lastHitBy && u.lastHitBy.hp > 0 && state.time - (u.lastHitAt || 0) < 8 && dist(u, u.lastHitBy) < 220) tgt = u.lastHitBy;
+      if (!tgt && u.type !== 'villager') tgt = nearest(state.units.filter(x => x.owner === 'enemy'), u);
+      if (tgt && dist(u, tgt) < 150) { u.target = tgt; u.action = 'attack'; }
     }
     if (u.owner === 'enemy' && u.action === 'idle') {
       if (u.type === 'villager') {
@@ -377,7 +386,7 @@
       const dir = b.owner === 'player' ? 1 : -1;
       const u = addUnit(job.type, b.owner, b.x + dir * (b.w/2 + 26), b.y + b.h/2 + 14);
       u.facing = dir;
-      if (b.owner === 'player') { selected = u; setStatus(`${TYPES[job.type].name} pronto!`); updateUI(); }
+      if (b.owner === 'player') { if (!selected) selected = u; setStatus(`${TYPES[job.type].name} pronto!`); updateUI(); }
       spawnParticle(b.x, b.y - 24, '#fff', TYPES[job.type].icon);
     }
   }
