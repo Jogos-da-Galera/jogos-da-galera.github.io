@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Amiguinho — Bichinho Virtual</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { height:100%; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: linear-gradient(160deg, #2a1150 0%, #4c1d95 55%, #6d28d9 100%);
+    color:#fff; display:flex; flex-direction:column; align-items:center;
+    min-height:100vh; overflow-x:hidden; user-select:none;
+  }
+  header {
+    width:100%; max-width:520px; display:flex; align-items:center; gap:8px;
+    padding:10px 14px 4px;
+  }
+  header h1 { font-size:20px; letter-spacing:.5px; }
+  header .spacer { flex:1; }
+  .btn {
+    border:none; border-radius:12px; cursor:pointer; font-family:inherit;
+    font-weight:700; font-size:14px; padding:8px 14px; color:#fff;
+    background:#7c3aed; box-shadow:0 3px 0 #4c1d95; transition:transform .05s, box-shadow .05s;
+  }
+  .btn:active { transform:translateY(2px); box-shadow:0 1px 0 #4c1d95; }
+  .btn:disabled { opacity:.45; cursor:default; }
+  .btn.ghost { background:#4c1d95; box-shadow:0 3px 0 #2e1065; font-size:13px; }
+  .btn.big { font-size:17px; padding:12px 22px; border-radius:16px; }
+
+  main { width:100%; max-width:520px; padding:6px 12px 24px; display:flex; flex-direction:column; gap:10px; }
+
+  /* ---------- tela inicial ---------- */
+  .start {
+    background:rgba(255,255,255,.08); border:2px solid rgba(255,255,255,.18);
+    border-radius:20px; padding:22px 18px; display:flex; flex-direction:column; gap:14px; align-items:center;
+  }
+  .start h2 { font-size:26px; text-shadow:0 2px 8px rgba(0,0,0,.4); }
+  .start p { text-align:center; color:#e9d5ff; font-size:14px; line-height:1.45; max-width:340px; }
+  .start label { font-size:13px; font-weight:700; color:#fde68a; align-self:flex-start; margin-top:4px; }
+  #nomeInput {
+    width:100%; font-size:18px; padding:10px 14px; border-radius:12px; border:2px solid #a78bfa;
+    background:#2e1065; color:#fff; font-family:inherit; outline:none; text-align:center;
+  }
+  #nomeInput:focus { border-color:#fde68a; }
+  .animais { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
+  .animal-card {
+    border:2px solid rgba(255,255,255,.25); border-radius:14px; padding:8px 10px; cursor:pointer;
+    display:flex; flex-direction:column; align-items:center; gap:4px; width:86px; background:rgba(0,0,0,.25);
+    transition:transform .1s;
+  }
+  .animal-card svg { width:56px; height:56px; }
+  .animal-card span { font-size:12px; font-weight:700; }
+  .animal-card.sel { border-color:#fde68a; background:rgba(253,230,138,.15); transform:scale(1.08); }
+  .animal-card .estrela { font-size:10px; color:#fde68a; }
+
+  /* ---------- topo do jogo ---------- */
+  .statusbar {
+    display:flex; align-items:center; gap:8px; background:rgba(0,0,0,.3);
+    border-radius:14px; padding:8px 12px; font-size:14px; font-weight:700;
+  }
+  .statusbar .clock { font-variant-numeric:tabular-nums; }
+  .statusbar .spacer { flex:1; }
+  .badge {
+    background:#4c1d95; border-radius:10px; padding:4px 9px; font-size:13px;
+  }
+
+  /* ---------- cenário ---------- */
+  .scene {
+    position:relative; border-radius:20px; overflow:hidden; min-height:250px;
+    display:flex; align-items:flex-end; justify-content:center;
+    border:2px solid rgba(255,255,255,.2);
+    background:linear-gradient(#7dd3fc 0%, #bae6fd 70%, #86efac 70%);
+    transition:background 1s;
+  }
+  .scene.night { background:linear-gradient(#0f172a 0%, #1e293b 70%, #14532d 70%); }
+  .scene .sunmoon { position:absolute; top:14px; right:18px; font-size:34px; }
+  .scene .stars { position:absolute; top:8px; left:0; right:0; font-size:14px; text-align:center; display:none; letter-spacing:14px; }
+  .scene.night .stars { display:block; }
+  .scene .stage-tag {
+    position:absolute; top:10px; left:12px; background:rgba(0,0,0,.45);
+    border-radius:10px; padding:4px 10px; font-size:13px; font-weight:700;
+  }
+  .pet-wrap {
+    position:relative; margin-bottom:14px; display:flex; align-items:flex-end; gap:10px;
+    width:100%; justify-content:center;
+  }
+  .pet { width:170px; height:170px; position:relative; z-index:2; }
+  .pet svg { width:100%; height:100%; filter:drop-shadow(0 6px 6px rgba(0,0,0,.25)); }
+  .pet { animation:boinar 2.8s ease-in-out infinite; }
+  @keyframes boinar { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-5px)} }
+  .pet.ego-soyudo { animation:quicar 1s ease-in-out infinite; }
+  .pet.festeia { animation:quicar .55s ease-in-out infinite; }
+  .pet.dormindo { animation:respirar 2.4s ease-in-out infinite; }
+  .pet.ovo { animation:balancar 1.6s ease-in-out infinite; }
+  .pet.morto { animation:none; }
+  @keyframes quicar { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+  @keyframes respirar { 0%,100%{transform:scale(1)} 50%{transform:scale(1.04)} }
+  @keyframes balancar { 0%,100%{transform:rotate(-4deg)} 50%{transform:rotate(4deg)} }
+
+  /* efeitos de ação */
+  .fx { position:absolute; bottom:70px; font-size:30px; z-index:6; pointer-events:none; filter:drop-shadow(0 3px 3px rgba(0,0,0,.25)); }
+  .fx.voar { left:10%; animation:fx-voar .9s ease-in forwards; }
+  @keyframes fx-voar {
+    0% { transform: translate(0,50px) scale(.5) rotate(-25deg); opacity:0; }
+    25% { opacity:1; }
+    100% { transform: translate(85px,-70px) scale(1.2) rotate(10deg); opacity:0; }
+  }
+  .fx.flutuar { animation:fx-flutuar 1.4s ease-out forwards; }
+  @keyframes fx-flutuar {
+    0% { transform: translateY(0) scale(.7); opacity:0; }
+    15% { opacity:1; }
+    100% { transform: translateY(-100px) scale(1.25) rotate(8deg); opacity:0; }
+  }
+  .fx.cair { top:0; bottom:auto; animation:fx-cair 1.1s ease-in forwards; }
+  @keyframes fx-cair {
+    0% { transform: translateY(0) scale(.7); opacity:0; }
+    10% { opacity:1; }
+    100% { transform: translateY(160px) scale(1.15); opacity:0; }
+  }
+  .fx.bola { bottom:55px; animation:fx-bola 1.15s linear forwards; }
+  @keyframes fx-bola {
+    0% { left:6%; bottom:55px; transform:scale(.9); }
+    25% { left:22%; bottom:130px; transform:scale(1) rotate(90deg); }
+    50% { left:38%; bottom:55px; transform:rotate(180deg); }
+    75% { left:52%; bottom:120px; transform:scale(1.1) rotate(270deg); }
+    100% { left:60%; bottom:70px; transform:rotate(360deg); opacity:.2; }
+  }
+  .coco { animation:coco-bal 2.2s ease-in-out infinite; }
+  @keyframes coco-bal { 0%,100%{transform:rotate(-6deg)} 50%{transform:rotate(6deg)} }
+  .zzz { position:absolute; top:0; right:-14px; font-size:26px; z-index:3; animation:flutuar 2s ease-in-out infinite; }
+  @keyframes flutuar { 0%,100%{opacity:.9; transform:translateY(0)} 50%{opacity:.4; transform:translateY(-6px)} }
+  .doentico { position:absolute; top:2px; left:-14px; font-size:24px; z-index:3; }
+  .coco { position:absolute; bottom:16px; font-size:26px; z-index:2; cursor:pointer; filter:drop-shadow(0 3px 3px rgba(0,0,0,.3)); }
+  .msg {
+    position:absolute; bottom:8px; left:50%; transform:translateX(-50%);
+    background:rgba(0,0,0,.55); border-radius:10px; padding:5px 12px; font-size:13px; font-weight:600;
+    white-space:nowrap; max-width:95%; overflow:hidden; text-overflow:ellipsis; z-index:4;
+  }
+
+  /* ---------- barras ---------- */
+  .bars { display:grid; grid-template-columns:1fr 1fr; gap:6px 14px; background:rgba(0,0,0,.3); border-radius:14px; padding:10px 14px; }
+  .bar-row { display:flex; align-items:center; gap:8px; font-size:13px; font-weight:700; }
+  .bar-row .lbl { width:104px; white-space:nowrap; }
+  .bar-track { flex:1; height:12px; background:rgba(255,255,255,.15); border-radius:6px; overflow:hidden; }
+  .bar-fill { height:100%; border-radius:6px; transition:width .5s, background .5s; }
+
+  /* ---------- ações ---------- */
+  .acoes { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+  .acao {
+    display:flex; flex-direction:column; align-items:center; gap:2px; padding:10px 4px;
+    border:none; border-radius:14px; cursor:pointer; font-family:inherit; font-weight:700; font-size:12px;
+    color:#fff; background:linear-gradient(#8b5cf6,#6d28d9); box-shadow:0 3px 0 #4c1d95;
+  }
+  .acao:active { transform:translateY(2px); box-shadow:0 1px 0 #4c1d95; }
+  .acao:disabled { opacity:.4; cursor:default; }
+  .acao .ico { font-size:24px; }
+  .acao.alta { background:linear-gradient(#f59e0b,#d97706); box-shadow:0 3px 0 #92400e; }
+  .acao.alta .ico { animation:chamar 0.8s ease-in-out infinite; }
+  @keyframes chamar { 0%,100%{transform:scale(1)} 50%{transform:scale(1.25)} }
+  .legenda { font-size:11px; color:rgba(255,255,255,.65); text-align:center; margin-top:-2px; }
+
+  /* modal de confirmação (confirm() não funciona no iframe sandbox) */
+  .modal { position:fixed; inset:0; background:rgba(0,0,0,.55); display:flex; align-items:center; justify-content:center; z-index:50; }
+  .modal-card {
+    background:#4c1d95; border:2px solid #a78bfa; border-radius:18px; padding:20px;
+    max-width:300px; width:85%; text-align:center; display:flex; flex-direction:column; gap:12px;
+    box-shadow:0 12px 30px rgba(0,0,0,.5);
+  }
+  .modal-card h3 { font-size:17px; }
+  .modal-card p { font-size:13px; color:#e9d5ff; line-height:1.4; }
+  .modal-botoes { display:flex; gap:10px; justify-content:center; }
+
+  /* ---------- morte ---------- */
+  .obit {
+    background:rgba(0,0,0,.45); border-radius:20px; padding:24px 18px; text-align:center;
+    display:flex; flex-direction:column; gap:10px; align-items:center;
+  }
+  .obit .tumba { font-size:64px; }
+  .obit p { font-size:15px; color:#e9d5ff; line-height:1.5; }
+
+  footer { font-size:11px; color:rgba(255,255,255,.5); padding-bottom:14px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🐾 Amiguinho</h1>
+  <div class="spacer"></div>
+  <button class="btn ghost" id="btnReset" style="display:none" title="Começar de novo">↻ Novo</button>
+</header>
+
+<main>
+  <!-- TELA INICIAL -->
+  <section class="start" id="telaInicio">
+    <h2>Bem-vindo ao Amiguinho! 🐾</h2>
+    <p>Você vai cuidar de um bichinho virtual do ovo até a velhice: alimente, brinque, dê banho, limpe o coco, cure doenças, colóque pra dormir, pra estudar e pra trabalhar. Escolha seu amiguinho!</p>
+    <label for="nomeInput">Nome do amiguinho</label>
+    <input id="nomeInput" maxlength="14" placeholder="Ex.: Capivara, Zeca, Lia..." autocomplete="off">
+    <label>Escolha a espécie</label>
+    <div class="animais" id="animais"></div>
+    <button class="btn big" id="btnComecar">🥚 Começar!</button>
+  </section>
+
+  <!-- JOGO -->
+  <section id="telaJogo" style="display:none; flex-direction:column; gap:10px;">
+    <div class="statusbar">
+      <span id="sNome" style="color:#fde68a"></span>
+      <span id="sFase" class="badge"></span>
+      <div class="spacer"></div>
+      <span class="clock" id="sRelogio"></span>
+      <span class="badge" id="sIdade"></span>
+      <span class="badge" id="sDinheiro">💰 0</span>
+    </div>
+
+    <div class="scene" id="scene">
+      <div class="stars">✦ ✧ ✦</div>
+      <div class="sunmoon" id="solLua">☀️</div>
+      <div class="stage-tag" id="sTag"></div>
+      <div class="pet-wrap">
+        <div id="cocos"></div>
+        <div class="pet" id="pet"></div>
+      </div>
+      <div class="msg" id="sMsg"></div>
+    </div>
+
+    <div class="bars" id="bars"></div>
+    <div class="acoes" id="acoes"></div>
+    <div class="legenda">🔶 botões laranja = o bichinho precisa disso urgentemente</div>
+
+    <div class="obit" id="obit" style="display:none">
+      <div class="tumba">🪦</div>
+      <p id="obitTxt"></p>
+      <button class="btn big" id="btnNovo">🐾 Começar de novo</button>
+    </div>
+  </section>
+
+  <!-- modal de confirmação (confirm() é bloqueado no iframe sandbox) -->
+  <div class="modal" id="modalReset" style="display:none">
+    <div class="modal-card">
+      <h3>↻ Começar de novo?</h3>
+      <p id="modalResetTxt">O progresso será apagado.</p>
+      <div class="modal-botoes">
+        <button class="btn" id="btnModalSim">Sim, apagar</button>
+        <button class="btn ghost" id="btnModalNao">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer>Amiguinho — bichinho virtual · 100% gratuito</footer>
+
+<script>
+"use strict";
+const LS_KEY = "amiguinho-save-v1";
+const TICK_MS = 1000;        // 1 tick = 1s real
+const MIN_POR_TICK = 10;     // 1 tick = 10 min do jogo  -> 1 dia = 2,4 min reais
+
+/* ================= FASES DA VIDA ================= */
+const FASES = [
+  { id:"ovo",          nome:"Ovo",          tag:"🥚 Ovo",              min:0 },
+  { id:"filhote",      nome:"Filhote",      tag:"🍼 Filhote",          min:1 },
+  { id:"crianca",      nome:"Criança",      tag:"🎒 Criança",          min:2 },
+  { id:"adolescente",  nome:"Adolescente",  tag:"📖 Adolescente",      min:5 },
+  { id:"adulto",       nome:"Adulto",       tag:"💼 Adulto",           min:8 },
+  { id:"idoso",        nome:"Idoso",        tag:"👴 Idoso",            min:18 },
+];
+
+/* ================= ANIMAIS ================= */
+const ANIMALS = {
+  capivara:  { nome:"Capivara",  estrela:"⭐ especial" },
+  hamster:   { nome:"Hamster" },
+  gato:      { nome:"Gatinho" },
+  cachorro:  { nome:"Cachorrinho" },
+  pinguim:   { nome:"Pinguim" },
+};
+
+/* ---- helpers de rosto (mood: feliz | neutro | triste | doente | dormindo) ---- */
+function olhos(x1, y1, x2, y2, r, mood) {
+  if (mood === "dormindo") {
+    const a = x => `<path d="M ${x - r} ${y1} q ${r} ${r * 0.9} ${r * 2} 0" stroke="#3b2b20" stroke-width="2.5" fill="none" stroke-linecap="round"/>`;
+    return a(x1) + a(x2);
+  }
+  const eye = (x) => `<circle cx="${x}" cy="${y1}" r="${r}" fill="#3b2b20"/>
+      <circle cx="${x + r * 0.3}" cy="${y1 - r * 0.3}" r="${r * 0.3}" fill="#fff"/>`;
+  let s = eye(x1) + eye(x2);
+  if (mood === "triste") {
+    s += `<circle cx="${x1 - r - 2}" cy="${y1 + r + 5}" r="3" fill="#7dd3fc"/>`;
+  }
+  return s;
+}
+function boca(x, y, mood) {
+  switch (mood) {
+    case "feliz":    return `<path d="M ${x - 9} ${y} q 9 9 18 0" stroke="#3b2b20" stroke-width="3" fill="none" stroke-linecap="round"/>`;
+    case "triste":   return `<path d="M ${x - 8} ${y + 6} q 8 -7 16 0" stroke="#3b2b20" stroke-width="3" fill="none" stroke-linecap="round"/>`;
+    case "doente":   return `<path d="M ${x - 9} ${y + 3} q 4.5 -5 9 0 q 4.5 5 9 0" stroke="#3b2b20" stroke-width="3" fill="none" stroke-linecap="round"/>`;
+    case "dormindo": return `<ellipse cx="${x}" cy="${y + 2}" rx="4" ry="5" fill="#3b2b20"/>`;
+    default:         return `<path d="M ${x - 7} ${y + 2} h 14" stroke="#3b2b20" stroke-width="3" stroke-linecap="round"/>`;
+  }
+}
+function bochechas(x1, x2, y) {
+  return `<circle cx="${x1}" cy="${y}" r="6" fill="#f9a8d4" opacity=".6"/>
+          <circle cx="${x2}" cy="${y}" r="6" fill="#f9a8d4" opacity=".6"/>`;
+}
+
+function petSVG(animal, mood, stage) {
+  const B = `<svg viewBox="0 0 200 200">`;
+  const idoso = stage === "idoso";
+  let s = "";
+  switch (animal) {
+    case "capivara": {
+      const pel = idosoPel(idoso, "#a9744f", "#8a5a3b", "#c99167");
+      s += `<rect x="38" y="98" width="124" height="88" rx="42" fill="${pel.corpo}"/>`;
+      s += `<ellipse cx="100" cy="158" rx="42" ry="26" fill="${pel.barriga}" opacity=".7"/>`;
+      s += `<circle cx="52" cy="52" r="10" fill="${pel.escuro}"/><circle cx="148" cy="52" r="10" fill="${pel.escuro}"/>`;
+      s += `<circle cx="52" cy="52" r="4" fill="${pel.barriga}"/><circle cx="148" cy="52" r="4" fill="${pel.barriga}"/>`;
+      s += `<rect x="48" y="42" width="104" height="78" rx="34" fill="${pel.corpo}"/>`;
+      s += `<rect x="58" y="80" width="84" height="40" rx="20" fill="${pel.barriga}" opacity=".55"/>`;
+      s += `<circle cx="88" cy="102" r="2.6" fill="#3b2b20"/><circle cx="112" cy="102" r="2.6" fill="#3b2b20"/>`;
+      s += olhos(78, 68, 122, 68, 6, mood);
+      s += boca(100, 84, mood);
+      s += bochechas(64, 136, 82);
+      break;
+    }
+    case "hamster": {
+      const pel = idosoPel(idoso, "#e2b07a", "#c98f57", "#f7e0c0");
+      s += `<circle cx="66" cy="56" r="16" fill="${pel.escuro}"/><circle cx="134" cy="56" r="16" fill="${pel.escuro}"/>`;
+      s += `<circle cx="66" cy="56" r="8" fill="${pel.barriga}"/><circle cx="134" cy="56" r="8" fill="${pel.barriga}"/>`;
+      s += `<ellipse cx="100" cy="122" rx="72" ry="66" fill="${pel.corpo}"/>`;
+      s += `<circle cx="70" cy="140" r="20" fill="${pel.barriga}" opacity=".8"/>`;
+      s += `<circle cx="130" cy="140" r="20" fill="${pel.barriga}" opacity=".8"/>`;
+      s += `<path d="M 100 96 l 6 6 -6 6 -6 -6 z" fill="#f472b6"/>`;
+      s += olhos(74, 110, 126, 110, 7, mood);
+      s += boca(100, 118, mood);
+      s += bochechas(56, 144, 126);
+      break;
+    }
+    case "gato": {
+      const pel = idosoPel(idoso, "#f2a35c", "#d97e35", "#fde0b8");
+      s += `<path d="M 48 66 L 62 22 L 92 52 Z" fill="${pel.escuro}"/>`;
+      s += `<path d="M 152 66 L 138 22 L 108 52 Z" fill="${pel.escuro}"/>`;
+      s += `<circle cx="100" cy="104" r="58" fill="${pel.corpo}"/>`;
+      s += `<rect x="58" y="150" width="84" height="38" rx="19" fill="${pel.corpo}"/>`;
+      s += `<circle cx="100" cy="126" r="30" fill="${pel.barriga}" opacity=".55"/>`;
+      s += `<path d="M 100 112 l 6 6 -6 6 -6 -6 z" fill="#f472b6"/>`;
+      s += `<line x1="52" y1="120" x2="24" y2="112" stroke="#3b2b20" stroke-width="2"/>`;
+      s += `<line x1="52" y1="130" x2="24" y2="134" stroke="#3b2b20" stroke-width="2"/>`;
+      s += `<line x1="148" y1="120" x2="176" y2="112" stroke="#3b2b20" stroke-width="2"/>`;
+      s += `<line x1="148" y1="130" x2="176" y2="134" stroke="#3b2b20" stroke-width="2"/>`;
+      s += olhos(78, 98, 122, 98, 6.5, mood);
+      s += boca(100, 116, mood);
+      s += bochechas(60, 140, 116);
+      break;
+    }
+    case "cachorro": {
+      const pel = idosoPel(idoso, "#c68642", "#9a6230", "#e8c49a");
+      s += `<ellipse cx="42" cy="94" rx="18" ry="34" fill="${pel.escuro}" transform="rotate(14 42 94)"/>`;
+      s += `<ellipse cx="158" cy="94" rx="18" ry="34" fill="${pel.escuro}" transform="rotate(-14 158 94)"/>`;
+      s += `<circle cx="100" cy="102" r="58" fill="${pel.corpo}"/>`;
+      s += `<rect x="58" y="148" width="84" height="40" rx="20" fill="${pel.corpo}"/>`;
+      s += `<ellipse cx="100" cy="126" rx="32" ry="24" fill="${pel.barriga}"/>`;
+      s += `<ellipse cx="100" cy="116" rx="9" ry="7" fill="#3b2b20"/>`;
+      s += olhos(76, 94, 124, 94, 6.5, mood);
+      s += boca(100, 130, mood);
+      s += bochechas(58, 142, 112);
+      break;
+    }
+    case "pinguim": {
+      const pel = idosoPel(idoso, "#41465c", "#2b2f40", "#ffffff");
+      s += `<ellipse cx="30" cy="126" rx="14" ry="30" fill="${pel.escuro}" transform="rotate(20 30 126)"/>`;
+      s += `<ellipse cx="170" cy="126" rx="14" ry="30" fill="${pel.escuro}" transform="rotate(-20 170 126)"/>`;
+      s += `<ellipse cx="100" cy="120" rx="62" ry="74" fill="${pel.escuro}"/>`;
+      s += `<ellipse cx="100" cy="136" rx="44" ry="54" fill="${pel.barriga}"/>`;
+      s += `<path d="M 100 106 l 12 8 -12 8 -12 -8 z" fill="#fb923c"/>`;
+      s += `<circle cx="78" cy="148" r="2.6" fill="#fb923c"/><circle cx="122" cy="148" r="2.6" fill="#fb923c"/>`;
+      s += olhos(78, 92, 122, 92, 6.5, mood);
+      s += boca(100, 122, mood);
+      break;
+    }
+  }
+  if (idoso) s += `<path d="M 168 176 q 3 -26 12 -30" stroke="#8d6e63" stroke-width="5" fill="none" stroke-linecap="round"/>`;
+  if (stage === "adulto") s += `<path d="M 100 158 l 10 14 -10 10 -10 -10 z" fill="#ef4444"/><rect x="94" y="152" width="12" height="10" rx="3" fill="#ef4444"/>`;
+  return B + s + "</svg>";
+}
+function idosoPel(idoso, corpo, escuro, barriga) {
+  if (idoso) return { corpo:"#9aa0a6", escuro:"#7d838a", barriga:"#cfd4da" };
+  return { corpo, escuro, barriga };
+}
+
+/* ================= ESTADO ================= */
+let S = null;            // estado do jogo
+let tickHandle = null;
+let animalSel = "capivara";
+
+function novoEstado(nome, animal) {
+  return {
+    nome, animal,
+    min: 0,                  // minutos totais do jogo (idade + relógio)
+    fase: "ovo",
+    ovoTicks: 0,
+    comida: 80, energia: 90, diversao: 80, limpeza: 100, saude: 100, conhecimento: 0,
+    dormindo: false, doente: false,
+    cocos: [], dinheiro: 0,
+    morto: false,
+    msg: "Um ovo misterioso apareceu... 🥚",
+  };
+}
+
+function save() {
+  if (S) localStorage.setItem(LS_KEY, JSON.stringify(S));
+}
+function load() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (raw) { const s = JSON.parse(raw); if (s && s.nome) return s; }
+  } catch (e) {}
+  return null;
+}
+
+/* ================= LÓGICA ================= */
+function fasePorIdade(min) {
+  const dias = min / 1440;
+  let f = FASES[1]; // filhote (o ovo não é uma fase por idade)
+  for (const fa of FASES) if (fa.id !== "ovo" && dias >= fa.min) f = fa;
+  return f;
+}
+function horaJogo(min) {
+  const h = Math.floor((min % 1440) / 60);
+  const m = Math.floor((min % 60));
+  return { h, m, noite: h < 7 || h >= 19 };
+}
+function clamp(v) { return Math.max(0, Math.min(100, v)); }
+
+function mood() {
+  if (S.morto) return "neutro";
+  if (S.dormindo) return "dormindo";
+  if (S.doente) return "doente";
+  const med = (S.comida + S.energia + S.diversao + S.saude) / 4;
+  if (med >= 70) return "feliz";
+  if (med < 35) return "triste";
+  return "neutro";
+}
+
+function mensagem(t) { S.msg = t; }
+
+function festa(ms) { S.festaAte = Date.now() + (ms || 1200); }
+function fx(emoji, tipo, delay, left, size) {
+  setTimeout(() => {
+    const d = document.createElement("div");
+    d.className = "fx " + tipo;
+    d.textContent = emoji;
+    if (left != null) d.style.left = left + "%";
+    if (size) d.style.fontSize = size + "px";
+    $("scene").appendChild(d);
+    setTimeout(() => d.remove(), 1900);
+  }, delay || 0);
+}
+function flut(emoji, delay, size) { fx(emoji, "flutuar", delay, 25 + Math.random() * 40, size); }
+
+function tick() {
+  if (!S || S.morto) return;
+
+  // ovo
+  if (S.fase === "ovo") {
+    S.ovoTicks++;
+    if (S.ovoTicks >= 12) {
+      S.fase = "filhote";
+      mensagem(`🐣 ${S.nome} nasceu! Que alegria!`);
+      festa(1500); flut("✨");
+      render(); save(); return;
+    }
+    S.min += MIN_POR_TICK;
+    render(); save(); return;
+  }
+
+  S.min += MIN_POR_TICK;
+
+  // troca de fase
+  const fNov = fasePorIdade(S.min);
+  if (fNov.id !== S.fase) {
+    S.fase = fNov.id;
+    festa(1500); fx("🎉", "voar");
+    mensagem({
+      crianca:   `🎉 ${S.nome} cresceu! Agora é criança e vai pra escola! 🎒`,
+      adolescente:`🎉 ${S.nome} é adolescente! Hora de estudar mais! 📖`,
+      adulto:    `💼 ${S.nome} virou adulto e começou a trabalhar!`,
+      idoso:     `👴 ${S.nome} se aposentou e agora é idoso. Cuide bem dele!`,
+    }[fNov.id] || `🎉 ${S.nome} cresceu!`);
+  }
+  const idoso = S.fase === "idoso";
+
+  // decaimento
+  S.comida = clamp(S.comida - 0.10);
+  S.diversao = clamp(S.diversao - 0.09);
+  S.conhecimento = clamp(S.conhecimento - 0.01);
+  if (S.dormindo) S.energia = clamp(S.energia + 1.20);
+  else S.energia = clamp(S.energia - 0.07);
+  S.limpeza = clamp(S.limpeza - 0.015 - 0.02 * S.cocos.length);
+
+  // saúde
+  let dSaude = 0;
+  if (S.doente) dSaude -= 0.12;
+  if (S.comida <= 5) dSaude -= 0.10;
+  if (S.limpeza < 25) dSaude -= 0.05;
+  if (idoso) dSaude -= 0.04;
+  if (dSaude === 0 && S.comida > 40 && S.limpeza > 60 && S.diversao > 40) dSaude = 0.05;
+  S.saude = clamp(S.saude + dSaude);
+
+  // coco
+  if (!S.dormindo && S.cocos.length < 4) {
+    let p = 0.012;
+    if (S.comida < 35) p += 0.015;
+    if (Math.random() < p) {
+      S.cocos.push(1);
+      mensagem(`💩 Ah... ${S.nome} fez um coco. Limpe rapidinho!`);
+    }
+  }
+
+  // doença
+  if (!S.doente) {
+    let p = 0.0015;
+    if (S.limpeza < 30) p += 0.008;
+    if (idoso) p += 0.004;
+    if (Math.random() < p) {
+      S.doente = true;
+      mensagem(`🤒 ${S.nome} está doente! Dê remédio!`);
+    }
+  }
+
+  // dormir / acordar automático
+  if (!S.dormindo && S.energia <= 3) {
+    S.dormindo = true;
+    mensagem(`😴 ${S.nome} caiu no sono...`);
+  }
+  if (S.dormindo && (S.energia >= 100 || horaJogo(S.min).h >= 7 && horaJogo(S.min).h < 19 && S.energia > 80)) {
+    if (S.energia >= 100) { S.dormindo = false; mensagem(`☀️ ${S.nome} acordou disposto!`); }
+  }
+
+  // morte
+  if (S.saude <= 0) {
+    S.morto = true;
+    S.dormindo = false;
+  }
+
+  render();
+  save();
+}
+
+/* ================= AÇÕES ================= */
+function acordarSePrecisa() {
+  if (S.dormindo) { S.dormindo = false; return true; }
+  return false;
+}
+
+const ACOES = [
+  { id:"comer",  ico:"🍖", nome:"Comer",     alta:() => S.comida < 25,
+    pode:() => true,
+    fn:() => {
+      acordarSePrecisa();
+      S.comida = clamp(S.comida + 32);
+      const f = S.fase === "filhote" ? "mamou leite 🍼" :
+                S.fase === "crianca" || S.fase === "adolescente" ? "comeu um lanchinho 🍎" :
+                "comeu bem 🍖";
+      mensagem(`😋 ${S.nome} ${f}`);
+      fx(S.fase === "filhote" ? "🍼" : "🍖", "voar");
+      festa(1000);
+    }},
+  { id:"brincar", ico:"🎾", nome:"Brincar",
+    pode:() => !S.morto,
+    fn:() => {
+      if (acordarSePrecisa()) { mensagem(`...e depois brincou! 🎾`); }
+      S.diversao = clamp(S.diversao + 30);
+      S.energia = clamp(S.energia - 12);
+      S.comida = clamp(S.comida - 8);
+      mensagem(`🎾 ${S.nome} se divertiu muito!`);
+      festa(1500);
+      fx("🎾", "bola");
+      setTimeout(() => { flut("💗"); flut("💖", 300); }, 450);
+    }},
+  { id:"banho", ico:"🛁", nome:"Banho", alta:() => S.limpeza < 30,
+    pode:() => true,
+    fn:() => {
+      acordarSePrecisa();
+      S.limpeza = clamp(S.limpeza + 45);
+      S.diversao = clamp(S.diversao + 8);
+      S.energia = clamp(S.energia - 4);
+      mensagem(`🫧 ${S.nome} tomou um banho gostoso!`);
+      festa(1200);
+      for (let i = 0; i < 9; i++) flut("🫧", i * 120, 18 + Math.random() * 26);
+      for (let i = 0; i < 5; i++) fx("💧", "cair", i * 160, 30 + Math.random() * 35, 22 + Math.random() * 14);
+    }},
+  { id:"dormir", ico:() => S.dormindo ? "⏰" : "🌙", nome:() => S.dormindo ? "Acordar" : "Dormir",
+    pode:() => true,
+    fn:() => {
+      S.dormindo = !S.dormindo;
+      mensagem(S.dormindo ? `🌙 ${S.nome} foi dormir... zzz` : `⏰ ${S.nome} acordou!`);
+      if (!S.dormindo) fx("🌞", "voar");
+    }},
+  { id:"remedio", ico:"💊", nome:"Remédio", alta:() => S.doente,
+    pode:() => S.doente,
+    fn:() => {
+      S.doente = false;
+      S.saude = clamp(S.saude + 35);
+      S.energia = clamp(S.energia - 5);
+      mensagem(`💊 ${S.nome} tomou o remédio e já está melhor!`);
+      fx("💊", "voar");
+      festa(900);
+      flut("✨", 400);
+    }},
+  { id:"limpar", ico:"🧹", nome:"Limpar", alta:() => S.cocos.length > 0,
+    pode:() => S.cocos.length > 0,
+    fn:() => {
+      S.cocos.pop();
+      S.limpeza = clamp(S.limpeza + 12);
+      mensagem(`🧹 Coco limpo! Que alívio.`);
+      flut("✨");
+      festa(700);
+    }},
+  { id:"estudar", ico:"📖", nome:"Estudar",
+    pode:() => S.fase === "crianca" || S.fase === "adolescente",
+    fn:() => {
+      if (acordarSePrecisa()) { mensagem(`...estudou depois de acordar! 📖`); }
+      S.conhecimento = clamp(S.conhecimento + 25);
+      S.energia = clamp(S.energia - 10);
+      S.comida = clamp(S.comida - 5);
+      S.diversao = clamp(S.diversao + 5);
+      const t = S.conhecimento >= 100 ? `🎓 ${S.nome} mandou bem nos estudos!` :
+                S.conhecimento >= 60 ? `📖 ${S.nome} estudou bastante!` : `📖 ${S.nome} estudou um pouco.`;
+      mensagem(t);
+      fx("📖", "voar");
+      flut("✨", 300);
+      festa(1000);
+    }},
+  { id:"trabalhar", ico:"💼", nome:"Trabalhar",
+    pode:() => S.fase === "adulto",
+    fn:() => {
+      if (acordarSePrecisa()) { mensagem(`...trabalhou depois de acordar! 💼`); }
+      const bonus = S.conhecimento >= 60 ? 2 : 1;
+      S.dinheiro += 10 * bonus;
+      S.energia = clamp(S.energia - 18);
+      S.comida = clamp(S.comida - 10);
+      S.diversao = clamp(S.diversao - 6);
+      mensagem(bonus === 2
+        ? `💼 ${S.nome} teve um dia excelente de trabalho! Ganhou R$20! 🎓`
+        : `💼 ${S.nome} trabalhou duro. Ganhou R$10.`);
+      fx("💵", "voar");
+      festa(1000);
+    }},
+];
+
+function faseAtual() { return FASES.find(f => f.id === S.fase) || FASES[0]; }
+
+/* ================= RENDER ================= */
+const $ = id => document.getElementById(id);
+
+function render() {
+  if (!S) return;
+  const f = faseAtual();
+  const hj = horaJogo(S.min);
+  const dias = Math.floor(S.min / 1440);
+
+  $("sNome").textContent = S.nome;
+  $("sFase").textContent = f.tag;
+  $("sRelogio").textContent = `Dia ${dias + 1} · ${String(hj.h).padStart(2,"0")}:${String(hj.m).padStart(2,"0")}`;
+  $("sIdade").textContent = `🎂 ${dias}d`;
+  $("sDinheiro").textContent = `💰 ${S.dinheiro}`;
+
+  const scene = $("scene");
+  scene.classList.toggle("night", hj.noite);
+  $("solLua").textContent = hj.noite ? "🌙" : "☀️";
+  $("sTag").textContent = f.tag + (S.morto ? "  🪦" : "");
+
+  // pet
+  const pet = $("pet");
+  pet.className = "pet" + (S.morto ? " morto" : S.fase === "ovo" ? " ovo" : S.dormindo ? " dormindo" : Date.now() < (S.festaAte || 0) ? " festeia" : mood() === "feliz" ? " ego-soyudo" : "");
+  let svg;
+  if (S.fase === "ovo") {
+    svg = `<svg viewBox="0 0 200 200">
+      <ellipse cx="100" cy="115" rx="62" ry="78" fill="#fff7ed"/>
+      <circle cx="80" cy="80" r="9" fill="#c4b5fd" opacity=".7"/>
+      <circle cx="120" cy="130" r="12" fill="#f9a8d4" opacity=".7"/>
+      <circle cx="95" cy="160" r="7" fill="#a7f3d0" opacity=".8"/>
+      <path d="M 55 60 Q 100 30 145 60" stroke="#c4b5fd" stroke-width="4" fill="none" opacity=".6"/>
+    </svg>`;
+    pet.innerHTML = svg;
+  } else if (S.morto) {
+    pet.innerHTML = `<svg viewBox="0 0 200 200">
+      <path d="M 60 180 V 90 Q 60 50 100 50 Q 140 50 140 90 V 180 Z" fill="#cbd5e1"/>
+      <rect x="50" y="176" width="100" height="16" rx="6" fill="#94a3b8"/>
+      <text x="100" y="130" text-anchor="middle" font-size="40">🕊️</text>
+    </svg>`;
+  } else {
+    const escala = { filhote:.72, crianca:.85, adolescente:.95, adulto:1, idoso:1 }[S.fase] || 1;
+    pet.innerHTML = petSVG(S.animal, mood(), S.fase)
+      .replace('<svg viewBox="0 0 200 200">', `<svg viewBox="0 0 200 200" style="transform:scale(${escala});transform-origin:50% 85%">`);
+  }
+  let extras = "";
+  if (S.dormindo && !S.morto) extras += `<div class="zzz">💤</div>`;
+  if (S.doente) extras += `<div class="doentico">🤒</div>`;
+  pet.innerHTML = pet.innerHTML + extras;
+
+  // cocos (fora do pet, na cena)
+  const cocosEl = $("cocos");
+  cocosEl.innerHTML = "";
+  S.cocos.forEach(() => {
+    const d = document.createElement("div");
+    d.className = "coco";
+    d.textContent = "💩";
+    d.style.position = "absolute";
+    d.style.left = (10 + Math.random() * 70) + "%";
+    d.style.bottom = "16px";
+    d.title = "Limpar coco!";
+    d.onclick = () => { const a = ACOES.find(x => x.id === "limpar"); if (a.pode()) { a.fn(); render(); save(); } };
+    cocosEl.appendChild(d);
+  });
+
+  $("sMsg").textContent = S.msg || "";
+
+  // barras
+  const barras = [
+    ["🍖 Comida", S.comida], ["⚡ Energia", S.energia],
+    ["🎈 Diversão", S.diversao], ["🧼 Limpeza", S.limpeza],
+    ["❤️ Saúde", S.saude], ["🎓 Estudos", S.conhecimento],
+  ];
+  $("bars").innerHTML = barras.map(([l, v]) => {
+    const cor = v > 60 ? "#34d399" : v > 30 ? "#fbbf24" : "#f87171";
+    return `<div class="bar-row"><span class="lbl">${l}</span>
+      <div class="bar-track"><div class="bar-fill" style="width:${Math.round(v)}%; background:${cor}"></div></div></div>`;
+  }).join("");
+
+  // ações
+  const grid = $("acoes");
+  grid.innerHTML = "";
+  for (const a of ACOES) {
+    if (a.fases && !a.fases.includes(S.fase)) continue;
+    if (!a.sempre && (a.fasesRequer || {})[S.fase] === false) continue;
+    const boto = document.createElement("button");
+    boto.className = "acao" + (a.alta && a.alta() ? " alta" : "");
+    const pode = a.pode ? a.pode() : true;
+    boto.disabled = S.morto || !pode;
+    const ico = typeof a.ico === "function" ? a.ico() : a.ico;
+    const nome = typeof a.nome === "function" ? a.nome() : a.nome;
+    boto.innerHTML = `<span class="ico">${ico}</span>${nome}`;
+    boto.onclick = () => { if (!S.morto && pode) { a.fn(); render(); save(); } };
+    grid.appendChild(boto);
+  }
+
+  // morte
+  const obit = $("obit");
+  if (S.morto) {
+    obit.style.display = "flex";
+    $("obitTxt").innerHTML = `😢 ${S.nome} partiu no dia <b>${dias + 1}</b>, aos ${f.tag.replace(/^[^ ]+ /, "")} de idade.<br>Todo bichinho virtual um dia se vai... que tal cuidar de outro?`;
+  } else {
+    obit.style.display = "none";
+  }
+  $("btnReset").style.display = "inline-block";
+}
+
+/* filtros de fase por ação */
+ACOES[0].fases = ["filhote","crianca","adolescente","adulto","idoso"];
+ACOES[1].fases = ["filhote","crianca","adolescente","adulto","idoso"];
+ACOES[2].fases = ["filhote","crianca","adolescente","adulto","idoso"];
+ACOES[3].fases = ["filhote","crianca","adolescente","adulto","idoso"];
+ACOES[4].fases = ["filhote","crianca","adolescente","adulto","idoso"];
+ACOES[5].fases = ["filhote","crianca","adolescente","adulto","idoso"];
+ACOES[6].fases = ["crianca","adolescente"];
+ACOES[7].fases = ["adulto"];
+ACOES.forEach(a => { a.pode = (orig => () => a.fases.includes(S.fase) && (orig ? orig() : true))(a.pode); });
+
+/* ================= FLOW ================= */
+function telaInicio() {
+  $("telaInicio").style.display = "flex";
+  $("telaJogo").style.display = "none";
+  $("btnReset").style.display = "none";
+  $("modalReset").style.display = "none";
+  renderAnimais();
+}
+function telaJogo() {
+  $("telaInicio").style.display = "none";
+  $("telaJogo").style.display = "flex";
+}
+function iniciarJogo() {
+  if (tickHandle) clearInterval(tickHandle);
+  telaJogo();
+  tickHandle = setInterval(tick, TICK_MS);
+}
+function pararTick() {
+  if (tickHandle) { clearInterval(tickHandle); tickHandle = null; }
+}
+function resetTudo() {
+  pararTick();
+  localStorage.removeItem(LS_KEY);
+  S = null;
+  telaInicio();
+  $("nomeInput").value = "";
+  animalSel = "capivara";
+  renderAnimais();
+}
+
+function renderAnimais() {
+  const box = $("animais");
+  box.innerHTML = "";
+  for (const [id, a] of Object.entries(ANIMALS)) {
+    const c = document.createElement("div");
+    c.className = "animal-card" + (id === animalSel ? " sel" : "");
+    c.innerHTML = `${petSVG(id, "feliz", "adulto")}<span>${a.nome}</span>${a.estrela ? `<span class="estrela">${a.estrela}</span>` : ""}`;
+    c.onclick = () => { animalSel = id; renderAnimais(); };
+    box.appendChild(c);
+  }
+}
+
+$("btnComecar").onclick = () => {
+  const nome = $("nomeInput").value.trim() || "Amiguinho";
+  S = novoEstado(nome, animalSel);
+  save();
+  iniciarJogo();
+  render();
+};
+$("btnNovo").onclick = resetTudo;
+$("btnReset").onclick = () => {
+  $("modalResetTxt").textContent = `O progresso de ${S ? S.nome : "seu amiguinho"} será apagado para sempre.`;
+  $("modalReset").style.display = "flex";
+};
+$("btnModalSim").onclick = () => { $("modalReset").style.display = "none"; resetTudo(); };
+$("btnModalNao").onclick = () => { $("modalReset").style.display = "none"; };
+$("nomeInput").addEventListener("keydown", e => { if (e.key === "Enter") $("btnComecar").click(); });
+
+// iniciar
+S = load();
+if (S) { iniciarJogo(); render(); }
+else telaInicio();
+</script>
+</body>
+</html>

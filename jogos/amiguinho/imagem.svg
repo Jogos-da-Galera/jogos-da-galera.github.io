@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 300">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4c1d95"/>
+      <stop offset="1" stop-color="#7c3aed"/>
+    </linearGradient>
+  </defs>
+  <rect width="480" height="300" rx="18" fill="url(#bg)"/>
+  <text x="30" y="52" font-family="Segoe UI, sans-serif" font-size="40" font-weight="bold" fill="#ffffff">🐾 Amiguinho</text>
+  <!-- capivara -->
+  <g>
+    <rect x="170" y="150" width="140" height="95" rx="45" fill="#a9744f"/>
+    <ellipse cx="240" cy="212" rx="45" ry="26" fill="#c99167" opacity=".7"/>
+    <circle cx="182" cy="108" r="12" fill="#8a5a3b"/><circle cx="298" cy="108" r="12" fill="#8a5a3b"/>
+    <circle cx="182" cy="108" r="5" fill="#c99167"/><circle cx="298" cy="108" r="5" fill="#c99167"/>
+    <rect x="172" y="95" width="136" height="88" rx="38" fill="#a9744f"/>
+    <rect x="184" y="140" width="112" height="44" rx="22" fill="#c99167" opacity=".55"/>
+    <circle cx="225" cy="166" r="3" fill="#3b2b20"/><circle cx="255" cy="166" r="3" fill="#3b2b20"/>
+    <circle cx="216" cy="128" r="7" fill="#3b2b20"/><circle cx="264" cy="128" r="7" fill="#3b2b20"/>
+    <circle cx="218" cy="126" r="2.2" fill="#fff"/><circle cx="266" cy="126" r="2.2" fill="#fff"/>
+    <path d="M 228 146 q 12 11 24 0" stroke="#3b2b20" stroke-width="4" fill="none" stroke-linecap="round"/>
+    <circle cx="196" cy="146" r="8" fill="#f9a8d4" opacity=".6"/><circle cx="284" cy="146" r="8" fill="#f9a8d4" opacity=".6"/>
+  </g>
+  <text x="340" y="120" font-size="34">💖</text>
+  <text x="330" y="200" font-size="30">🍼</text>
+  <text x="120" y="120" font-size="30">🛁</text>
+  <text x="300" y="270" font-size="28">📖</text>
+  <text x="120" y="270" font-size="28">💼</text>
+  <text x="30" y="280" font-family="Segoe UI, sans-serif" font-size="17" fill="#e9d5ff">Crie, nomeie e cuide do seu bichinho virtual!</text>
+</svg>

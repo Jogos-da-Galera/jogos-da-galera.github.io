@@ -170,7 +170,11 @@
     "id": "perdidos-no-jardim",
     "nome": "Perdidos no Jardim",
     "descricao": "Acordou perdido num quintal gigante! 🌿 Escolha seu pikmin — Azul (água 💧), Vermelho (fogo 🔥) ou Amarelo (raio ⚡), cada um com seu tiro e especial — e explore o jardim de cima, estilo Pokémon clássico. Atire em joaninhas gigantes, besouros, baratas e insetos (uns têm MUITA vida!), pegue power-ups de tiro rápido, velocidade e invencibilidade, e carregue as frutas 🍓 até a Nave Mãe (uma cebola vermelha 🧅). O jardim é gerado aleatório: cada partida é diferente!",
-    "categorias": ["Arcade", "Ação", "Exploração"]
+    "categorias": [
+      "Arcade",
+      "Ação",
+      "Exploração"
+    ]
   },
   {
     "id": "mundo-de-blocos",
@@ -190,6 +194,16 @@
       "Estratégia",
       "Simulação",
       "RTS"
+    ]
+  },
+  {
+    "id": "amiguinho",
+    "nome": "Amiguinho",
+    "descricao": "Bichinho virtual estilo tamagotchi! 🐾 Escolha a espécie (capivara, hamster, gatinho, cachorrinho ou pinguim), dê um nome e cuide do seu amiguinho por toda a vida: do ovo até a velhice. Alimente, brinque, dê banho, limpe o coco, dê remédio quando adoecer e coloque pra dormir. Cada fase da vida tem tarefas próprias: estudar na infância e adolescência, trabalhar quando adulto (com bons estudos você ganha o dobro!), e cuidar de um idoso. O relógio avança e a vida também...",
+    "categorias": [
+      "Casual",
+      "Simulação",
+      "Clássicos"
     ]
   }
 ]
