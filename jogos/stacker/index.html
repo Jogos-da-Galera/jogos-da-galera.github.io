@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Stacker Game</title>
+<style>
+  html, body {
+    margin: 0; padding: 0;
+    width: 100%; height: 100%;
+    overflow: hidden;
+    background: #120821;
+    touch-action: none;
+    -webkit-user-select: none; user-select: none;
+    font-family: "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  canvas { display: block; width: 100vw; height: 100vh; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+(() => {
+  "use strict";
+
+  // ---------- Constantes ----------
+  const COLS = 12;              // largura do tabuleiro (colunas)
+  const CEIL_PAD = 88;          // linha do topo (onde fica o presente 🎁)
+  const GROUND_PAD = 140;       // linha do chão
+  const FINAL_LEVEL = 20;       // alcancei o topo 20x = presente final 🎁
+  const HIGH_KEY = "stacker-high";
+
+  // ---------- Estado ----------
+  const cv = document.getElementById("c");
+  const ctx = cv.getContext("2d");
+  let W = 0, H = 0, dpr = 1;
+  let cell = 40, gameW = COLS * 40, groundY = 0, ceilY = 0;
+  let rowsPerLevel = 10;        // linhas para a torre chegar ao topo
+
+  let state = "start";          // start | playing | over | win | levelup
+  let rows = [];                // matriz booleana: rows[0] = base (completa)
+  let level = 1, score = 0;
+  let high = +localStorage.getItem(HIGH_KEY) || 0;
+  let block = null;             // { x (px), w (células), dir (+1/-1) }
+  let msgs = [];                // textos flutuantes
+  let shake = 0;
+  let stateAt = 0;              // quando o estado atual começou (para transições)
+  let stars = [];
+  let last = 0;
+
+  // ---------- Áudio (beeps simples) ----------
+  let ac = null;
+  function audio() {
+    if (!ac) {
+      try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
+    }
+    if (ac && ac.state === "suspended") ac.resume();
+  }
+  function beep(freq, dur = 0.09, type = "square", vol = 0.12, when = 0) {
+    if (!ac) return;
+    const t = ac.currentTime + when;
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = type; o.frequency.value = freq;
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    o.connect(g).connect(ac.destination);
+    o.start(t); o.stop(t + dur + 0.02);
+  }
+  const sndDrop = (overlap) => beep(200 + overlap * 70, 0.08);
+  const sndPerfect = () => { beep(660, 0.09); beep(990, 0.12, "square", 0.12, 0.08); };
+  const sndLevel = () => { beep(440, 0.08); beep(550, 0.08, "square", 0.12, 0.07); beep(660, 0.12, "square", 0.12, 0.14); };
+  const sndOver = () => { beep(300, 0.2, "sawtooth", 0.14); beep(150, 0.35, "sawtooth", 0.14, 0.15); };
+  const sndWin = () => { [523, 659, 784, 1047].forEach((f, i) => beep(f, 0.18, "triangle", 0.16, i * 0.12)); };
+
+  // ---------- Geometria ----------
+  function resize() {
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = window.innerWidth; H = window.innerHeight;
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    groundY = H - GROUND_PAD;
+    ceilY = CEIL_PAD;
+    cell = Math.max(22, Math.min(52, Math.floor((groundY - ceilY - 20) / 12)));
+    gameW = COLS * cell;
+    rowsPerLevel = Math.max(5, Math.floor((groundY - ceilY) / cell) - 1);
+    stars = [];
+    for (let i = 0; i < 70; i++) {
+      stars.push({ x: Math.random() * W, y: Math.random() * H, r: Math.random() * 1.6 + 0.4, p: Math.random() * Math.PI * 2 });
+    }
+    if (block) block.x = Math.max(0, Math.min(block.x, gameW - block.w * cell));
+  }
+  window.addEventListener("resize", resize);
+  resize();
+
+  // ---------- Regras ----------
+  // barra com tamanho variado: níveis iniciais 2-5 células, depois a média encolhe
+  const randomWidth = (lvl) => {
+    const maxB = Math.max(1.2, 5 - (lvl - 1) * 0.12);
+    return 2 + Math.floor(Math.random() * maxB);
+  };
+  const blockSpeed = (lvl) => Math.min(11, 1.6 + (lvl - 1) * 0.24);   // células/s
+  const rowY = (i) => groundY - (i + 1) * cell;                        // topo da linha i (i=0 é a base)
+  const rowRange = (row) => {
+    let a = COLS, b = -1;
+    for (let k = 0; k < COLS; k++) if (row[k]) { a = Math.min(a, k); b = Math.max(b, k); }
+    return [a, b];
+  };
+
+  function newBlock() {
+    const w = randomWidth(level);
+    const dir = Math.random() < 0.5 ? 1 : -1;
+    const x = dir === 1 ? -w * cell : gameW;
+    block = { x, w, dir };
+  }
+
+  function startLevel(lvl) {
+    level = lvl;
+    rows = [new Array(COLS).fill(true)]; // base totalmente preenchida
+    newBlock();
+    stateAt = performance.now();
+    state = "playing";
+  }
+
+  function drop() {
+    if (!block) return;
+    const w = block.w;
+    // trava na grade (matriz booleana, como no original)
+    const c = Math.max(0, Math.min(COLS - w, Math.round(block.x / cell)));
+
+    const below = rows[rows.length - 1];
+    let overlap = 0;
+    for (let k = c; k < c + w; k++) if (below[k]) overlap++;
+    const [a, b] = rowRange(below);
+    const gap = overlap > 0 ? 0 : Math.max(0, a - (c + w), c - (b + 1));
+
+    if (overlap === 0 && gap >= 1) {
+      // não apoiou nem encostou: game over
+      state = "over";
+      stateAt = performance.now();
+      shake = 14;
+      block.overX = c * cell;
+      if (score > high) { high = score; localStorage.setItem(HIGH_KEY, high); }
+      sndOver();
+      return;
+    }
+
+    // trava o bloco inteiro (parte que "pendura" fica no ar, fiel ao original)
+    const row = new Array(COLS).fill(false);
+    for (let k = c; k < c + w; k++) row[k] = true;
+    rows.push(row);
+
+    const x = c * cell, y = rowY(rows.length - 1);
+    const perfect = overlap >= w;
+    if (perfect) {
+      score += 100 + (level - 1) * 10;
+      msgs.push({ text: "PERFEITO! +" + (100 + (level - 1) * 10), x: x + (w * cell) / 2, y, age: 0, color: "#fde047", big: true });
+      sndPerfect();
+    } else if (overlap > 0) {
+      score += 40 + overlap * 5;
+      msgs.push({ text: "+" + (40 + overlap * 5), x: x + (w * cell) / 2, y, age: 0, color: "#a7f3d0" });
+      sndDrop(overlap);
+    } else {
+      score += 15;
+      msgs.push({ text: "sustos... +15", x: x + (w * cell) / 2, y, age: 0, color: "#fca5a5" });
+      sndDrop(0);
+    }
+
+    // a torre chegou ao topo?
+    if (rows.length > rowsPerLevel) {
+      score += 100;
+      msgs.push({ text: "chegou ao topo! +100", x: W / 2, y: ceilY + 46, age: 0, color: "#facc15", big: true });
+      if (level >= FINAL_LEVEL) {
+        score += 1000;
+        if (score > high) { high = score; localStorage.setItem(HIGH_KEY, high); }
+        state = "win";
+        stateAt = performance.now();
+        sndWin();
+        return;
+      }
+      state = "levelup";
+      stateAt = performance.now();
+      sndLevel();
+      return; // próximo nível começa sozinho após a transição
+    }
+
+    newBlock();
+  }
+
+  // ---------- Atualização ----------
+  function update(dt, now) {
+    if (state === "levelup" && now - stateAt > 1500) {
+      startLevel(level + 1);
+    }
+    if (state === "playing" && block) {
+      const speed = blockSpeed(level) * cell;
+      block.x += block.dir * speed * dt;
+      const maxX = gameW - block.w * cell;
+      if (block.x > maxX) { block.x = maxX; block.dir = -1; }
+      if (block.x < 0) { block.x = 0; block.dir = 1; }
+    }
+    shake = Math.max(0, shake - dt * 40);
+    for (const m of msgs) m.age += dt;
+    msgs = msgs.filter(m => m.age < 1.1);
+  }
+
+  // ---------- Desenho ----------
+  function blockColor(i) {
+    const hue = (275 + i * 16) % 360;
+    return {
+      fill: `hsl(${hue} 85% 62%)`,
+      top: `hsl(${hue} 90% 78%)`,
+      dark: `hsl(${hue} 85% 42%)`,
+    };
+  }
+
+  function drawCellBlock(x, y, wpx, i, glow) {
+    const col = blockColor(i);
+    ctx.fillStyle = col.fill;
+    ctx.fillRect(x, y, wpx, cell);
+    ctx.fillStyle = col.top;
+    ctx.fillRect(x, y, wpx, Math.max(3, cell * 0.18));
+    ctx.fillStyle = col.dark;
+    ctx.fillRect(x, y + cell - Math.max(3, cell * 0.14), wpx, Math.max(3, cell * 0.14));
+    if (glow) {
+      ctx.save();
+      ctx.globalAlpha = 0.35;
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(x, y, wpx, Math.max(3, cell * 0.1));
+      ctx.restore();
+    }
+  }
+
+  function drawCeil(now) {
+    // linha do topo com o presente 🎁
+    ctx.save();
+    ctx.strokeStyle = "rgba(250, 204, 21, 0.5)";
+    ctx.lineWidth = 2;
+    ctx.setLineDash([10, 8]);
+    ctx.beginPath();
+    ctx.moveTo(left0(), ceilY - 6);
+    ctx.lineTo(left0() + gameW, ceilY - 6);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    const bounce = Math.sin(now / 400) * 3;
+    ctx.font = Math.round(cell * 0.9) + "px serif";
+    ctx.textAlign = "center";
+    ctx.fillText("🎁", left0() + gameW / 2, ceilY - 14 + bounce);
+    ctx.restore();
+  }
+  const left0 = () => Math.max(0, (W - gameW) / 2);
+
+  function draw(now) {
+    // fundo
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, "#2a1252");
+    g.addColorStop(0.6, "#180a30");
+    g.addColorStop(1, "#0e051e");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+
+    // estrelas
+    for (const s of stars) {
+      const a = 0.35 + 0.35 * Math.sin(now / 900 + s.p);
+      ctx.globalAlpha = a;
+      ctx.fillStyle = "#e9d5ff";
+      ctx.fillRect(s.x, s.y, s.r, s.r);
+    }
+    ctx.globalAlpha = 1;
+
+    if (shake > 0) {
+      ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
+    }
+
+    const left = left0();
+
+    // chão
+    ctx.fillStyle = "rgba(168, 85, 247, 0.35)";
+    ctx.fillRect(left - 20, groundY + cell, gameW + 40, 4);
+
+    // pilha (cresce de baixo pra cima, sempre visível da base ao topo)
+    for (let i = 0; i < rows.length; i++) {
+      const y = rowY(i);
+      if (y + cell < 0) continue;
+      for (let k = 0; k < COLS; k++) {
+        if (rows[i][k]) drawCellBlock(left + k * cell, y, cell, i, false);
+      }
+    }
+
+    // bloco em movimento + indicador de apoio
+    if (state === "playing" && block) {
+      const c = Math.max(0, Math.min(COLS - block.w, Math.round(block.x / cell)));
+      const below = rows[rows.length - 1];
+      const yRow = rowY(rows.length - 1);
+      // indicador: células da linha de baixo cobertas pelo bloco
+      for (let k = c; k < c + block.w; k++) {
+        if (below[k]) {
+          ctx.fillStyle = "rgba(255,255,255,0.28)";
+          ctx.fillRect(left + k * cell, yRow, cell, cell);
+        }
+      }
+      // projeção fantasma
+      const yNext = rowY(rows.length);
+      ctx.globalAlpha = 0.22;
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(left + c * cell, yNext, block.w * cell, cell);
+      ctx.globalAlpha = 1;
+      drawCellBlock(left + block.x, yNext, block.w * cell, rows.length, true);
+    }
+
+    // bloco que causou o game over (vermelho)
+    if (state === "over" && block && block.overX != null) {
+      const y = rowY(rows.length);
+      ctx.globalAlpha = 0.85;
+      ctx.fillStyle = "#ef4444";
+      ctx.fillRect(left + block.overX, y, block.w * cell, cell);
+      ctx.globalAlpha = 1;
+    }
+
+    // topo (presente)
+    if (state === "playing" || state === "levelup" || state === "over") drawCeil(now);
+
+    // textos flutuantes
+    for (const m of msgs) {
+      const a = m.age < 0.8 ? 1 : Math.max(0, 1 - (m.age - 0.8) / 0.3);
+      const rise = m.age * 45;
+      ctx.globalAlpha = a;
+      ctx.fillStyle = m.color;
+      ctx.font = (m.big ? "900 " + Math.round(cell * 0.62) : "800 " + Math.round(cell * 0.5)) + "px 'Segoe UI', Arial, sans-serif";
+      ctx.textAlign = "center";
+      ctx.shadowColor = "rgba(0,0,0,0.6)";
+      ctx.shadowBlur = 6;
+      ctx.fillText(m.text, m.x, m.y - cell / 2 - rise);
+      ctx.shadowBlur = 0;
+      ctx.globalAlpha = 1;
+    }
+
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    // ---------- HUD ----------
+    const fs = Math.max(14, Math.min(20, W * 0.032));
+    ctx.font = "700 " + fs + "px 'Segoe UI', Arial, sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillStyle = "#c4b5fd";
+    ctx.fillText("PONTOS", 16, fs + 12);
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "900 " + fs * 1.5 + "px 'Segoe UI', Arial, sans-serif";
+    ctx.fillText(score, 16, fs * 2.6);
+    ctx.textAlign = "right";
+    ctx.font = "700 " + fs + "px 'Segoe UI', Arial, sans-serif";
+    ctx.fillStyle = "#c4b5fd";
+    ctx.fillText("NÍVEL " + level + "/" + FINAL_LEVEL, W - 16, fs + 12);
+    ctx.fillStyle = "#facc15";
+    ctx.font = "900 " + fs * 1.5 + "px 'Segoe UI', Arial, sans-serif";
+    ctx.fillText((rows.length - 1) + "⬆", W - 16, fs * 2.6);
+    ctx.font = "700 " + fs + "px 'Segoe UI', Arial, sans-serif";
+    ctx.fillStyle = "#8b5cf6";
+    ctx.textAlign = "center";
+    ctx.fillText("RECORDE " + high, W / 2, fs + 12);
+
+    // ---------- Overlays ----------
+    if (state !== "playing") {
+      const overlay = state === "levelup" ? 0.55 : 0.72;
+      ctx.fillStyle = `rgba(10, 4, 22, ${overlay})`;
+      ctx.fillRect(0, 0, W, H);
+      ctx.textAlign = "center";
+      const t = now / 700;
+
+      if (state === "start") {
+        ctx.fillStyle = "#e879f9";
+        ctx.font = "900 " + fs * 3.2 + "px 'Segoe UI', Arial, sans-serif";
+        ctx.fillText("STACKER", W / 2, H * 0.30);
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "700 " + fs * 1.2 + "px 'Segoe UI', Arial, sans-serif";
+        ctx.fillText("empilhe blocos até o presente no topo! 🎁", W / 2, H * 0.40);
+        ctx.fillStyle = "#c4b5fd";
+        ctx.font = "600 " + fs + "px 'Segoe UI', Arial, sans-serif";
+        const ly = H * 0.50, dl = fs * 1.4;
+        ctx.fillText("• toque / clique / espaço solta a barra", W / 2, ly);
+        ctx.fillText("• chegou ao topo? sobe de nível — e fica mais rápido!", W / 2, ly + dl);
+        ctx.fillText("• apoiar vale pontos, encostar de lado também (justo!)", W / 2, ly + dl * 2);
+        ctx.fillText("• PERFEITO vale muito mais", W / 2, ly + dl * 3);
+        const pulse = 0.6 + 0.4 * Math.sin(t * 2);
+        ctx.globalAlpha = pulse;
+        ctx.fillStyle = "#facc15";
+        ctx.font = "900 " + fs * 1.3 + "px 'Segoe UI', Arial, sans-serif";
+        ctx.fillText("clique para começar", W / 2, H * 0.85);
+        ctx.globalAlpha = 1;
+      } else if (state === "levelup") {
+        ctx.fillStyle = "#e879f9";
+        ctx.font = "900 " + fs * 2.6 + "px 'Segoe UI', Arial, sans-serif";
+        ctx.fillText("NÍVEL " + (level + 1), W / 2, H * 0.42);
+        ctx.fillStyle = "#facc15";
+        ctx.font = "800 " + fs * 1.3 + "px 'Segoe UI', Arial, sans-serif";
+        ctx.fillText("mais rápido! ⚡", W / 2, H * 0.52);
+      } else if (state === "over") {
+        ctx.fillStyle = "#ef4444";
+        ctx.font = "900 " + fs * 2.8 + "px 'Segoe UI', Arial, sans-serif";
+        ctx.fillText("FIM DE JOGO", W / 2, H * 0.36);
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "800 " + fs * 1.5 + "px 'Segoe UI', Arial, sans-serif";
+        ctx.fillText("pontuação: " + score + "  •  nível " + level, W / 2, H * 0.48);
+        if (score >= high && score > 0) {
+          ctx.fillStyle = "#facc15";
+          ctx.font = "900 " + fs * 1.3 + "px 'Segoe UI', Arial, sans-serif";
+          ctx.fillText("🏆 NOVO RECORDE!", W / 2, H * 0.57);
+        }
+        const pulse = 0.6 + 0.4 * Math.sin(t * 2);
+        ctx.globalAlpha = pulse;
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "700 " + fs * 1.2 + "px 'Segoe UI', Arial, sans-serif";
+        ctx.fillText("clique para jogar de novo", W / 2, H * 0.75);
+        ctx.globalAlpha = 1;
+      } else if (state === "win") {
+        ctx.fillStyle = "#facc15";
+        ctx.font = "900 " + fs * 2.4 + "px 'Segoe UI', Arial, sans-serif";
+        ctx.fillText("🎁 VOCÊ GANHOU O PRESENTE! 🎁", W / 2, H * 0.38);
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "800 " + fs * 1.5 + "px 'Segoe UI', Arial, sans-serif";
+        ctx.fillText("bônus: +1000 | total: " + score, W / 2, H * 0.5);
+        const pulse = 0.6 + 0.4 * Math.sin(t * 2);
+        ctx.globalAlpha = pulse;
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "700 " + fs * 1.2 + "px 'Segoe UI', Arial, sans-serif";
+        ctx.fillText("clique para jogar de novo", W / 2, H * 0.7);
+        ctx.globalAlpha = 1;
+      }
+    }
+  }
+
+  // ---------- Debug (para testes) ----------
+  window.__stacker = () => ({
+    state, level, score, rows: rows.length, rowsPerLevel,
+    bx: block ? Math.round(block.x / cell) : null,
+    tw: block ? block.w : null,
+    top: rows.length ? rowRange(rows[rows.length - 1]) : [0, COLS - 1],
+  });
+
+  // ---------- Loop ----------
+  function frame(now) {
+    const dt = Math.min(0.05, (now - last) / 1000 || 0.016);
+    last = now;
+    update(dt, now);
+    draw(now);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+  // ---------- Input ----------
+  function act() {
+    audio();
+    if (state === "start" || (state === "over" && performance.now() - stateAt > 400) || state === "win") {
+      startLevel(1);
+      score = 0;
+    } else if (state === "playing") {
+      drop();
+    }
+  }
+  cv.addEventListener("pointerdown", (e) => { e.preventDefault(); act(); });
+  window.addEventListener("keydown", (e) => {
+    if (e.code === "Space" || e.code === "Enter") {
+      e.preventDefault();
+      act();
+    } else if (e.key && e.key.toLowerCase() === "r") {
+      if (state !== "start") { startLevel(1); score = 0; }
+    }
+  });
+})();
+</script>
+</body>
+</html>

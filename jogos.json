@@ -197,6 +197,16 @@
     ]
   },
   {
+    "id": "stacker",
+    "nome": "Stacker Game",
+    "descricao": "O clássico empilhador! 🧱 Solte os blocos (clique, toque ou espaço) e monte a torre até o presente no topo. Apoiar nos blocos de baixo vale pontos, encostar de lado também conta — mas não apoiar em nada... caiu! Empilhada PERFEITA vale muito mais, e a cada nível os blocos ficam menores e mais rápidos. 🎁",
+    "categorias": [
+      "Clássicos",
+      "Arcade",
+      "Reflexo"
+    ]
+  },
+  {
     "id": "amiguinho",
     "nome": "Amiguinho",
     "descricao": "Bichinho virtual estilo tamagotchi! 🐾 Escolha a espécie (capivara, hamster, gatinho, cachorrinho ou pinguim), dê um nome e cuide do seu amiguinho por toda a vida: do ovo até a velhice. Alimente, brinque, dê banho, limpe o coco, dê remédio quando adoecer e coloque pra dormir. Cada fase da vida tem tarefas próprias: estudar na infância e adolescência, trabalhar quando adulto (com bons estudos você ganha o dobro!), e cuidar de um idoso. O relógio avança e a vida também...",
