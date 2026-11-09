@@ -199,7 +199,7 @@
   {
     "id": "stacker",
     "nome": "Stacker Game",
-    "descricao": "O clássico empilhador! 🧱 Solte os blocos (clique, toque ou espaço) e monte a torre até o presente no topo. Apoiar nos blocos de baixo vale pontos, encostar de lado também conta — mas não apoiar em nada... caiu! Empilhada PERFEITA vale muito mais, e a cada nível os blocos ficam menores e mais rápidos. 🎁",
+    "descricao": "O clássico empilhador! 🧱 Solte os blocos (clique, toque ou espaço) e monte a torre até o presente no topo. Os tamanhos variam (de 1 até vários tiles!) — mas PRECISA apoiar: pelo menos 1 tile em cima do anterior. Apoiou inteiro? PERFEITO vale mais! Chegou ao topo? Sobe de nível, fica mais rápido e começa o relógio ⏱: o recorde de tempo de cada nível é salvo. 🎁",
     "categorias": [
       "Clássicos",
       "Arcade",

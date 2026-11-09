@@ -27,8 +27,9 @@
   const COLS = 12;              // largura do tabuleiro (colunas)
   const CEIL_PAD = 88;          // linha do topo (onde fica o presente 🎁)
   const GROUND_PAD = 140;       // linha do chão
-  const FINAL_LEVEL = 20;       // alcancei o topo 20x = presente final 🎁
+  const FINAL_LEVEL = 20;       // cheguei ao topo 20x = presente final 🎁
   const HIGH_KEY = "stacker-high";
+  const RECS_KEY = "stacker-records"; // { nível: milissegundos }
 
   // ---------- Estado ----------
   const cv = document.getElementById("c");
@@ -41,10 +42,11 @@
   let rows = [];                // matriz booleana: rows[0] = base (completa)
   let level = 1, score = 0;
   let high = +localStorage.getItem(HIGH_KEY) || 0;
-  let block = null;             // { x (px), w (células), dir (+1/-1) }
+  let records = JSON.parse(localStorage.getItem(RECS_KEY) || "{}");
+  let block = null;             // { x (px), dir (+1/-1) }
   let msgs = [];                // textos flutuantes
   let shake = 0;
-  let stateAt = 0;              // quando o estado atual começou (para transições)
+  let stateAt = 0, levelStart = 0, lastLevelTime = 0, lastLevelRec = 0;
   let stars = [];
   let last = 0;
 
@@ -66,7 +68,7 @@
     o.connect(g).connect(ac.destination);
     o.start(t); o.stop(t + dur + 0.02);
   }
-  const sndDrop = (overlap) => beep(200 + overlap * 70, 0.08);
+  const sndDrop = () => beep(330, 0.06);
   const sndPerfect = () => { beep(660, 0.09); beep(990, 0.12, "square", 0.12, 0.08); };
   const sndLevel = () => { beep(440, 0.08); beep(550, 0.08, "square", 0.12, 0.07); beep(660, 0.12, "square", 0.12, 0.14); };
   const sndOver = () => { beep(300, 0.2, "sawtooth", 0.14); beep(150, 0.35, "sawtooth", 0.14, 0.15); };
@@ -87,27 +89,34 @@
     for (let i = 0; i < 70; i++) {
       stars.push({ x: Math.random() * W, y: Math.random() * H, r: Math.random() * 1.6 + 0.4, p: Math.random() * Math.PI * 2 });
     }
-    if (block) block.x = Math.max(0, Math.min(block.x, gameW - block.w * cell));
+    if (block) block.x = Math.max(0, Math.min(block.x, gameW - cell));
   }
   window.addEventListener("resize", resize);
   resize();
 
   // ---------- Regras ----------
-  // barra com tamanho variado: níveis iniciais 2-5 células, depois a média encolhe
-  const randomWidth = (lvl) => {
-    const maxB = Math.max(1.2, 5 - (lvl - 1) * 0.12);
-    return 2 + Math.floor(Math.random() * maxB);
-  };
   const blockSpeed = (lvl) => Math.min(11, 1.6 + (lvl - 1) * 0.24);   // células/s
+  // barras de tamanho variado: cada nível começa com blocos maiores e
+  // vai encolhendo conforme a torre sobe; o último nível é só de 1 tile.
+  const randomWidth = (lvl, p) => {
+    if (lvl >= FINAL_LEVEL) return 1;
+    const base = Math.max(1, 4 - Math.floor((lvl - 1) / 5)); // 1-5:4, 6-10:3, 11-15:2, 16+:1
+    let maxW = base;
+    if (p < 0.35) maxW = Math.min(5, base + 1);   // começo do nível: maiores
+    else if (p > 0.7) maxW = Math.max(1, base - 1); // lá pra cima: menores
+    return 1 + Math.floor(Math.random() * maxW);
+  };
   const rowY = (i) => groundY - (i + 1) * cell;                        // topo da linha i (i=0 é a base)
   const rowRange = (row) => {
     let a = COLS, b = -1;
     for (let k = 0; k < COLS; k++) if (row[k]) { a = Math.min(a, k); b = Math.max(b, k); }
     return [a, b];
   };
+  const fmtTime = (ms) => (ms / 1000).toFixed(1) + "s";
 
   function newBlock() {
-    const w = randomWidth(level);
+    const p = (rows.length - 1) / rowsPerLevel; // progresso da torre (0 no chão, 1 no topo)
+    const w = randomWidth(level, p);
     const dir = Math.random() < 0.5 ? 1 : -1;
     const x = dir === 1 ? -w * cell : gameW;
     block = { x, w, dir };
@@ -118,6 +127,8 @@
     rows = [new Array(COLS).fill(true)]; // base totalmente preenchida
     newBlock();
     stateAt = performance.now();
+    levelStart = stateAt;
+    lastLevelTime = 0;
     state = "playing";
   }
 
@@ -126,15 +137,12 @@
     const w = block.w;
     // trava na grade (matriz booleana, como no original)
     const c = Math.max(0, Math.min(COLS - w, Math.round(block.x / cell)));
-
     const below = rows[rows.length - 1];
+
+    // PRECISA apoiar: ao menos 1 tile EM CIMA de outro. Sem apoio = caiu.
     let overlap = 0;
     for (let k = c; k < c + w; k++) if (below[k]) overlap++;
-    const [a, b] = rowRange(below);
-    const gap = overlap > 0 ? 0 : Math.max(0, a - (c + w), c - (b + 1));
-
-    if (overlap === 0 && gap >= 1) {
-      // não apoiou nem encostou: game over
+    if (overlap === 0) {
       state = "over";
       stateAt = performance.now();
       shake = 14;
@@ -144,30 +152,33 @@
       return;
     }
 
-    // trava o bloco inteiro (parte que "pendura" fica no ar, fiel ao original)
+    // trava o bloco inteiro (a parte sem apoio fica "pendurada", fiel ao original)
     const row = new Array(COLS).fill(false);
     for (let k = c; k < c + w; k++) row[k] = true;
     rows.push(row);
-
     const x = c * cell, y = rowY(rows.length - 1);
-    const perfect = overlap >= w;
-    if (perfect) {
-      score += 100 + (level - 1) * 10;
-      msgs.push({ text: "PERFEITO! +" + (100 + (level - 1) * 10), x: x + (w * cell) / 2, y, age: 0, color: "#fde047", big: true });
+    if (overlap >= w) {
+      score += 50;
+      msgs.push({ text: "PERFEITO! +50", x: x + (w * cell) / 2, y, age: 0, color: "#fde047", big: true });
       sndPerfect();
-    } else if (overlap > 0) {
-      score += 40 + overlap * 5;
-      msgs.push({ text: "+" + (40 + overlap * 5), x: x + (w * cell) / 2, y, age: 0, color: "#a7f3d0" });
-      sndDrop(overlap);
     } else {
-      score += 15;
-      msgs.push({ text: "sustos... +15", x: x + (w * cell) / 2, y, age: 0, color: "#fca5a5" });
-      sndDrop(0);
+      score += 10 + overlap * 5;
+      msgs.push({ text: "+" + (10 + overlap * 5), x: x + (w * cell) / 2, y, age: 0, color: "#a7f3d0" });
+      sndDrop();
     }
 
     // a torre chegou ao topo?
     if (rows.length > rowsPerLevel) {
       score += 100;
+      const t = performance.now() - levelStart;
+      lastLevelTime = t;
+      const rec = records[level];
+      const novoRec = !rec || t < rec;
+      if (novoRec) {
+        records[level] = t;
+        localStorage.setItem(RECS_KEY, JSON.stringify(records));
+      }
+      lastLevelRec = records[level];
       msgs.push({ text: "chegou ao topo! +100", x: W / 2, y: ceilY + 46, age: 0, color: "#facc15", big: true });
       if (level >= FINAL_LEVEL) {
         score += 1000;
@@ -229,6 +240,7 @@
       ctx.restore();
     }
   }
+  const left0 = () => Math.max(0, (W - gameW) / 2);
 
   function drawCeil(now) {
     // linha do topo com o presente 🎁
@@ -247,7 +259,6 @@
     ctx.fillText("🎁", left0() + gameW / 2, ceilY - 14 + bounce);
     ctx.restore();
   }
-  const left0 = () => Math.max(0, (W - gameW) / 2);
 
   function draw(now) {
     // fundo
@@ -291,12 +302,10 @@
       const c = Math.max(0, Math.min(COLS - block.w, Math.round(block.x / cell)));
       const below = rows[rows.length - 1];
       const yRow = rowY(rows.length - 1);
-      // indicador: células da linha de baixo cobertas pelo bloco
+      // destaca as células de destino: verde onde apoia, vermelho onde está vazio
       for (let k = c; k < c + block.w; k++) {
-        if (below[k]) {
-          ctx.fillStyle = "rgba(255,255,255,0.28)";
-          ctx.fillRect(left + k * cell, yRow, cell, cell);
-        }
+        ctx.fillStyle = below[k] ? "rgba(167, 243, 208, 0.4)" : "rgba(239, 68, 68, 0.35)";
+        ctx.fillRect(left + k * cell, yRow, cell, cell);
       }
       // projeção fantasma
       const yNext = rowY(rows.length);
@@ -352,10 +361,18 @@
     ctx.fillStyle = "#facc15";
     ctx.font = "900 " + fs * 1.5 + "px 'Segoe UI', Arial, sans-serif";
     ctx.fillText((rows.length - 1) + "⬆", W - 16, fs * 2.6);
-    ctx.font = "700 " + fs + "px 'Segoe UI', Arial, sans-serif";
-    ctx.fillStyle = "#8b5cf6";
+    // centro: tempo do nível + recorde
+    const tNow = state === "playing" ? performance.now() - levelStart : lastLevelTime;
     ctx.textAlign = "center";
-    ctx.fillText("RECORDE " + high, W / 2, fs + 12);
+    ctx.font = "700 " + fs + "px 'Segoe UI', Arial, sans-serif";
+    ctx.fillStyle = "#c4b5fd";
+    ctx.fillText("TEMPO", W / 2, fs + 12);
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "900 " + fs * 1.5 + "px 'Segoe UI', Arial, sans-serif";
+    ctx.fillText(fmtTime(tNow), W / 2, fs * 2.6);
+    ctx.font = "700 " + Math.round(fs * 0.85) + "px 'Segoe UI', Arial, sans-serif";
+    ctx.fillStyle = "#8b5cf6";
+    ctx.fillText("recorde: " + (records[level] ? fmtTime(records[level]) : "--"), W / 2, fs * 3.4);
 
     // ---------- Overlays ----------
     if (state !== "playing") {
@@ -368,30 +385,41 @@
       if (state === "start") {
         ctx.fillStyle = "#e879f9";
         ctx.font = "900 " + fs * 3.2 + "px 'Segoe UI', Arial, sans-serif";
-        ctx.fillText("STACKER", W / 2, H * 0.30);
+        ctx.fillText("STACKER", W / 2, H * 0.28);
         ctx.fillStyle = "#ffffff";
         ctx.font = "700 " + fs * 1.2 + "px 'Segoe UI', Arial, sans-serif";
-        ctx.fillText("empilhe blocos até o presente no topo! 🎁", W / 2, H * 0.40);
+        ctx.fillText("empilhe blocos até o presente no topo! 🎁", W / 2, H * 0.38);
         ctx.fillStyle = "#c4b5fd";
         ctx.font = "600 " + fs + "px 'Segoe UI', Arial, sans-serif";
-        const ly = H * 0.50, dl = fs * 1.4;
-        ctx.fillText("• toque / clique / espaço solta a barra", W / 2, ly);
-        ctx.fillText("• chegou ao topo? sobe de nível — e fica mais rápido!", W / 2, ly + dl);
-        ctx.fillText("• apoiar vale pontos, encostar de lado também (justo!)", W / 2, ly + dl * 2);
-        ctx.fillText("• PERFEITO vale muito mais", W / 2, ly + dl * 3);
+        const ly = H * 0.48, dl = fs * 1.4;
+        ctx.fillText("• toque / clique / espaço solta o bloco", W / 2, ly);
+        ctx.fillText("• os tamanhos variam — PRECISA apoiar em cima do anterior", W / 2, ly + dl);
+        ctx.fillText("• apoiou inteiro? PERFEITO vale mais!", W / 2, ly + dl * 2);
+        ctx.fillText("• chegou ao topo? sobe de nível — mais rápido, contra o relógio! ⏱", W / 2, ly + dl * 3);
+        ctx.fillText("• o recorde de tempo de cada nível é salvo", W / 2, ly + dl * 4);
+        ctx.fillStyle = "#8b5cf6";
+        ctx.fillText("recorde de pontos: " + high, W / 2, ly + dl * 5);
         const pulse = 0.6 + 0.4 * Math.sin(t * 2);
         ctx.globalAlpha = pulse;
         ctx.fillStyle = "#facc15";
         ctx.font = "900 " + fs * 1.3 + "px 'Segoe UI', Arial, sans-serif";
-        ctx.fillText("clique para começar", W / 2, H * 0.85);
+        ctx.fillText("clique para começar", W / 2, H * 0.87);
         ctx.globalAlpha = 1;
       } else if (state === "levelup") {
         ctx.fillStyle = "#e879f9";
         ctx.font = "900 " + fs * 2.6 + "px 'Segoe UI', Arial, sans-serif";
-        ctx.fillText("NÍVEL " + (level + 1), W / 2, H * 0.42);
+        ctx.fillText("NÍVEL " + (level + 1), W / 2, H * 0.38);
         ctx.fillStyle = "#facc15";
         ctx.font = "800 " + fs * 1.3 + "px 'Segoe UI', Arial, sans-serif";
-        ctx.fillText("mais rápido! ⚡", W / 2, H * 0.52);
+        ctx.fillText("mais rápido! ⚡", W / 2, H * 0.48);
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "800 " + fs * 1.2 + "px 'Segoe UI', Arial, sans-serif";
+        ctx.fillText("tempo do nível " + level + ": " + fmtTime(lastLevelTime), W / 2, H * 0.58);
+        if (!records[level] || lastLevelTime <= records[level]) {
+          ctx.fillStyle = "#fde047";
+          ctx.font = "900 " + fs * 1.2 + "px 'Segoe UI', Arial, sans-serif";
+          ctx.fillText("🏆 NOVO RECORDE DO NÍVEL " + level + "!", W / 2, H * 0.66);
+        }
       } else if (state === "over") {
         ctx.fillStyle = "#ef4444";
         ctx.font = "900 " + fs * 2.8 + "px 'Segoe UI', Arial, sans-serif";
@@ -413,10 +441,13 @@
       } else if (state === "win") {
         ctx.fillStyle = "#facc15";
         ctx.font = "900 " + fs * 2.4 + "px 'Segoe UI', Arial, sans-serif";
-        ctx.fillText("🎁 VOCÊ GANHOU O PRESENTE! 🎁", W / 2, H * 0.38);
+        ctx.fillText("🎁 VOCÊ GANHOU O PRESENTE! 🎁", W / 2, H * 0.34);
         ctx.fillStyle = "#ffffff";
         ctx.font = "800 " + fs * 1.5 + "px 'Segoe UI', Arial, sans-serif";
-        ctx.fillText("bônus: +1000 | total: " + score, W / 2, H * 0.5);
+        ctx.fillText("bônus: +1000 | total: " + score, W / 2, H * 0.46);
+        ctx.fillStyle = "#c4b5fd";
+        ctx.font = "700 " + fs * 1.1 + "px 'Segoe UI', Arial, sans-serif";
+        ctx.fillText("tempo do nível 20: " + fmtTime(lastLevelTime), W / 2, H * 0.55);
         const pulse = 0.6 + 0.4 * Math.sin(t * 2);
         ctx.globalAlpha = pulse;
         ctx.fillStyle = "#ffffff";
@@ -428,11 +459,14 @@
   }
 
   // ---------- Debug (para testes) ----------
+  window.__stackerTele = (col) => { if (block && state === "playing") block.x = col * cell; };
+  window.__stackerWidth = (lvl, p) => randomWidth(lvl, p);
   window.__stacker = () => ({
     state, level, score, rows: rows.length, rowsPerLevel,
     bx: block ? Math.round(block.x / cell) : null,
     tw: block ? block.w : null,
     top: rows.length ? rowRange(rows[rows.length - 1]) : [0, COLS - 1],
+    time: state === "playing" ? performance.now() - levelStart : lastLevelTime,
   });
 
   // ---------- Loop ----------
@@ -449,8 +483,8 @@
   function act() {
     audio();
     if (state === "start" || (state === "over" && performance.now() - stateAt > 400) || state === "win") {
-      startLevel(1);
       score = 0;
+      startLevel(1);
     } else if (state === "playing") {
       drop();
     }
@@ -461,7 +495,7 @@
       e.preventDefault();
       act();
     } else if (e.key && e.key.toLowerCase() === "r") {
-      if (state !== "start") { startLevel(1); score = 0; }
+      if (state !== "start") { score = 0; startLevel(1); }
     }
   });
 })();
