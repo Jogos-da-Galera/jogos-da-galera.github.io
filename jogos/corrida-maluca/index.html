@@ -125,7 +125,7 @@
     <div class="row">
       <button class="btn" id="btn-play">▶ Correr!</button>
     </div>
-    <div class="kbd">⬅️ ➡️ / A D = trocar de faixa &nbsp;•&nbsp; ⬆ / Espaço / W = pular (de novo no ar = duplo) &nbsp;•&nbsp; 📱 deslize p/ os lados = faixa, deslize p/ cima ou toque = pular</div>
+    <div class="kbd">⬅️ ➡️ / A D = trocar de faixa &nbsp;•&nbsp; ⬆ / Espaço / W = pular (de novo no ar = duplo) &nbsp;•&nbsp; 📱 <b>toque na faixa do corredor</b> = pular, <b>toque em outra faixa</b> = ir pra ela</div>
   </div>
 
   <!-- GAME OVER -->
@@ -508,8 +508,8 @@ const S = {
 function resetGame() {
   S.playerX = 0; S.lane = 0;
   S.py = 0; S.vy = 0; S.onGround = true; S.jumps = 0;
-  S.speed = 4.5; S.dist = 0; S.score = 0; S.coins = 0; S.nextMilestone = 100;
-  S.obstacles = []; S.coinsL = []; S.popups = []; S.spawnIn = 460;
+  S.speed = 3.2; S.dist = 0; S.score = 0; S.coins = 0; S.nextMilestone = 100;
+  S.obstacles = []; S.coinsL = []; S.popups = []; S.spawnIn = 700;
   S.shake = 0;
   S.sides = [];
   for (let side of [-1, 1]) {
@@ -907,21 +907,30 @@ window.addEventListener("keydown", (e) => {
   if (e.key === "ArrowUp" || e.key === " " || e.key.toLowerCase() === "w") jump();
 });
 
-// toque: deslize p/ os lados = faixa, deslize p/ cima ou toque = pulo
-let pStart = null;
+// toque: toque na faixa do corredor = pular; toque em outra faixa = ir pra ela
+function setLane(l) {
+  if (S.state !== "playing") return;
+  l = Math.max(-1, Math.min(1, l));
+  if (l !== S.lane) { S.lane = l; beep(420, 0.04, "triangle", 0.025); }
+}
+function tapLane(e) {
+  const r = cvs.getBoundingClientRect();
+  const x = (e.clientX - r.left) * (W / r.width);
+  const y = (e.clientY - r.top) * (H / r.height);
+  if (y < HORIZON) return null; // céu: não conta
+  const s = (y - HORIZON) / (GY0 - HORIZON); // profundidade do toque
+  if (s <= 0.02) return null;
+  const l = (x - W / 2) / (LANE_W * s); // faixa sob o dedo
+  return Math.max(-1, Math.min(1, l));
+}
 cvs.addEventListener("pointerdown", (e) => {
-  pStart = { x: e.clientX, y: e.clientY, t: Date.now() };
+  if (S.state !== "playing") return;
+  const l = tapLane(e);
+  if (l === null) return;
+  const lane = Math.round(l);
+  if (lane === S.lane) jump(); // tocou na própria faixa: pula (de novo = duplo)
+  else setLane(lane);           // tocou em outra faixa: vai pra lá
 });
-cvs.addEventListener("pointerup", (e) => {
-  if (!pStart) return;
-  const dx = e.clientX - pStart.x, dy = e.clientY - pStart.y;
-  pStart = null;
-  if (S.state !== "playing") { startGame(); return; }
-  if (Math.abs(dx) > 32 && Math.abs(dx) > Math.abs(dy)) moveLane(dx > 0 ? 1 : -1);
-  else if (dy < -28) jump();
-  else if (Math.abs(dx) < 14 && Math.abs(dy) < 14) jump(); // toque seco
-});
-cvs.addEventListener("pointercancel", () => { pStart = null; });
 
 document.getElementById("btn-play").addEventListener("click", startGame);
 document.getElementById("btn-retry").addEventListener("click", startGame);

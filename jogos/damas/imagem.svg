@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="300" viewBox="0 0 480 300">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2b1465"/>
+      <stop offset="1" stop-color="#12082b"/>
+    </linearGradient>
+    <radialGradient id="br" cx="0.35" cy="0.3" r="0.9">
+      <stop offset="0" stop-color="#fffdf5"/>
+      <stop offset="0.7" stop-color="#f5f0e6"/>
+      <stop offset="1" stop-color="#c9bb9d"/>
+    </radialGradient>
+    <radialGradient id="pr" cx="0.35" cy="0.3" r="0.9">
+      <stop offset="0" stop-color="#55496b"/>
+      <stop offset="0.7" stop-color="#2b2333"/>
+      <stop offset="1" stop-color="#120d18"/>
+    </radialGradient>
+    <clipPath id="tab">
+      <rect x="150" y="30" width="300" height="240" rx="14"/>
+    </clipPath>
+  </defs>
+
+  <rect width="480" height="300" fill="url(#bg)"/>
+
+  <!-- tabuleiro -->
+  <g clip-path="url(#tab)">
+    <g>
+      <!-- 5 col x 4 vis  de casas 60px -->
+      <rect x="150" y="30" width="300" height="240" fill="#e8d9bd"/>
+      <g fill="#43265e">
+        <rect x="150" y="30" width="60" height="60"/><rect x="270" y="30" width="60" height="60"/><rect x="390" y="30" width="60" height="60"/>
+        <rect x="210" y="90" width="60" height="60"/><rect x="330" y="90" width="60" height="60"/>
+        <rect x="150" y="150" width="60" height="60"/><rect x="270" y="150" width="60" height="60"/><rect x="390" y="150" width="60" height="60"/>
+        <rect x="210" y="210" width="60" height="60"/><rect x="330" y="210" width="60" height="60"/>
+      </g>
+    </g>
+    <!-- peças pretas (topo, casas escuras) -->
+    <g>
+      <circle cx="180" cy="60" r="21" fill="url(#pr)" stroke="#8b7fb8" stroke-width="3"/>
+      <circle cx="300" cy="60" r="21" fill="url(#pr)" stroke="#8b7fb8" stroke-width="3"/>
+      <circle cx="420" cy="60" r="21" fill="url(#pr)" stroke="#8b7fb8" stroke-width="3"/>
+      <circle cx="240" cy="120" r="21" fill="url(#pr)" stroke="#8b7fb8" stroke-width="3"/>
+      <circle cx="360" cy="120" r="21" fill="url(#pr)" stroke="#8b7fb8" stroke-width="3"/>
+    </g>
+    <!-- peças brancas (base, casas escuras) -->
+    <g>
+      <circle cx="180" cy="180" r="21" fill="url(#br)" stroke="#b89b5e" stroke-width="3"/>
+      <circle cx="420" cy="180" r="21" fill="url(#br)" stroke="#b89b5e" stroke-width="3"/>
+      <circle cx="240" cy="240" r="21" fill="url(#br)" stroke="#b89b5e" stroke-width="3"/>
+      <circle cx="360" cy="240" r="21" fill="url(#br)" stroke="#b89b5e" stroke-width="3"/>
+    </g>
+    <!-- branca dama (coroa) -->
+    <circle cx="300" cy="180" r="22" fill="url(#br)" stroke="#b89b5e" stroke-width="3"/>
+    <text x="300" y="188" font-family="sans-serif" font-size="20" text-anchor="middle">👑</text>
+  </g>
+  <rect x="150" y="30" width="300" height="240" rx="14" fill="none" stroke="#a78bfa" stroke-width="4"/>
+
+  <!-- título -->
+  <text x="24" y="130" font-family="'Segoe UI', system-ui, sans-serif" font-size="52" font-weight="800" fill="#facc15">Damas</text>
+  <text x="24" y="164" font-family="'Segoe UI', system-ui, sans-serif" font-size="22" font-weight="600" fill="#ede9fe">Brasileiras</text>
+  <text x="24" y="196" font-family="'Segoe UI', system-ui, sans-serif" font-size="17" fill="#b8a8e8">10×10 · 20 peças</text>
+</svg>

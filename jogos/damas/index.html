@@ -24,12 +24,18 @@
     background: radial-gradient(1200px 600px at 50% -10%, #2b1465 0%, var(--bg2) 45%, var(--bg) 100%);
     color: var(--texto);
     display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
     min-height: 100vh;
     padding: 12px;
     user-select: none;
+  }
+
+  /* margin:auto centraliza quando cabe e permite rolagem quando não cabe */
+  .col {
+    margin: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
   }
 
   h1 {
@@ -80,6 +86,8 @@
   /* ---- Placar ---- */
   .placar {
     display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
     gap: 8px;
     margin-bottom: 12px;
   }
@@ -107,7 +115,7 @@
     display: grid;
     grid-template-columns: repeat(10, 1fr);
     grid-template-rows: repeat(10, 1fr);
-    width: min(94vw, 480px, 78vh);
+    width: min(94vw, 460px, 68vh);
     aspect-ratio: 1;
     border: 4px solid #4c2f9e;
     border-radius: 10px;
@@ -192,19 +200,23 @@
     text-align: center;
   }
 
-  .acoes { margin-top: 12px; display: flex; gap: 10px; }
+  .acoes { margin-top: 12px; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+  .acoes .btn.ghost { min-width: 0; padding: 10px 14px; font-size: 0.9rem; }
 
   .hidden { display: none !important; }
 </style>
 </head>
 <body>
 
+  <div class="col">
+
   <h1>Damas Brasileiras</h1>
 
   <div class="menu" id="menu">
-    <p class="sub">Tabuleiro 10×10 · 20 peças · captura obrigatória!<br>Escolha como quer jogar:</p>
+    <p class="sub">Tabuleiro 10×10 · 20 peças por lado<br>Escolha como quer jogar:</p>
     <button class="btn" onclick="iniciarJogo('cpu')">🤖 Jogar contra a máquina</button>
     <button class="btn" onclick="iniciarJogo('pvp')">👥 Dois jogadores</button>
+    <button class="btn ghost" id="btn-forcar-menu" onclick="alternarForcar()"></button>
   </div>
 
   <div id="jogo" class="hidden" style="display:flex; flex-direction:column; align-items:center;">
@@ -220,8 +232,11 @@
 
     <div class="acoes">
       <button class="btn ghost" onclick="novaPartida()">🔄 Nova partida</button>
+      <button class="btn ghost" id="btn-forcar" onclick="alternarForcar()"></button>
       <button class="btn ghost" onclick="voltarMenu()">🏠 Menu</button>
     </div>
+  </div>
+
   </div>
 
 <script>
@@ -430,6 +445,7 @@
 
   function melhorJogadaIA(gr, cor) {
     const legal = jogadasLegais(gr, cor);
+    if (!legal.length) return null;
     const caps = legal[0].capt.length ? legal : null;
     const movs = (caps || legal).slice();
     // ordem: capturas maiores primeiro, depois avanço
@@ -438,7 +454,7 @@
     let best = cor === PR ? -Infinity : Infinity;
     let escolha = movs[0];
     for (const j of movs) {
-      const v = minimax(aplica(gr, j, cor), cor === PR ? BR : PR, 4, -Infinity, Infinity);
+      const v = minimax(aplica(gr, j, cor), cor === PR ? BR : PR, 5, -Infinity, Infinity);
       if (cor === PR ? v > best : v < best) { best = v; escolha = j; }
     }
     return escolha;
@@ -576,7 +592,6 @@
     // jogando destino?
     const d = destinos.get(key(r, c));
     if (d) {
-      const j = { fr: selecao.r, fc: selecao.c, tr: d[0], tc: d[1], capt: [] };
       const legal = jogadasLegais(g, vez).find(l => l.fr === selecao.r && l.fc === selecao.c && l.tr === d[0] && l.tc === d[1]);
       if (legal) fazJogada(legal);
       return;

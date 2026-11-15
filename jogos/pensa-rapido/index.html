@@ -119,13 +119,14 @@
     Pontos: <span id="score">0</span>
     &nbsp;·&nbsp; Recorde: <span id="high">0</span>
     &nbsp;·&nbsp; Combo: <span id="combo">0</span>
+    &nbsp;·&nbsp; Nível: <span id="level">1</span>
     <div id="energywrap" title="Energia"><div id="energy"></div></div>
   </div>
   <div id="wrap">
     <canvas id="game" width="480" height="640"></canvas>
     <div id="overlay"></div>
   </div>
-  <p id="hint">Aperte <kbd>D</kbd> <kbd>F</kbd> <kbd>J</kbd> <kbd>K</kbd> (ou toque na faixa) quando o quadradinho cobrir a <b>linhinha branca</b> do alvo ⬆&nbsp; A música ACELERA o tempo todo — dá conta?</p>
+  <p id="hint">Aperte <kbd>D</kbd> <kbd>F</kbd> <kbd>J</kbd> <kbd>K</kbd> (ou toque na faixa) quando o retângulo cobrir a <b>linhinha branca</b> do alvo ⬆&nbsp; Notas com barra: <b>segure</b> até o fim! A música ACELERA o tempo todo — dá conta?</p>
   <script>
     "use strict";
     const cvs = document.getElementById("game");
@@ -134,13 +135,15 @@
     const scoreEl = document.getElementById("score");
     const highEl = document.getElementById("high");
     const comboEl = document.getElementById("combo");
+    const levelEl = document.getElementById("level");
     const energyEl = document.getElementById("energy");
 
     const W = 480, H = 640, LANES = 4, LANE_W = W / LANES, TARGET_Y = 545, TOP = -80;
     const KEYS = ["D", "F", "J", "K"];
     const KEYMAP = { d: 0, f: 1, j: 2, k: 3 };
     const COLORS = ["#4ade80", "#fb923c", "#c084fc", "#38bdf8"];
-    const EMOJIS = ["🐍","🧱","🍉","🐸","🎅","🚀","🧩","⚽","🌿","👾","🍓","🏆","🐧","🍎","⛏️","🎯"];
+    // emojis dos outros jogos da galera, animados nas notas
+    const EMOJIS = ["🐍","🧱","🍉","🐸","🎅","🚀","🧩","⚽","🌿","👾","🍓","🏆","🐧","🍎","⛏️","🎯","🏃","🐌","🎮","⚓"];
 
     const PERFECT = 0.11, GOOD = 0.22, MISS_AFTER = 0.27;
     const WARMUP_BEATS = 4;
@@ -150,6 +153,7 @@
     let beats = 0, beatInterval = 1.4, nextBeat = 0;
     let notes = [], popups = [], particles = [];
     let laneFlash = [0, 0, 0, 0];
+    let pressed = [false, false, false, false];
     let high = +localStorage.getItem("pensa-rapido-high") || 0;
     highEl.textContent = high;
 
@@ -207,12 +211,14 @@
     }
 
     // ---------- fluxo ----------
+    function levelOf(b) { return 1 + Math.floor(b / 12); }
     function startGame() {
       initAudio();
       score = 0; combo = 0; maxCombo = 0; energy = 60;
       beats = 0; beatInterval = 1.4;
       notes = []; popups = []; particles = [];
       laneFlash = [0, 0, 0, 0];
+      pressed = [false, false, false, false];
       nextBeat = now() + 0.6;
       state = "playing";
       overlay.classList.remove("show");
@@ -225,7 +231,7 @@
       overlay.innerHTML = `
         <h2>💥 A energia acabou!</h2>
         <p class="big">Pontos: ${score}<br>Máximo combo: ${maxCombo}</p>
-        <p>${score >= high && score > 0 ? "🏆 NOVO RECORDE!" : `Recorde: ${high}`}</p>
+        <p>${score >= high && score > 0 ? "🏆 NOVO RECORDE!" : "Recorde: " + high}</p>
         <button id="again">Jogar de novo</button>`;
       overlay.classList.add("show");
       document.getElementById("again").addEventListener("click", startGame);
@@ -234,9 +240,10 @@
       state = "ready";
       overlay.innerHTML = `
         <h2>🎵 Pensa Rápido!</h2>
-        <p>As peças da galera caem no ritmo da música. Aperte <kbd>D</kbd> <kbd>F</kbd> <kbd>J</kbd> <kbd>K</kbd> (ou toque na faixa) quando o quadradinho cobrir a <b>linhinha branca</b> do alvo.<br><br>
+        <p>As peças da galera caem no ritmo da música. Aperte <kbd>D</kbd> <kbd>F</kbd> <kbd>J</kbd> <kbd>K</kbd> (ou toque na faixa) quando o retângulo cobrir a <b>linhinha branca</b> do alvo.<br><br>
+        🎚️ <b>Notas contínuas</b>: aperte na cabeça e <b>SEGURE</b> a tecla até o fim da barra (soltou cedo? perdeu o combo!)<br>
         ⚡ Combo 12+ liga o <b>MODO FRENTE</b><br>
-        📈 A música acelera o tempo todo<br>
+        📈 A música acelera e o nível sobe — as notas contínuas aparecem mais<br>
         🔋 Errou? A energia cai — zerou, acabou!</p>
         <button id="go">▶ Começar</button>`;
       overlay.classList.add("show");
@@ -251,6 +258,7 @@
       beats++;
       // a música acelera: intervalo encurta a cada beat (do 1.4s até 0.8s)
       beatInterval = Math.max(0.8, 1.4 - b * 0.005);
+      levelEl.textContent = levelOf(b);
 
       let lanes = [];
       if (b < WARMUP_BEATS) {
@@ -260,23 +268,49 @@
         if (b > 16 && r < 0.16) {
           // acorde! duas faixas juntas
           const a = Math.floor(Math.random() * LANES);
-          let c = (a + 1 + Math.floor(Math.random() * (LANES - 1))) % LANES;
+          const c = (a + 1 + Math.floor(Math.random() * (LANES - 1))) % LANES;
           lanes = [a, c];
         } else if (r < 0.85) {
           lanes = [Math.floor(Math.random() * LANES)];
         }
       }
-      for (const lane of lanes) spawnNote(lane, t);
+      for (const lane of lanes) {
+        // notas contínuas: só em jogada única; raras no início, mais frequentes nos níveis altos
+        if (lanes.length === 1 && b >= WARMUP_BEATS && Math.random() < Math.min(0.3, 0.05 * levelOf(b))) spawnHold(lane, t);
+        else spawnNote(lane, t);
+      }
     }
+    function pickEmoji() { return EMOJIS[Math.floor(Math.random() * EMOJIS.length)]; }
     function spawnNote(lane, t) {
       const landAt = t + 2 * beatInterval; // chega 2 beats depois → a velocidade aumenta junto com o tempo
       const t0 = now();
       const speed = (TARGET_Y - TOP) / Math.max(0.2, landAt - t0);
       notes.push({
         lane,
-        emoji: EMOJIS[Math.floor(Math.random() * EMOJIS.length)],
+        emoji: pickEmoji(),
         landAt, speed,
+        hold: false,
         hit: false, missed: false,
+        phase: Math.random() * Math.PI * 2,
+      });
+    }
+    function spawnHold(lane, t) {
+      const landAt = t + 2 * beatInterval;
+      const t0 = now();
+      const speed = (TARGET_Y - TOP) / Math.max(0.2, landAt - t0);
+      notes.push({
+        lane,
+        emoji: pickEmoji(),
+        landAt,
+        tailAt: landAt + Math.max(0.6, beatInterval * (1 + Math.random())),
+        speed,
+        hold: true,
+        hit: false, missed: false,
+        held: false,    // cabeça já foi acionada
+        holding: false, // está sendo segurada agora
+        done: false,    // bônus de fim já dado
+        acc: 0,
+        phase: Math.random() * Math.PI * 2,
       });
     }
     function doMiss(n) {
@@ -292,7 +326,7 @@
       const t = now();
       let best = null, bestDt = Infinity;
       for (const n of notes) {
-        if (n.lane !== lane || n.hit) continue;
+        if (n.lane !== lane || n.hit || (n.hold && n.held)) continue;
         const dt = Math.abs(t - n.landAt);
         if (dt < bestDt) { bestDt = dt; best = n; }
       }
@@ -303,7 +337,8 @@
         if (energy <= 0) gameOver();
         return;
       }
-      best.hit = true;
+      if (best.hold) { best.held = true; best.holding = true; }
+      else best.hit = true;
       const perfect = bestDt <= PERFECT;
       combo++;
       maxCombo = Math.max(maxCombo, combo);
@@ -319,13 +354,46 @@
       hitSound(perfect);
       updateHud();
     }
+    function releaseLane(lane) {
+      pressed[lane] = false;
+      if (state !== "playing") return;
+      const t = now();
+      for (const n of notes) {
+        if (n.lane === lane && n.holding) {
+          n.holding = false;
+          if (t < n.tailAt - 0.15) {
+            // soltou cedo demais
+            combo = 0;
+            energy = Math.max(0, energy - 8);
+            popups.push({ x: lane * LANE_W + LANE_W / 2, y: TARGET_Y - 60, text: "SOLTOU!", color: "#f43f5e", age: 0 });
+            missSound();
+            updateHud();
+            if (energy <= 0) gameOver();
+          }
+        }
+      }
+    }
     function updateHud() {
       scoreEl.textContent = score;
       comboEl.textContent = combo;
+      levelEl.textContent = levelOf(beats);
       energyEl.style.width = energy + "%";
     }
 
     // ---------- desenho ----------
+    function drawEmoji(n, x, y, t) {
+      // emoji "animado": balança e gira levemente
+      const bounce = Math.sin(t * 6 + n.phase) * 3;
+      const ang = Math.sin(t * 4 + n.phase) * 0.25;
+      ctx.save();
+      ctx.translate(x, y + bounce);
+      ctx.rotate(ang);
+      ctx.font = "30px system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(n.emoji, 0, 2);
+      ctx.restore();
+    }
     function draw(t) {
       const fever = combo >= 12;
       // fundo
@@ -348,7 +416,7 @@
           ctx.globalAlpha = 1;
           laneFlash[i] *= 0.85;
         }
-        // receptor: quadradinho simples com a tecla
+        // receptor: retângulo simples com a tecla
         const rs = 72, rx = x + LANE_W / 2 - rs / 2, ry = TARGET_Y - rs / 2;
         ctx.strokeStyle = COLORS[i];
         ctx.lineWidth = fever ? 4 : 3;
@@ -372,18 +440,35 @@
       }
       // notas
       for (const n of notes) {
-        if (n.hit) continue;
+        if (n.hit || n.done) continue;
+        const cx = n.lane * LANE_W + LANE_W / 2;
         const y = TARGET_Y - (n.landAt - t) * n.speed;
-        if (y < TOP - 20 || y > H + 60) continue;
-        const x = n.lane * LANE_W;
         const missGlow = !n.missed && t > n.landAt;
         const s = 54;
+        if (n.hold) {
+          const yTail = TARGET_Y - (n.tailAt - t) * n.speed;
+          if (yTail > H + 80 || y < TOP - 20) continue;
+          ctx.globalAlpha = n.missed ? 0.35 : 1;
+          // haste contínua
+          ctx.fillStyle = missGlow ? "#f43f5e" : COLORS[n.lane];
+          ctx.fillRect(cx - 13, yTail, 26, Math.max(0, y - yTail));
+          // cabeça
+          ctx.fillRect(cx - s / 2, y - s / 2, s, s);
+          ctx.strokeStyle = "#ffffff";
+          ctx.lineWidth = 2;
+          ctx.strokeRect(cx - s / 2, y - s / 2, s, s);
+          drawEmoji(n, cx, y, t);
+          ctx.globalAlpha = 1;
+          continue;
+        }
+        if (y < TOP - 20 || y > H + 60) continue;
         ctx.globalAlpha = n.missed ? 0.35 : 1;
         ctx.fillStyle = missGlow ? "#f43f5e" : COLORS[n.lane];
-        ctx.fillRect(x + LANE_W / 2 - s / 2, y - s / 2, s, s);
+        ctx.fillRect(cx - s / 2, y - s / 2, s, s);
         ctx.strokeStyle = "#ffffff";
         ctx.lineWidth = 2;
-        ctx.strokeRect(x + LANE_W / 2 - s / 2, y - s / 2, s, s);
+        ctx.strokeRect(cx - s / 2, y - s / 2, s, s);
+        drawEmoji(n, cx, y, t);
         ctx.globalAlpha = 1;
       }
       // partículas
@@ -424,13 +509,27 @@
 
       if (state === "playing") {
         while (nextBeat < t + 0.35) { scheduleBeat(nextBeat); nextBeat += beatInterval; }
+        const mult = 1 + Math.min(4, Math.floor(combo / 10));
         for (const n of notes) {
           if (!n.hit && !n.missed && t > n.landAt + MISS_AFTER) {
             n.missed = true;
             doMiss(n);
           }
+          if (n.hold && n.holding) {
+            // pontos pingando enquanto segura
+            n.acc += dt;
+            while (n.acc >= 0.1) { n.acc -= 0.1; score += 2 * mult; }
+            if (t >= n.tailAt) {
+              n.holding = false;
+              n.done = true;
+              score += 5 * mult;
+              popups.push({ x: n.lane * LANE_W + LANE_W / 2, y: TARGET_Y - 60, text: "SEGURADO! +" + 5 * mult, color: "#38bdf8", age: 0 });
+              hitSound(true);
+            }
+          }
         }
-        notes = notes.filter(n => !(n.hit && n.missed) && t < n.landAt + 0.6);
+        updateHud();
+        notes = notes.filter(n => !n.hit && !n.done && t < (n.tailAt || n.landAt) + 0.5);
       }
       for (const p of particles) {
         p.age += dt;
@@ -451,20 +550,37 @@
       const k = e.key.toLowerCase();
       if (state === "playing" && k in KEYMAP) {
         e.preventDefault();
+        pressed[KEYMAP[k]] = true;
         doHit(KEYMAP[k]);
       } else if ((k === " " || k === "enter") && state !== "playing") {
         e.preventDefault();
         startGame();
       }
     });
-    function touchLane(clientX) {
-      const r = cvs.getBoundingClientRect();
-      const lane = Math.min(LANES - 1, Math.max(0, Math.floor(((clientX - r.left) / r.width) * LANES)));
-      doHit(lane);
-    }
-    cvs.addEventListener("pointerdown", (e) => {
-      if (state === "playing") { e.preventDefault(); touchLane(e.clientX); }
+    window.addEventListener("keyup", (e) => {
+      const k = e.key.toLowerCase();
+      if (k in KEYMAP) releaseLane(KEYMAP[k]);
     });
+    window.addEventListener("blur", () => { for (let i = 0; i < LANES; i++) releaseLane(i); });
+    function laneFromX(clientX) {
+      const r = cvs.getBoundingClientRect();
+      return Math.min(LANES - 1, Math.max(0, Math.floor(((clientX - r.left) / r.width) * LANES)));
+    }
+    const pointerLanes = new Map();
+    cvs.addEventListener("pointerdown", (e) => {
+      if (state !== "playing") return;
+      e.preventDefault();
+      const lane = laneFromX(e.clientX);
+      pointerLanes.set(e.pointerId, lane);
+      pressed[lane] = true;
+      doHit(lane);
+    });
+    function endPointer(e) {
+      const lane = pointerLanes.get(e.pointerId);
+      if (lane !== undefined) { releaseLane(lane); pointerLanes.delete(e.pointerId); }
+    }
+    window.addEventListener("pointerup", endPointer);
+    window.addEventListener("pointercancel", endPointer);
 
     showStart();
     frame();
