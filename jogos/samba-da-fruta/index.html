@@ -62,9 +62,14 @@
   var LEVELS = [
     { g: 1500, m: 30 }, { g: 1800, m: 30 }, { g: 2200, m: 30 }, { g: 2600, m: 30 }, { g: 3000, m: 32 },
     { g: 3400, m: 32 }, { g: 3900, m: 32 }, { g: 4400, m: 34 }, { g: 4900, m: 34 }, { g: 5500, m: 34 },
-    { g: 6100, m: 36 }, { g: 6800, m: 36 }, { g: 7500, m: 36 }, { g: 8300, m: 38 }, { g: 9200, m: 38 }
+    { g: 6100, m: 36 }, { g: 6800, m: 36 }, { g: 7500, m: 36 }, { g: 8300, m: 38 }, { g: 9200, m: 38 },
+    { g: 10100, m: 38 }, { g: 11100, m: 40 }, { g: 12200, m: 40 }, { g: 13400, m: 40 }, { g: 14700, m: 42 },
+    { g: 16100, m: 42 }, { g: 17600, m: 44 }, { g: 19200, m: 44 }, { g: 20900, m: 46 }
   ];
   var NIVEIS = LEVELS.length;
+  var WILD = "W";                 // peça coringa: casa com qualquer fruta
+  var WILD_CHANCE = 0.05;         // raridade da coringa ao repor o tabuleiro
+  var SHUFFLE_PER = 10000;        // a cada N pontos de total, ganha 1 embaralhada
 
   // Variantes (o "select" da tela inicial)
   var THEMES = [
@@ -80,6 +85,7 @@
   var grid = null;                     // grid[y][x] = {t, row, col, born, pop, isB, line}
   var score = 0, total = 0, level = 1, moves = 30;
   var goal = 1500, missing = 0;
+  var shuffles = 0, shuffleMilestone = SHUFFLE_PER;
   var phase = "idle";                  // idle | swap | swapback | pop | fall | shuffle
   var anim = { t: 0, dur: 0, data: null };
   var sel = null;                      // {x, y}
@@ -111,6 +117,7 @@
     fail: function () { beep(140, 0.15, "square", 0.07); },
     pop: function (chain) { beep(360 + Math.min(chain, 8) * 60, 0.12, "sine", 0.14); },
     bomb: function () { beep(90, 0.3, "sawtooth", 0.15); beep(60, 0.35, "sawtooth", 0.12, 0.03); },
+    shuffle: function () { beep(420, 0.09, "triangle", 0.1); beep(560, 0.09, "triangle", 0.1, 0.09); },
     win: function () { [523, 659, 784, 1047].forEach(function (f, i) { beep(f, 0.22, "triangle", 0.14, i * 0.13); }); },
     lose: function () { [400, 300, 200].forEach(function (f, i) { beep(f, 0.25, "sine", 0.1, i * 0.18); }); }
   };
@@ -146,6 +153,31 @@
   function showMsg(text, dur) { msg = { text: text, t: 0, dur: dur || 1.2 }; }
 
   // ---------------- Tabuleiro ----------------
+  function isWild(p) { return p && p.t === WILD; }
+
+  function neighborIsWild(x, y) {
+    var dx = [1, -1, 0, 0], dy = [0, 0, 1, -1];
+    for (var i = 0; i < 4; i++) {
+      var nx = x + dx[i], ny = y + dy[i];
+      if (nx >= 0 && ny >= 0 && nx < GRID && ny < GRID && grid[ny] && isWild(grid[ny][nx])) return true;
+    }
+    return false;
+  }
+
+  function wildOnBoard() {
+    for (var y = 0; y < GRID; y++)
+      for (var x = 0; x < GRID; x++)
+        if (grid[y] && grid[y][x] && isWild(grid[y][x])) return true;
+    return false;
+  }
+
+  function randType(x, y) {
+    var n = THEMES[theme].frutas.length;
+    // coringa raro: só 1 por vez, nunca ao lado de outro coringa
+    if (Math.random() < WILD_CHANCE && !wildOnBoard() && !neighborIsWild(x, y)) return WILD;
+    return (Math.random() * n) | 0;
+  }
+
   function newPiece(t, row, col, opts) {
     return {
       t: t, row: row, col: col, born: 0, pop: 0,
@@ -158,16 +190,24 @@
     var n = THEMES[theme].frutas.length;
     for (var y = 0; y < GRID; y++) {
       grid[y] = [];
-      for (var x = 0; x < GRID; x++) {
-        var t;
-        do { t = (Math.random() * n) | 0; }
-        while (
-          (x >= 2 && grid[y][x - 1].t === t && grid[y][x - 2].t === t) ||
-          (y >= 2 && grid[y - 1][x].t === t && grid[y - 2][x].t === t)
-        );
-        grid[y][x] = newPiece(t, y, x);
+      for (var x = 0; x < GRID; x++) grid[y][x] = null; // células ainda não escritas
+    }
+    for (var y2 = 0; y2 < GRID; y2++) {
+      for (var x2 = 0; x2 < GRID; x2++) {
+        var t, tries = 0;
+        do { t = randType(x2, y2); }
+        while (wouldMatchAt(x2, y2, t) && ++tries < 100); // limite de segurança
+        grid[y2][x2] = newPiece(t, y2, x2);
       }
     }
+  }
+
+  // se a peça t fosse colocada em (x,y), já existiria um trio formado?
+  function wouldMatchAt(x, y, t) {
+    grid[y][x] = newPiece(t, y, x);
+    var ok = isMatchAt(x, y);
+    grid[y][x] = null;
+    return ok;
   }
 
   function startLevel(lv) {
@@ -179,13 +219,15 @@
     sel = null;
     phase = "idle";
     state = "play";
-    if (!hasValidMoves()) doShuffle(true);
+    if (!hasValidMoves()) doShuffle("auto");
   }
 
   function newGame(tIdx) {
     theme = tIdx;
     score = 0;
     total = 0;
+    shuffles = 0;
+    shuffleMilestone = SHUFFLE_PER;
     recorde = false;
     loadHi(theme);
     particles = []; floats = [];
@@ -193,45 +235,81 @@
   }
 
   // ---------------- Solução de matches ----------------
-  function findMatches() {
+  // Uma sequência é um trecho onde todas as frutas não-coringa têm o mesmo
+  // tipo (a coringa casa com qualquer uma). Trio = sequência de 3+ células.
+  // Triângulo mágico: 3 células em linha onde as não-coringas são iguais.
+  function winCompat(a, b, c) {
+    var t = null;
+    var list = [a, b, c];
+    for (var i = 0; i < 3; i++) {
+      var p = list[i];
+      if (p && !isWild(p)) {
+        if (t === null) t = p.t;
+        else if (t !== p.t) return false;
+      }
+    }
+    return true;
+  }
+
+  function scanLine(idx, h, runs) {
+    // varre a linha/coluna idx em busca de sequências máximas (3+).
+    // Na quebra (fruta diferente da âncora), a sequência antiga é emitida
+    // por inteiro E as coringas do fim também entram na nova sequência
+    // (uma coringa pode completar os dois lados).
+    function cell(i) { return h ? grid[idx][i] : grid[i][idx]; }
+    function pushRun(s, e) {
+      if (e - s >= 3)
+        runs.push(h ? { h: true, y: idx, x: s, n: e - s } : { h: false, y: s, x: idx, n: e - s });
+    }
+    var start = 0, end = 0, anchor = null;
+    for (var i = 0; i <= GRID; i++) {
+      var p = i < GRID ? cell(i) : null;
+      var ok = p !== null && (isWild(p) || anchor === null || p.t === anchor);
+      if (!ok) {
+        pushRun(start, end);
+        if (p === null) { // fim da linha
+          start = end = i;
+          anchor = null;
+        } else { // fruta diferente: quebra
+          var t = end - 1, trailing = 0;
+          while (t >= start && isWild(cell(t))) { trailing++; t--; }
+          start = end - trailing; // coringas do fim entram na nova sequência
+          end = i + 1;            // a célula atual pertence à nova sequência
+          anchor = p.t;
+        }
+      } else {
+        end = i + 1;
+        if (anchor === null && p !== null && !isWild(p)) anchor = p.t;
+      }
+    }
+    pushRun(start, end);
+  }
+
+  function findRuns() {
     var runs = [];
-    // linhas
-    for (var y = 0; y < GRID; y++) {
-      var run = [{ x: 0, y: y }];
-      for (var x = 1; x <= GRID; x++) {
-        var same = x < GRID && grid[y][x].t === grid[y][run[0].x].t;
-        if (same) run.push({ x: x, y: y });
-        else {
-          if (run.length >= 3) runs.push(run);
-          run = [{ x: x, y: y }];
-        }
-      }
-    }
-    // colunas
-    for (var c = 0; c < GRID; c++) {
-      var run2 = [{ x: c, y: 0 }];
-      for (var y2 = 1; y2 <= GRID; y2++) {
-        var same2 = y2 < GRID && grid[y2][c].t === grid[run2[0].y][c].t;
-        if (same2) run2.push({ x: c, y: y2 });
-        else {
-          if (run2.length >= 3) runs.push(run2);
-          run2 = [{ x: c, y: y2 }];
-        }
-      }
-    }
+    for (var i = 0; i < GRID; i++) scanLine(i, true, runs);   // linhas
+    for (var j = 0; j < GRID; j++) scanLine(j, false, runs);  // colunas
     return runs;
   }
 
+  // Existe um trio (contendo a célula) na horizontal ou vertical?
+  // Checa as janelas de 3 que passam por (x,y): a coringa só liga duas
+  // pontas se as frutas nas pontas forem iguais.
   function isMatchAt(x, y) {
-    var t = grid[y][x].t;
-    var h = 1;
-    while (x - h >= 0 && grid[y][x - h].t === t) h++;
-    while (x + h < GRID && grid[y][x + h].t === t) h++;
-    if (h >= 3) return true;
-    var v = 1;
-    while (y - v >= 0 && grid[y - v][x].t === t) v++;
-    while (y + v < GRID && grid[y + v][x].t === t) v++;
-    return v >= 3;
+    var o, x1, y1;
+    for (o = -2; o <= 0; o++) {
+      x1 = x + o;
+      if (x1 >= 0 && x1 + 2 < GRID && grid[y][x1] && grid[y][x1 + 1] && grid[y][x1 + 2]) {
+        if (winCompat(grid[y][x1], grid[y][x1 + 1], grid[y][x1 + 2])) return true;
+      }
+    }
+    for (o = -2; o <= 0; o++) {
+      y1 = y + o;
+      if (y1 >= 0 && y1 + 2 < GRID && grid[y1][x] && grid[y1 + 1][x] && grid[y1 + 2][x]) {
+        if (winCompat(grid[y1][x], grid[y1 + 1][x], grid[y1 + 2][x])) return true;
+      }
+    }
+    return false;
   }
 
   function hasValidMoves() {
@@ -263,12 +341,11 @@
     b.row = y1; b.col = x1;
   }
 
-  function doShuffle(silent) {
-    var cells = [];
-    for (var y = 0; y < GRID; y++) for (var x = 0; x < GRID; x++) cells.push(grid[y][x]);
-    var types = cells.map(function (p) { return p.t; });
+  function doShuffle(mode) { // mode: "auto" (fichou) | "manual" (botão) | "silent"
+    var types = [];
+    for (var y = 0; y < GRID; y++) for (var x = 0; x < GRID; x++) types.push(grid[y][x].t);
     var ok = false;
-    for (var i = 0; i < 60 && !ok; i++) {
+    for (var i = 0; i < 300 && !ok; i++) {
       for (var j = types.length - 1; j > 0; j--) {
         var k = (Math.random() * (j + 1)) | 0;
         var tmp = types[j]; types[j] = types[k]; types[k] = tmp;
@@ -276,9 +353,21 @@
       for (var y2 = 0; y2 < GRID; y2++)
         for (var x2 = 0; x2 < GRID; x2++)
           grid[y2][x2].t = types[y2 * GRID + x2];
-      ok = hasValidMoves() && findMatches().length === 0;
+      ok = hasValidMoves() && findRuns().length === 0;
     }
-    if (!silent) showMsg("🔀 Embaralhando o tabuleiro!", 1.4);
+    if (mode === "manual") {
+      sfx.shuffle();
+      showMsg("🔀 Tabuleiro renascendo!", 1.2);
+      phase = "shuffle";
+      anim = { t: 0, dur: 0.55, data: null };
+      for (var y3 = 0; y3 < GRID; y3++)
+        for (var x3 = 0; x3 < GRID; x3++) {
+          grid[y3][x3].born = Math.min(grid[y3][x3].born, 0.15);
+          grid[y3][x3].row = y3; grid[y3][x3].col = x3;
+        }
+    } else if (mode === "auto") {
+      showMsg("🔀 Sem jogadas — embaralhando!", 1.4);
+    }
   }
 
   function trySwap(x1, y1, x2, y2) {
@@ -294,7 +383,7 @@
 
   function onSwapDone() {
     var d = anim.data;
-    var runs = findMatches();
+    var runs = findRuns();
     if (runs.length === 0) {
       // troca inválita: devolve com tremidinha
       swapAt(d.ax, d.ay, d.bx, d.by);
@@ -308,36 +397,61 @@
   }
 
   function cascade(chain) {
-    var runs = findMatches();
+    var runs = findRuns();
     if (runs.length === 0) { afterCascades(); return; }
 
     var clear = {};
     var bombClear = {};
-    var creates = [];
+    var creates = {};
+    var createList = [];
     var ptsTotal = 0;
 
     runs.forEach(function (run) {
-      var pts = run.length >= 5 ? 150 : run.length === 4 ? 100 : 60;
-      pts *= chain;
+      var hasWild = false;
+      var mid = run.h ? { x: run.x + ((run.n / 2) | 0), y: run.y } : { x: run.x, y: run.y + ((run.n / 2) | 0) };
+      for (var i = 0; i < run.n; i++) {
+        var px = run.h ? run.x + i : run.x;
+        var py = run.h ? run.y : run.y + i;
+        var key = px + "," + py;
+        if (isWild(grid[py][px])) hasWild = true;
+        clear[key] = 1;
+      }
+      var pts = (run.n >= 5 ? 150 : run.n === 4 ? 100 : 60) * chain;
+      if (hasWild) pts += 20 * chain;   // bônus por envolver coringa
       ptsTotal += pts;
-      var mid = cellCenter(run[(run.length / 2) | 0].x, run[(run.length / 2) | 0].y);
       addFloat("+" + pts, mid.x, mid.y);
-      run.forEach(function (p) { clear[p.x + "," + p.y] = 1; });
       // 4 em linha = bomba de linha; 5+ = bomba 3x3
-      if (run.length >= 4) {
-        var r = run[(Math.random() * run.length) | 0];
-        creates.push({
-          x: r.x, y: r.y,
-          t: grid[r.y][r.x].t,
-          isB: run.length >= 5 ? "blast" : (Math.random() < 0.5 ? "row" : "col")
-        });
+      if (run.n >= 4) {
+        var anchorT = null;
+        for (var ai = 0; ai < run.n; ai++) {
+          var ax = run.h ? run.x + ai : run.x;
+          var ay = run.h ? run.y : run.y + ai;
+          if (!isWild(grid[ay][ax])) { anchorT = grid[ay][ax].t; break; }
+        }
+        if (anchorT === null) anchorT = 0; // sequência só de coringas (raríssimo)
+        var ri = (Math.random() * run.n) | 0;
+        var bx = run.h ? run.x + ri : run.x;
+        var by = run.h ? run.y : run.y + ri;
+        var key = bx + "," + by;
+        if (!creates[key]) { // outra sequência pode ter escolhido a mesma célula
+          creates[key] = 1;
+          createList.push({
+            x: bx, y: by,
+            t: isWild(grid[by][bx]) ? anchorT : grid[by][bx].t,
+            isB: run.n >= 5 ? "blast" : (Math.random() < 0.5 ? "row" : "col")
+          });
+        }
       }
     });
 
-    // bombas envolvidas
+    // bombas destruídas: além de limparem, rendem pontos extras
     Object.keys(clear).forEach(function (key) {
       var xy = key.split(","), x = +xy[0], y = +xy[1];
       var p = grid[y][x];
+      if (!p.isB || creates[key]) return;
+      var pts = p.isB === "blast" ? 200 : 120;
+      ptsTotal += pts;
+      addFloat("+" + pts + " 💥", cellCenter(x, y).x, cellCenter(x, y).y - 14);
       if (p.isB === "row") for (var c = 0; c < GRID; c++) bombClear[c + "," + y] = 1;
       if (p.isB === "col") for (var r = 0; r < GRID; r++) bombClear[x + "," + r] = 1;
       if (p.isB === "blast") {
@@ -350,6 +464,7 @@
     });
 
     score += ptsTotal;
+    checkShuffleBonus();
     sfx.pop(chain);
 
     // marca pops
@@ -362,7 +477,7 @@
 
     particlesBurst(clear, bombClear);
     phase = "pop";
-    anim = { t: 0, dur: 0.22, data: { chain: chain, clear: clear, bombClear: bombClear, creates: creates } };
+    anim = { t: 0, dur: 0.22, data: { chain: chain, clear: clear, bombClear: bombClear, creates: createList } };
   }
 
   function onPopDone() {
@@ -374,6 +489,7 @@
     // bombas criadas
     d.creates.forEach(function (c) {
       grid[c.y][c.x] = newPiece(c.t, c.y, c.x, { isB: c.isB });
+
       grid[c.y][c.x].born = -0.3; // surge com "power-up"
     });
     // gravidade
@@ -389,7 +505,7 @@
         }
       }
       for (var y3 = 0; y3 < fall; y3++) {
-        var p = newPiece((Math.random() * n) | 0, y3, x2);
+        var p = newPiece(randType(x2, y3), y3, x2);
         p.row = y3 - fall; // nasce acima da tela e cai
         grid[y3][x2] = p;
       }
@@ -403,9 +519,37 @@
     cascade(d.chain + 1);
   }
 
+  function onShuffleDone() {
+    phase = "idle";
+    if (state === "play" && grid && !hasValidMoves()) doShuffle("auto");
+  }
+
+  // a cada SHUFFLE_PER pontos de total, o jogador ganha 1 embaralhada
+  function checkShuffleBonus() {
+    if (total + score >= shuffleMilestone) {
+      shuffles++;
+      shuffleMilestone += SHUFFLE_PER;
+      addFloat("+1 embaralhada! 🔀", W / 2, BY + BH - 60);
+      showMsg("+1 chance de embaralhar! 🔀", 1.4);
+      sfx.shuffle();
+    }
+  }
+
+  function doManualShuffle() {
+    if (phase !== "idle" || state !== "play") return;
+    if (shuffles <= 0) {
+      sfx.fail();
+      showMsg("Faltam " + fmt(Math.max(0, shuffleMilestone - (total + score))) + " pts pro próximo 🔀", 1.3);
+      return;
+    }
+    shuffles--;
+    sel = null;
+    doShuffle("manual");
+  }
+
   function afterCascades() {
     phase = "idle";
-    if (!hasValidMoves()) { doShuffle(false); }
+    if (!hasValidMoves()) { doShuffle("auto"); }
     if (score >= goal) {
       var bonus = moves * 20;
       total += score + bonus;
@@ -460,6 +604,8 @@
     if (audio.ctx && audio.ctx.state === "suspended") audio.ctx.resume();
     var p = point(e), i;
 
+    if (phase === "shuffle") return;
+
     if (state === "menu") {
       for (i = 0; i < regions.length; i++) {
         if (inRect(p.x, p.y, regions[i])) {
@@ -486,7 +632,12 @@
 
     // state === "play"
     for (i = 0; i < regions.length; i++) {
-      if (inRect(p.x, p.y, regions[i])) { sfx.select(); state = "menu"; phase = "idle"; return; }
+      var rg = regions[i];
+      if (inRect(p.x, p.y, rg)) {
+        if (rg.kind === "shuffle") doManualShuffle();
+        else { sfx.select(); state = "menu"; phase = "idle"; }
+        return;
+      }
     }
     if (phase !== "idle") return;
     if (p.x < BX || p.x >= BX + BW || p.y < BY || p.y >= BY + BH) { sel = null; return; }
@@ -533,6 +684,7 @@
     if (phase === "swapback" && anim.t >= anim.dur) { phase = "idle"; }
     if (phase === "pop" && anim.t >= anim.dur) onPopDone();
     if (phase === "fall" && anim.t >= anim.dur) onFallDone();
+    if (phase === "shuffle" && anim.t >= anim.dur) onShuffleDone();
 
     render();
     requestAnimationFrame(tick);
@@ -610,24 +762,58 @@
     ctx.fillStyle = "#9d8cd0";
     ctx.fillText("JOGADAS", mx + mw / 2, my + 34);
 
+    // botão embaralhar
+    var sx = 16, sy = 118, sw2 = 88, sh2 = 46;
+    if (shuffles > 0) {
+      var sg = ctx.createLinearGradient(sx, sy, sx, sy + sh2);
+      sg.addColorStop(0, "#0d9488");
+      sg.addColorStop(1, "#0f766e");
+      ctx.fillStyle = sg;
+      rr(sx, sy, sw2, sh2, 12);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,0.4)";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.fillStyle = "#fff";
+      ctx.font = "700 15px 'Segoe UI', sans-serif";
+      ctx.fillText("🔀 x" + shuffles, sx + sw2 / 2, sy + 17);
+      ctx.font = "600 9px 'Segoe UI', sans-serif";
+      ctx.fillStyle = "rgba(255,255,255,0.75)";
+      ctx.fillText("EMBARALHAR", sx + sw2 / 2, sy + 34);
+      regions.push({ kind: "shuffle", x: sx, y: sy, w: sw2, h: sh2 });
+    } else {
+      ctx.fillStyle = "rgba(255,255,255,0.05)";
+      rr(sx, sy, sw2, sh2, 12);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,0.12)";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.fillStyle = "rgba(255,255,255,0.4)";
+      ctx.font = "700 15px 'Segoe UI', sans-serif";
+      ctx.fillText("🔀 🔒", sx + sw2 / 2, sy + 17);
+      var left = shuffleMilestone - (total + score);
+      ctx.font = "600 9px 'Segoe UI', sans-serif";
+      ctx.fillText("faltam " + fmt(Math.max(0, left)) + " pts", sx + sw2 / 2, sy + 34);
+    }
+
     // recorde
     ctx.textAlign = "left";
-    ctx.font = "600 13px 'Segoe UI', sans-serif";
+    ctx.font = "600 12px 'Segoe UI', sans-serif";
     ctx.fillStyle = "#9d8cd0";
-    ctx.fillText("🏆 Recorde: " + fmt(hi), 16, 142);
+    ctx.fillText("🏆 Recorde: " + fmt(hi), 120, 140);
 
-    // barra de progresso para a meta
-    var gy = 156;
+    // barra de progresso para a meta (à direita do botão embaralhar)
+    var gx = 116, gw = 270, gy = 156;
     ctx.fillStyle = "rgba(255,255,255,0.1)";
-    rr(16, gy, W / 2 - 40, 8, 4);
+    rr(gx, gy, gw, 8, 4);
     ctx.fill();
     var frac = Math.min(1, score / goal);
     if (frac > 0) {
-      var pg = ctx.createLinearGradient(16, 0, 16 + (W / 2 - 40), 0);
+      var pg = ctx.createLinearGradient(gx, 0, gx + gw, 0);
       pg.addColorStop(0, "#f472b6");
       pg.addColorStop(1, "#34d399");
       ctx.fillStyle = pg;
-      rr(16, gy, Math.max(8, (W / 2 - 40) * frac), 8, 4);
+      rr(gx, gy, Math.max(8, gw * frac), 8, 4);
       ctx.fill();
     }
   }
@@ -639,6 +825,35 @@
     ctx.save();
     // fundo
     var g = ctx.createRadialGradient(px - r * 0.4, py - r * 0.5, r * 0.2, px, py, r * 1.3);
+    if (p.t === WILD) {
+      var hue = (performance.now() / 25) % 360;
+      g.addColorStop(0, "#ffffff");
+      g.addColorStop(0.45, "hsl(" + hue + ", 85%, 62%)");
+      g.addColorStop(1, "hsla(" + hue + ", 70%, 40%, 0.25)");
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(px, py, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,0.9)";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      // brilhos girando
+      var a = performance.now() / 300;
+      ctx.strokeStyle = "rgba(255,255,255,0.7)";
+      ctx.lineWidth = 1.5;
+      for (var wi = 0; wi < 3; wi++) {
+        var aa = a + wi * Math.PI * 2 / 3;
+        ctx.beginPath();
+        ctx.arc(px + Math.cos(aa) * r * 0.62, py + Math.sin(aa) * r * 0.62, 1.8, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.font = Math.round(CELL * 0.48 * s) + "px 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("✨", px, py + 1);
+      ctx.restore();
+      return;
+    }
     if (p.isB) {
       g.addColorStop(0, "#fef08a");
       g.addColorStop(0.6, "#f59e0b");
@@ -856,13 +1071,7 @@
     drawHud();
     drawBoard();
 
-    // rodapé
-    ctx.font = "500 13px 'Segoe UI', sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillStyle = "#8b7bc0";
-    ctx.fillText("Variante: " + THEMES[theme].nome + "  ·  toque/ clique para trocar", W / 2, BOTTOM_Y + 22);
-
-    // mensagem central (embaralhar)
+    // mensagem central (embaralhar / bônus)
     if (msg) {
       var a = Math.min(1, msg.t / 0.15, (msg.dur - msg.t) / 0.3);
       ctx.globalAlpha = Math.max(0, a);
