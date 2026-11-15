@@ -408,7 +408,8 @@
 
     runs.forEach(function (run) {
       var hasWild = false;
-      var mid = run.h ? { x: run.x + ((run.n / 2) | 0), y: run.y } : { x: run.x, y: run.y + ((run.n / 2) | 0) };
+      var midX = run.h ? run.x + ((run.n / 2) | 0) : run.x;
+      var midY = run.h ? run.y : run.y + ((run.n / 2) | 0);
       for (var i = 0; i < run.n; i++) {
         var px = run.h ? run.x + i : run.x;
         var py = run.h ? run.y : run.y + i;
@@ -419,7 +420,8 @@
       var pts = (run.n >= 5 ? 150 : run.n === 4 ? 100 : 60) * chain;
       if (hasWild) pts += 20 * chain;   // bônus por envolver coringa
       ptsTotal += pts;
-      addFloat("+" + pts, mid.x, mid.y);
+      var cc = cellCenter(midX, midY);
+      addFloat("+" + pts, cc.x, cc.y);
       // 4 em linha = bomba de linha; 5+ = bomba 3x3
       if (run.n >= 4) {
         var anchorT = null;
@@ -950,9 +952,13 @@
     ctx.globalAlpha = 1;
     // textos flutuantes
     floats.forEach(function (f) {
-      ctx.globalAlpha = Math.max(0, 1 - f.t / f.dur);
+      var a = Math.max(0, 1 - f.t / f.dur);
+      ctx.globalAlpha = a;
       ctx.font = "800 18px 'Segoe UI', sans-serif";
       ctx.textAlign = "center";
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = "rgba(10, 5, 25, 0.85)";
+      ctx.strokeText(f.text, f.x, f.y);
       ctx.fillStyle = "#fff";
       ctx.fillText(f.text, f.x, f.y);
     });
