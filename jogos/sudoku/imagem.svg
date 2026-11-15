@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 300">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#3a2a6a"/>
+      <stop offset="1" stop-color="#1a1333"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#b58cff"/>
+      <stop offset="1" stop-color="#7c5cff"/>
+    </linearGradient>
+  </defs>
+  <rect width="480" height="300" rx="16" fill="url(#bg)"/>
+
+  <!-- grid -->
+  <g transform="translate(50,55)">
+    <g stroke="#7a5fc7" stroke-width="4" fill="none">
+      <rect x="0" y="0" width="150" height="150" rx="8"/>
+    </g>
+    <g stroke="#443476" stroke-width="2">
+      <line x1="50" y1="0" x2="50" y2="150"/>
+      <line x1="100" y1="0" x2="100" y2="150"/>
+      <line x1="0" y1="50" x2="150" y2="50"/>
+      <line x1="0" y1="100" x2="150" y2="100"/>
+    </g>
+    <g stroke="#b58cff" stroke-width="3">
+      <line x1="75" y1="0" x2="75" y2="150"/>
+      <line x1="0" y1="75" x2="150" y2="75"/>
+    </g>
+    <g font-family="Segoe UI, Arial, sans-serif" font-size="30" font-weight="700" fill="#e8e2ff" text-anchor="middle">
+      <text x="25" y="35">5</text>
+      <text x="125" y="35">3</text>
+      <text x="25" y="125">8</text>
+      <text x="75" y="85" fill="#c9aaff">7</text>
+      <text x="125" y="125">2</text>
+      <text x="75" y="185" fill="#c9aaff" font-size="30">?</text>
+    </g>
+  </g>
+
+  <!-- texto -->
+  <g font-family="Segoe UI, Arial, sans-serif" text-anchor="middle">
+    <text x="310" y="120" font-size="44" font-weight="800" fill="url(#glow)">SUDOKU</text>
+    <text x="310" y="158" font-size="18" fill="#9d8fd0">3 dificuldades</text>
+    <text x="310" y="182" font-size="18" fill="#9d8fd0">dicas · timer · recorde</text>
+  </g>
+
+  <!-- numeros flutuantes -->
+  <g font-family="Segoe UI, Arial, sans-serif" font-weight="700" fill="#7c5cff" text-anchor="middle" opacity="0.5">
+    <text x="430" y="60" font-size="34">9</text>
+    <text x="445" y="250" font-size="28">4</text>
+    <text x="245" y="260" font-size="24">6</text>
+    <text x="40" y="250" font-size="26">1</text>
+  </g>
+</svg>

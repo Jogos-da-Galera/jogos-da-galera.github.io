@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="300" viewBox="0 0 480 300">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2b1152"/>
+      <stop offset="1" stop-color="#120821"/>
+    </linearGradient>
+    <linearGradient id="line" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#38bdf8"/>
+      <stop offset="0.5" stop-color="#e879f9"/>
+      <stop offset="1" stop-color="#fb923c"/>
+    </linearGradient>
+  </defs>
+  <rect width="480" height="300" rx="14" fill="url(#bg)"/>
+  <!-- faixas -->
+  <g opacity="0.5">
+    <rect x="60" y="0" width="90" height="300" fill="#4ade80" opacity="0.07"/>
+    <rect x="150" y="0" width="90" height="300" fill="#fb923c" opacity="0.07"/>
+    <rect x="240" y="0" width="90" height="300" fill="#c084fc" opacity="0.07"/>
+    <rect x="330" y="0" width="90" height="300" fill="#38bdf8" opacity="0.07"/>
+  </g>
+  <!-- linha do alvo -->
+  <line x1="15" y1="238" x2="465" y2="238" stroke="url(#line)" stroke-width="5" stroke-dasharray="14 8" stroke-linecap="round"/>
+  <!-- notas caindo -->
+  <g>
+    <rect x="69" y="60" width="72" height="58" rx="12" fill="#241238" stroke="#4ade80" stroke-width="3"/>
+    <text x="105" y="99" font-size="34" text-anchor="middle">🐍</text>
+    <rect x="159" y="150" width="72" height="58" rx="12" fill="#241238" stroke="#fb923c" stroke-width="3"/>
+    <text x="195" y="189" font-size="34" text-anchor="middle">🧱</text>
+    <rect x="249" y="30" width="72" height="58" rx="12" fill="#241238" stroke="#c084fc" stroke-width="3"/>
+    <text x="285" y="69" font-size="34" text-anchor="middle">🍉</text>
+    <rect x="339" y="110" width="72" height="58" rx="12" fill="#241238" stroke="#38bdf8" stroke-width="3"/>
+    <text x="375" y="149" font-size="34" text-anchor="middle">🚀</text>
+    <!-- receptor no alvo -->
+    <rect x="249" y="209" width="72" height="58" rx="12" fill="none" stroke="#c084fc" stroke-width="4"/>
+    <text x="285" y="248" font-size="30" text-anchor="middle">🍓</text>
+  </g>
+  <!-- título -->
+  <text x="24" y="42" font-family="Segoe UI, system-ui, sans-serif" font-size="34" font-weight="800" fill="#e879f9">🎵 Pensa Rápido!</text>
+  <!-- teclas -->
+  <g font-family="Segoe UI, system-ui, sans-serif" font-size="20" font-weight="700" text-anchor="middle">
+    <rect x="69" y="268" width="72" height="24" rx="6" fill="#1a0d2e" stroke="#4ade80" stroke-width="2"/>
+    <text x="105" y="285" fill="#4ade80">D</text>
+    <rect x="159" y="268" width="72" height="24" rx="6" fill="#1a0d2e" stroke="#fb923c" stroke-width="2"/>
+    <text x="195" y="285" fill="#fb923c">F</text>
+    <rect x="249" y="268" width="72" height="24" rx="6" fill="#1a0d2e" stroke="#c084fc" stroke-width="2"/>
+    <text x="285" y="285" fill="#c084fc">J</text>
+    <rect x="339" y="268" width="72" height="24" rx="6" fill="#1a0d2e" stroke="#38bdf8" stroke-width="2"/>
+    <text x="375" y="285" fill="#38bdf8">K</text>
+  </g>
+</svg>

@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="300" viewBox="0 0 480 300">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0a2f1d"/>
+      <stop offset="1" stop-color="#1a5c3c"/>
+    </linearGradient>
+    <linearGradient id="road" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4a381e"/>
+      <stop offset="1" stop-color="#6b4f2b"/>
+    </linearGradient>
+  </defs>
+  <!-- céu -->
+  <rect width="480" height="150" fill="url(#sky)"/>
+  <circle cx="392" cy="42" r="18" fill="#fde68a" opacity=".9"/>
+  <!-- mata no horizonte -->
+  <g fill="#0c3520">
+    <ellipse cx="30" cy="150" rx="34" ry="26"/><ellipse cx="95" cy="148" rx="40" ry="30"/>
+    <ellipse cx="170" cy="150" rx="36" ry="24"/><ellipse cx="250" cy="149" rx="42" ry="28"/>
+    <ellipse cx="330" cy="150" rx="38" ry="26"/><ellipse cx="410" cy="149" rx="44" ry="30"/>
+    <ellipse cx="470" cy="150" rx="30" ry="22"/>
+  </g>
+  <!-- chão -->
+  <rect y="150" width="480" height="150" fill="#2f4a1c"/>
+  <!-- estrada com 3 faixas em perspectiva -->
+  <polygon points="140,300 218,150 262,150 340,300" fill="url(#road)"/>
+  <polygon points="140,300 218,150 222,150 168,300" fill="#d9d2a8" opacity=".7"/>
+  <polygon points="340,300 258,150 262,150 312,300" fill="#d9d2a8" opacity=".7"/>
+  <!-- faixas tracejadas -->
+  <g fill="#ffffff" opacity=".8">
+    <polygon points="200,300 221,150 224,150 212,300"/>
+    <polygon points="268,300 256,150 259,150 280,300"/>
+  </g>
+  <!-- tronco (obstáculo) -->
+  <g transform="translate(196,238)">
+    <rect x="0" y="-16" width="56" height="16" rx="7" fill="#7a4f28"/>
+    <ellipse cx="12" cy="-8" rx="5" ry="7" fill="#a3714a"/>
+    <ellipse cx="12" cy="-8" rx="2.5" ry="4" fill="#8a5c33"/>
+  </g>
+  <!-- cerca alta (não dá pra pular) -->
+  <g transform="translate(288,224)" fill="#8a5c33">
+    <rect x="0" y="-40" width="5" height="40"/><rect x="41" y="-40" width="5" height="40"/>
+    <rect x="-3" y="-34" width="52" height="6"/><rect x="-3" y="-22" width="52" height="6"/><rect x="-3" y="-10" width="52" height="6"/>
+    <rect x="8" y="-44" width="28" height="13" fill="#fde047"/>
+    <text x="22" y="-34" font-size="10" text-anchor="middle">⛔</text>
+  </g>
+  <!-- corredor de costas -->
+  <g transform="translate(240,300)">
+    <rect x="-9" y="-52" width="8" height="18" fill="#e8b48c"/>
+    <rect x="2" y="-56" width="8" height="22" fill="#e8b48c"/>
+    <rect x="-11" y="-36" width="10" height="4" fill="#ef4444"/>
+    <rect x="1" y="-36" width="10" height="4" fill="#ef4444"/>
+    <rect x="-10" y="-64" width="22" height="12" fill="#16a34a"/>
+    <rect x="-11" y="-92" width="24" height="30" rx="5" fill="#f8fafc"/>
+    <text x="1" y="-70" font-family="sans-serif" font-size="16" font-weight="bold" fill="#16a34a" text-anchor="middle">10</text>
+    <circle cx="1" cy="-100" r="9" fill="#e8b48c"/>
+    <path d="M -8 -102 A 9 9 0 0 1 10 -102 Z" fill="#dc2626"/>
+    <rect x="-9" y="-104" width="20" height="4" fill="#dc2626"/>
+  </g>
+  <!-- moedas -->
+  <g>
+    <circle cx="240" cy="252" r="8" fill="#f59e0b"/><circle cx="240" cy="252" r="5" fill="#fde047"/>
+    <circle cx="240" cy="222" r="8" fill="#f59e0b"/><circle cx="240" cy="222" r="5" fill="#fde047"/>
+  </g>
+  <!-- título -->
+  <text x="240" y="290" font-family="Segoe UI, sans-serif" font-size="26" font-weight="800" fill="#f5f0ff" text-anchor="middle">🏁 CORRIDA MALUCA 💨</text>
+</svg>

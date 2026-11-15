@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pensa Rápido! 🎵</title>
+  <style>
+    :root {
+      --bg: #120821;
+      --primary: #a855f7;
+      --accent: #e879f9;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: radial-gradient(800px 400px at 50% -20%, #3b1a6e 0%, var(--bg) 60%);
+      color: #f5f0ff;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      gap: 10px;
+      padding: 12px;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    h1 {
+      font-size: 1.7rem;
+      background: linear-gradient(90deg, var(--accent), #38bdf8);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    #hud {
+      display: flex;
+      gap: 20px;
+      font-weight: 700;
+      font-size: 1.05rem;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    #hud span { color: var(--accent); }
+    #energywrap {
+      width: 200px;
+      height: 14px;
+      background: #2a1547;
+      border: 2px solid #5b21b6;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    #energy {
+      height: 100%;
+      width: 60%;
+      background: linear-gradient(90deg, #f43f5e, #facc15, #4ade80);
+      transition: width 0.15s;
+    }
+    #wrap { position: relative; }
+    canvas {
+      border: 3px solid var(--primary);
+      border-radius: 12px;
+      background: #1a0d2e;
+      box-shadow: 0 10px 30px rgba(139, 47, 240, 0.4);
+      max-width: 100%;
+      height: auto;
+      display: block;
+      touch-action: none;
+    }
+    #hint { color: #b9a8d9; font-size: 0.9rem; text-align: center; }
+    #overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(10, 4, 20, 0.88);
+      border-radius: 10px;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      text-align: center;
+      padding: 20px;
+    }
+    #overlay.show { display: flex; }
+    #overlay h2 {
+      font-size: 1.8rem;
+      background: linear-gradient(90deg, var(--accent), #38bdf8);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    #overlay p { color: #cbb8e8; line-height: 1.5; max-width: 340px; }
+    #overlay .big { font-size: 1.2rem; color: #fff; font-weight: 700; }
+    #overlay button {
+      font-size: 1.15rem;
+      font-weight: 700;
+      padding: 12px 28px;
+      border: none;
+      border-radius: 12px;
+      background: linear-gradient(90deg, var(--primary), var(--accent));
+      color: #fff;
+      cursor: pointer;
+      box-shadow: 0 6px 18px rgba(168, 85, 247, 0.5);
+    }
+    #overlay button:active { transform: scale(0.96); }
+    kbd {
+      background: #2a1547;
+      border: 1px solid #5b21b6;
+      border-radius: 6px;
+      padding: 1px 7px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+  </style>
+</head>
+<body>
+  <h1>🎵 Pensa Rápido!</h1>
+  <div id="hud">
+    Pontos: <span id="score">0</span>
+    &nbsp;·&nbsp; Recorde: <span id="high">0</span>
+    &nbsp;·&nbsp; Combo: <span id="combo">0</span>
+    <div id="energywrap" title="Energia"><div id="energy"></div></div>
+  </div>
+  <div id="wrap">
+    <canvas id="game" width="480" height="640"></canvas>
+    <div id="overlay"></div>
+  </div>
+  <p id="hint">Aperte <kbd>D</kbd> <kbd>F</kbd> <kbd>J</kbd> <kbd>K</kbd> (ou toque na faixa) quando o quadradinho cobrir a <b>linhinha branca</b> do alvo ⬆&nbsp; A música ACELERA o tempo todo — dá conta?</p>
+  <script>
+    "use strict";
+    const cvs = document.getElementById("game");
+    const ctx = cvs.getContext("2d");
+    const overlay = document.getElementById("overlay");
+    const scoreEl = document.getElementById("score");
+    const highEl = document.getElementById("high");
+    const comboEl = document.getElementById("combo");
+    const energyEl = document.getElementById("energy");
+
+    const W = 480, H = 640, LANES = 4, LANE_W = W / LANES, TARGET_Y = 545, TOP = -80;
+    const KEYS = ["D", "F", "J", "K"];
+    const KEYMAP = { d: 0, f: 1, j: 2, k: 3 };
+    const COLORS = ["#4ade80", "#fb923c", "#c084fc", "#38bdf8"];
+    const EMOJIS = ["🐍","🧱","🍉","🐸","🎅","🚀","🧩","⚽","🌿","👾","🍓","🏆","🐧","🍎","⛏️","🎯"];
+
+    const PERFECT = 0.11, GOOD = 0.22, MISS_AFTER = 0.27;
+    const WARMUP_BEATS = 4;
+
+    let state = "ready"; // ready | playing | over
+    let score = 0, combo = 0, maxCombo = 0, energy = 60;
+    let beats = 0, beatInterval = 1.4, nextBeat = 0;
+    let notes = [], popups = [], particles = [];
+    let laneFlash = [0, 0, 0, 0];
+    let high = +localStorage.getItem("pensa-rapido-high") || 0;
+    highEl.textContent = high;
+
+    // ---------- áudio ----------
+    let ac = null, master = null;
+    function now() { return ac ? ac.currentTime : performance.now() / 1000; }
+    function initAudio() {
+      if (!ac) {
+        ac = new (window.AudioContext || window.webkitAudioContext)();
+        master = ac.createGain();
+        master.gain.value = 0.5;
+        master.connect(ac.destination);
+      }
+      if (ac.state === "suspended") ac.resume();
+    }
+    function kick(t) {
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = "sine";
+      o.frequency.setValueAtTime(150, t);
+      o.frequency.exponentialRampToValueAtTime(45, t + 0.12);
+      g.gain.setValueAtTime(0.9, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+      o.connect(g); g.connect(master);
+      o.start(t); o.stop(t + 0.2);
+    }
+    function hat(t) {
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = "square";
+      o.frequency.value = 6000;
+      g.gain.setValueAtTime(0.06, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
+      o.connect(g); g.connect(master);
+      o.start(t); o.stop(t + 0.05);
+    }
+    function hitSound(perfect) {
+      const t = ac.currentTime;
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = "triangle";
+      o.frequency.value = perfect ? 880 : 560;
+      g.gain.setValueAtTime(0.35, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+      o.connect(g); g.connect(master);
+      o.start(t); o.stop(t + 0.13);
+    }
+    function missSound() {
+      const t = ac.currentTime;
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = "sawtooth";
+      o.frequency.setValueAtTime(160, t);
+      o.frequency.exponentialRampToValueAtTime(60, t + 0.25);
+      g.gain.setValueAtTime(0.25, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
+      o.connect(g); g.connect(master);
+      o.start(t); o.stop(t + 0.3);
+    }
+
+    // ---------- fluxo ----------
+    function startGame() {
+      initAudio();
+      score = 0; combo = 0; maxCombo = 0; energy = 60;
+      beats = 0; beatInterval = 1.4;
+      notes = []; popups = []; particles = [];
+      laneFlash = [0, 0, 0, 0];
+      nextBeat = now() + 0.6;
+      state = "playing";
+      overlay.classList.remove("show");
+      updateHud();
+    }
+    function gameOver() {
+      state = "over";
+      if (score > high) { high = score; localStorage.setItem("pensa-rapido-high", high); }
+      highEl.textContent = high;
+      overlay.innerHTML = `
+        <h2>💥 A energia acabou!</h2>
+        <p class="big">Pontos: ${score}<br>Máximo combo: ${maxCombo}</p>
+        <p>${score >= high && score > 0 ? "🏆 NOVO RECORDE!" : `Recorde: ${high}`}</p>
+        <button id="again">Jogar de novo</button>`;
+      overlay.classList.add("show");
+      document.getElementById("again").addEventListener("click", startGame);
+    }
+    function showStart() {
+      state = "ready";
+      overlay.innerHTML = `
+        <h2>🎵 Pensa Rápido!</h2>
+        <p>As peças da galera caem no ritmo da música. Aperte <kbd>D</kbd> <kbd>F</kbd> <kbd>J</kbd> <kbd>K</kbd> (ou toque na faixa) quando o quadradinho cobrir a <b>linhinha branca</b> do alvo.<br><br>
+        ⚡ Combo 12+ liga o <b>MODO FRENTE</b><br>
+        📈 A música acelera o tempo todo<br>
+        🔋 Errou? A energia cai — zerou, acabou!</p>
+        <button id="go">▶ Começar</button>`;
+      overlay.classList.add("show");
+      document.getElementById("go").addEventListener("click", startGame);
+    }
+
+    // ---------- beats e notas ----------
+    function scheduleBeat(t) {
+      kick(t);
+      hat(t + beatInterval / 2);
+      const b = beats;
+      beats++;
+      // a música acelera: intervalo encurta a cada beat (do 1.4s até 0.8s)
+      beatInterval = Math.max(0.8, 1.4 - b * 0.005);
+
+      let lanes = [];
+      if (b < WARMUP_BEATS) {
+        lanes = [b % LANES]; // intro calmo: um por vez, andando nas faixas
+      } else {
+        const r = Math.random();
+        if (b > 16 && r < 0.16) {
+          // acorde! duas faixas juntas
+          const a = Math.floor(Math.random() * LANES);
+          let c = (a + 1 + Math.floor(Math.random() * (LANES - 1))) % LANES;
+          lanes = [a, c];
+        } else if (r < 0.85) {
+          lanes = [Math.floor(Math.random() * LANES)];
+        }
+      }
+      for (const lane of lanes) spawnNote(lane, t);
+    }
+    function spawnNote(lane, t) {
+      const landAt = t + 2 * beatInterval; // chega 2 beats depois → a velocidade aumenta junto com o tempo
+      const t0 = now();
+      const speed = (TARGET_Y - TOP) / Math.max(0.2, landAt - t0);
+      notes.push({
+        lane,
+        emoji: EMOJIS[Math.floor(Math.random() * EMOJIS.length)],
+        landAt, speed,
+        hit: false, missed: false,
+      });
+    }
+    function doMiss(n) {
+      combo = 0;
+      energy = Math.max(0, energy - 12);
+      popups.push({ x: n.lane * LANE_W + LANE_W / 2, y: TARGET_Y, text: "ERROU!", color: "#f43f5e", age: 0 });
+      missSound();
+      updateHud();
+      if (energy <= 0) gameOver();
+    }
+    function doHit(lane) {
+      laneFlash[lane] = 1;
+      const t = now();
+      let best = null, bestDt = Infinity;
+      for (const n of notes) {
+        if (n.lane !== lane || n.hit) continue;
+        const dt = Math.abs(t - n.landAt);
+        if (dt < bestDt) { bestDt = dt; best = n; }
+      }
+      if (!best || bestDt > GOOD) {
+        // apertou no vazio: só perde um pouco de energia
+        energy = Math.max(0, energy - 3);
+        updateHud();
+        if (energy <= 0) gameOver();
+        return;
+      }
+      best.hit = true;
+      const perfect = bestDt <= PERFECT;
+      combo++;
+      maxCombo = Math.max(maxCombo, combo);
+      energy = Math.min(100, energy + (perfect ? 3 : 2));
+      const mult = 1 + Math.min(4, Math.floor(combo / 10));
+      score += (perfect ? 15 : 10) * mult;
+      const x = lane * LANE_W + LANE_W / 2;
+      popups.push({ x, y: TARGET_Y - 40, text: perfect ? "PERFEITO!" : "BOA!", color: perfect ? "#facc15" : "#4ade80", age: 0 });
+      for (let i = 0; i < 14; i++) {
+        const a = Math.random() * Math.PI * 2, v = 80 + Math.random() * 220;
+        particles.push({ x, y: TARGET_Y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 60, age: 0, color: COLORS[lane], r: 2 + Math.random() * 4 });
+      }
+      hitSound(perfect);
+      updateHud();
+    }
+    function updateHud() {
+      scoreEl.textContent = score;
+      comboEl.textContent = combo;
+      energyEl.style.width = energy + "%";
+    }
+
+    // ---------- desenho ----------
+    function roundRect(x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + w, y, y + h, r, 0);
+      ctx.arcTo(x + w, y + h, y, r, 0);
+      ctx.arcTo(x + w, y, y + h, x, r, 0);
+      ctx.arcTo(x, y, y + h, x, w, r, 0);
+      ctx.closePath();
+    }
+    function draw(t) {
+      const fever = combo >= 12;
+      // fundo
+      ctx.fillStyle = fever
+        ? `hsl(${(t * 120) % 360}, 70%, 12%)`
+        : "#1a0d2e";
+      ctx.fillRect(0, 0, W, H);
+      // faixas
+      for (let i = 0; i < LANES; i++) {
+        const x = i * LANE_W;
+        ctx.fillStyle = i % 2 ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.015)";
+        ctx.fillRect(x, 0, LANE_W, H);
+        if (laneFlash[i] > 0.02) {
+          const g = ctx.createLinearGradient(0, H, 0, H - 320);
+          g.addColorStop(0, COLORS[i] + "55");
+          g.addColorStop(1, COLORS[i] + "00");
+          ctx.globalAlpha = laneFlash[i];
+          ctx.fillStyle = g;
+          ctx.fillRect(x, 0, LANE_W, H);
+          ctx.globalAlpha = 1;
+          laneFlash[i] *= 0.85;
+        }
+        // receptor: quadradinho simples com a tecla
+        const rs = 72, rx = x + LANE_W / 2 - rs / 2, ry = TARGET_Y - rs / 2;
+        ctx.strokeStyle = COLORS[i];
+        ctx.lineWidth = fever ? 4 : 3;
+        if (laneFlash[i] > 0.05) {
+          ctx.fillStyle = COLORS[i] + "77";
+          roundRect(rx, ry, rs, rs, 12);
+          ctx.fill();
+        }
+        roundRect(rx, ry, rs, rs, 12);
+        ctx.stroke();
+        // lininha branca = o momento exato de apertar
+        ctx.strokeStyle = "rgba(255,255,255,0.85)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(rx + 10, TARGET_Y);
+        ctx.lineTo(rx + rs - 10, TARGET_Y);
+        ctx.stroke();
+        ctx.fillStyle = laneFlash[i] > 0.3 ? "#fff" : COLORS[i];
+        ctx.font = "bold 24px system-ui, sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(KEYS[i], x + LANE_W / 2, TARGET_Y + 48);
+      }
+      // notas
+      for (const n of notes) {
+        if (n.hit) continue;
+        const y = TARGET_Y - (n.landAt - t) * n.speed;
+        if (y < TOP - 20 || y > H + 60) continue;
+        const x = n.lane * LANE_W;
+        const missGlow = !n.missed && t > n.landAt;
+        const s = 54;
+        ctx.globalAlpha = n.missed ? 0.35 : 1;
+        ctx.fillStyle = missGlow ? "#f43f5e" : COLORS[n.lane];
+        roundRect(x + LANE_W / 2 - s / 2, y - s / 2, s, s, 10);
+        ctx.fill();
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
+      // partículas
+      for (const p of particles) {
+        ctx.globalAlpha = Math.max(0, 1 - p.age / 0.6);
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      // popups
+      for (const p of popups) {
+        ctx.globalAlpha = Math.max(0, 1 - p.age / 0.7);
+        ctx.fillStyle = p.color;
+        ctx.font = "bold 22px system-ui, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(p.text, p.x, p.y - p.age * 70);
+      }
+      ctx.globalAlpha = 1;
+      // banner MODO FRENTE
+      if (fever && state === "playing") {
+        ctx.fillStyle = `hsla(${(t * 300) % 360}, 90%, 60%, ${0.7 + 0.3 * Math.sin(t * 10)})`;
+        ctx.font = "bold 30px system-ui, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("⚡ MODO FRENTE ⚡", W / 2, 60);
+        ctx.font = "bold 18px system-ui, sans-serif";
+        ctx.fillStyle = "#fff";
+        ctx.fillText(`combo ${combo} · x${1 + Math.min(4, Math.floor(combo / 10))}`, W / 2, 90);
+      }
+    }
+
+    // ---------- loop ----------
+    let last = performance.now();
+    function frame() {
+      requestAnimationFrame(frame);
+      const t = now();
+      const dt = Math.min(0.05, (performance.now() - last) / 1000);
+      last = performance.now();
+
+      if (state === "playing") {
+        while (nextBeat < t + 0.35) { scheduleBeat(nextBeat); nextBeat += beatInterval; }
+        for (const n of notes) {
+          if (!n.hit && !n.missed && t > n.landAt + MISS_AFTER) {
+            n.missed = true;
+            doMiss(n);
+          }
+        }
+        notes = notes.filter(n => !(n.hit && n.missed) && t < n.landAt + 0.6);
+      }
+      for (const p of particles) {
+        p.age += dt;
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.vy += 500 * dt;
+      }
+      particles = particles.filter(p => p.age < 0.6);
+      for (const p of popups) p.age += dt;
+      popups = popups.filter(p => p.age < 0.7);
+
+      draw(t);
+    }
+
+    // ---------- input ----------
+    window.addEventListener("keydown", (e) => {
+      if (e.repeat) return;
+      const k = e.key.toLowerCase();
+      if (state === "playing" && k in KEYMAP) {
+        e.preventDefault();
+        doHit(KEYMAP[k]);
+      } else if ((k === " " || k === "enter") && state !== "playing") {
+        e.preventDefault();
+        startGame();
+      }
+    });
+    function touchLane(clientX) {
+      const r = cvs.getBoundingClientRect();
+      const lane = Math.min(LANES - 1, Math.max(0, Math.floor(((clientX - r.left) / r.width) * LANES)));
+      doHit(lane);
+    }
+    cvs.addEventListener("pointerdown", (e) => {
+      if (state === "playing") { e.preventDefault(); touchLane(e.clientX); }
+    });
+
+    showStart();
+    frame();
+  </script>
+</body>
+</html>

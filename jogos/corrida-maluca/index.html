@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Corrida Maluca 🏁💨</title>
+<style>
+  :root {
+    --bg: #120821;
+    --primary: #a855f7;
+    --accent: #e879f9;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    background: radial-gradient(800px 400px at 50% -20%, #3b1a6e 0%, var(--bg) 60%);
+    color: #f5f0ff;
+    font-family: "Segoe UI", system-ui, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    gap: 12px;
+    padding: 12px;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+  }
+  h1 {
+    font-size: clamp(1.5rem, 4vw, 2.1rem);
+    letter-spacing: 1px;
+    background: linear-gradient(90deg, var(--accent), var(--primary), #818cf8);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  #wrap {
+    position: relative;
+    width: 100%;
+    max-width: 860px;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 12px 40px rgba(120, 60, 220, .35), 0 0 0 2px rgba(168, 85, 247, .35);
+  }
+  canvas#game { display: block; width: 100%; height: auto; touch-action: none; }
+
+  .overlay {
+    position: fixed; inset: 0; z-index: 20;
+    display: flex; flex-direction: column; align-items: center;
+    gap: 10px;
+    background: rgba(10, 4, 20, .86);
+    backdrop-filter: blur(3px);
+    text-align: center;
+    padding: 12px;
+    overflow-y: auto;
+  }
+  .overlay::before, .overlay::after { content: ""; flex: 1 0 auto; }
+  #menu { background: #150a26; }
+  .hidden { display: none !important; }
+
+  .big { font-size: clamp(1.4rem, 4vw, 2.1rem); font-weight: 800; }
+  .sub { color: #c9b8e8; font-size: .88rem; max-width: 560px; line-height: 1.4; }
+
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    width: 100%;
+    max-width: 700px;
+  }
+  @media (max-width: 560px) { .cards { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-height: 460px) {
+    #menu .sub, #menu .kbd, .card .tag { display: none; }
+    .card canvas { width: 84px; height: 54px; }
+  }
+  .card {
+    background: rgba(168, 85, 247, .10);
+    border: 2px solid rgba(168, 85, 247, .35);
+    border-radius: 12px;
+    padding: 8px 6px 10px;
+    cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    transition: transform .12s ease, border-color .12s ease, background .12s ease;
+  }
+  .card canvas { width: 118px; height: 72px; border-radius: 8px; }
+  .card .nome { font-weight: 700; font-size: .9rem; }
+  .card .tag { font-size: .7rem; color: #b9a6dc; min-height: 2.2em; line-height: 1.15; }
+  .card.sel, .card:hover {
+    transform: translateY(-4px) scale(1.03);
+    border-color: var(--accent);
+    background: rgba(232, 121, 249, .16);
+    box-shadow: 0 6px 18px rgba(232, 121, 249, .25);
+  }
+
+  .btn {
+    font: inherit; font-weight: 700; font-size: 1rem;
+    padding: 10px 22px;
+    border: none; border-radius: 999px;
+    color: #fff; cursor: pointer;
+    background: linear-gradient(90deg, var(--primary), var(--accent));
+    box-shadow: 0 4px 14px rgba(168, 85, 247, .45);
+    transition: transform .12s ease;
+  }
+  .btn:hover { transform: scale(1.05); }
+  .btn.ghost { background: transparent; border: 2px solid rgba(232, 121, 249, .5); box-shadow: none; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+  .kbd { font-size: .8rem; color: #9f8bc4; }
+  .score-big { font-size: clamp(2rem, 6vw, 3rem); font-weight: 800; color: var(--accent); }
+  .flash-txt { color: #fde047; font-weight: 700; }
+</style>
+</head>
+<body>
+
+<h1>🏁 Corrida Maluca 💨</h1>
+
+<div id="wrap">
+  <canvas id="game" width="800" height="420"></canvas>
+
+  <!-- MENU -->
+  <div id="menu" class="overlay">
+    <div class="big">Escolha sua pista</div>
+    <div class="sub">Runner 3D em <b>terceira pessoa</b> numa estrada de <b>3 faixas</b>! ⬅️➡️ <b>troque de faixa</b> para desviar dos obstáculos <b>altos</b> (cercas, barracas e máquinas — <b>não dá pra pular</b>!), ⬆️ <b>pule</b> (ou <b>pulo duplo</b>!) os baixos e pegue as <b>moedas</b> 🪙. A corrida <b>acelera sem parar</b>: Amazônia, Rio, Metrô de SP e Pantanal te esperam!</div>
+    <div class="cards" id="cards"></div>
+    <div class="row">
+      <button class="btn" id="btn-play">▶ Correr!</button>
+    </div>
+    <div class="kbd">⬅️ ➡️ / A D = trocar de faixa &nbsp;•&nbsp; ⬆ / Espaço / W = pular (de novo no ar = duplo) &nbsp;•&nbsp; 📱 deslize p/ os lados = faixa, deslize p/ cima ou toque = pular</div>
+  </div>
+
+  <!-- GAME OVER -->
+  <div id="over" class="overlay hidden">
+    <div class="big">💥 Caiu!</div>
+    <div>Pontuação</div>
+    <div class="score-big" id="final-score">0</div>
+    <div id="record-line" class="flash-txt" style="display:none">🏆 Novo recorde!</div>
+    <div class="sub" id="record-line-2" style="display:none"></div>
+    <div class="row">
+      <button class="btn" id="btn-retry">🔄 Correr de novo</button>
+      <button class="btn ghost" id="btn-menu">🗺️ Trocar pista</button>
+    </div>
+    <div class="kbd">Enter / Espaço = de novo &nbsp;•&nbsp; Esc = trocar pista</div>
+  </div>
+</div>
+
+<script>
+"use strict";
+const cvs = document.getElementById("game");
+const ctx = cvs.getContext("2d");
+const W = cvs.width, H = cvs.height;
+
+// ---------- projeção pseudo-3D ----------
+const HORIZON = 142;      // y do horizonte
+const GY0 = H - 58;       // y do chão na altura do jogador (z=0)
+const F = 220;            // distância focal
+const Z_MAX = 700;        // onde os objetos surgem
+const LANE_W = 112;       // px por faixa em z=0
+const ROAD_HALF = 1.5;    // meia-largura da estrada em "faixas"
+
+function scaleAt(z) { return F / (F + Math.max(z, -F * 0.6)); }
+function groundY(z) { return HORIZON + (GY0 - HORIZON) * scaleAt(z); }
+function laneX(lane, z) { return W / 2 + lane * LANE_W * scaleAt(z); }
+
+const HS_KEY = "corrida-maluca-high";
+
+// ---------- áudio ----------
+let actx = null;
+function beep(freq, dur = 0.08, type = "square", vol = 0.04) {
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === "suspended") actx.resume();
+    const o = actx.createOscillator(), g = actx.createGain();
+    o.type = type; o.frequency.value = freq;
+    g.gain.value = vol;
+    o.connect(g); g.connect(actx.destination);
+    o.start();
+    g.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime + dur);
+    o.stop(actx.currentTime + dur);
+  } catch (e) {}
+}
+
+// ---------- util ----------
+function rr(c, x, y, w, h, r) {
+  c.beginPath();
+  if (c.roundRect) c.roundRect(x, y, w, h, r); else c.rect(x, y, w, h);
+  c.fill();
+}
+
+// ---------- temas ----------
+const THEMES = [
+  {
+    id: "amazonia", nome: "Amazônia", emoji: "🌿",
+    tag: "Mata fechada: troncos, rochas e cercas!",
+    sky: ["#0a2f1d", "#1a5c3c"], ground: "#2f4a1c", road: "#5a4426", edge: "#d9d2a8",
+    sides: ["tree", "bush", "tree"],
+    low: ["tronco", "rocha"], tall: ["cercado"],
+  },
+  {
+    id: "rio", nome: "Rio de Janeiro", emoji: "🏖️",
+    tag: "Calçadão: bola, latas e barracas!",
+    sky: ["#0284c7", "#7dd3fc"], ground: "#e2bd7c", road: "#9aa0ae", edge: "#ffffff",
+    sides: ["palm", "bush", "palm"],
+    low: ["bola", "lata"], tall: ["barraca"],
+  },
+  {
+    id: "metro", nome: "Metrô SP", emoji: "🚇",
+    tag: "Túnel: cones, lixeiras e vending!",
+    sky: ["#12151f", "#262e42"], ground: "#1d2129", road: "#3d4454", edge: "#facc15",
+    sides: ["pillar", "pillar"],
+    low: ["cone", "lixeira"], tall: ["vend"],
+  },
+  {
+    id: "pantanal", nome: "Pantanal", emoji: "🐊",
+    tag: "Alagado: capim, jacarés e árvores!",
+    sky: ["#2c3a20", "#b08a3e"], ground: "#4a4226", road: "#7a5f33", edge: "#f4ead8",
+    sides: ["reeds", "bush", "reeds"],
+    low: ["capim", "jacare"], tall: ["arvoreCaida"],
+  },
+];
+
+// ---------- obstáculos (desenhados com (0,0) = centro-base, olhando p/ câmera) ----------
+function drawObstacle(c, o, s) {
+  const w = o.w * s, h = o.h * s;
+  if (o.kind === "tronco") {
+    c.fillStyle = "#7a4f28"; rr(c, -w / 2, -h, w, h, h * 0.45);
+    c.fillStyle = "#a3714a"; c.beginPath(); c.ellipse(-w / 2 + h * 0.28, -h / 2, h * 0.24, h * 0.38, 0, 0, 7); c.fill();
+    c.fillStyle = "#8a5c33"; c.beginPath(); c.ellipse(-w / 2 + h * 0.28, -h / 2, h * 0.13, h * 0.22, 0, 0, 7); c.fill();
+    c.strokeStyle = "#5f3c1e"; c.lineWidth = Math.max(1, 2 * s);
+    c.beginPath(); c.moveTo(-w * 0.05, -h * 0.75); c.lineTo(w / 2 - 4 * s, -h * 0.75); c.stroke();
+  } else if (o.kind === "rocha") {
+    c.fillStyle = "#8a6f58";
+    c.beginPath();
+    c.moveTo(-w / 2, 0); c.lineTo(-w / 2 + 3 * s, -h * 0.7); c.lineTo(-w * 0.05, -h);
+    c.lineTo(w * 0.3, -h * 0.62); c.lineTo(w / 2, 0); c.fill();
+    c.fillStyle = "#a3846a";
+    c.beginPath(); c.moveTo(-w * 0.05, -h); c.lineTo(w * 0.3, -h * 0.62); c.lineTo(w * 0.05, -h * 0.42); c.fill();
+  } else if (o.kind === "bola") {
+    const r = h / 2;
+    c.fillStyle = "#f4f4f5"; c.beginPath(); c.arc(0, -r, r, 0, 7); c.fill();
+    c.fillStyle = "#1c1c1e";
+    c.beginPath();
+    for (let i = 0; i < 5; i++) {
+      const a = (i / 5) * Math.PI * 2 - Math.PI / 2;
+      const px = Math.cos(a) * r * 0.36, py = -r + Math.sin(a) * r * 0.36;
+      if (i === 0) c.moveTo(px, py); else c.lineTo(px, py);
+    }
+    c.closePath(); c.fill();
+    c.strokeStyle = "#1c1c1e"; c.lineWidth = Math.max(1, 1.6 * s);
+    for (let i = 0; i < 5; i++) {
+      const a = (i / 5) * Math.PI * 2 - Math.PI / 2 + Math.PI / 5;
+      c.beginPath();
+      c.moveTo(Math.cos(a) * r * 0.46, -r + Math.sin(a) * r * 0.46);
+      c.lineTo(Math.cos(a) * r * 0.92, -r + Math.sin(a) * r * 0.92);
+      c.stroke();
+    }
+  } else if (o.kind === "lata") {
+    c.fillStyle = "#dc2626"; rr(c, -w / 2, -h, w, h, 4 * s);
+    c.fillStyle = "#f4f4f5"; c.fillRect(-w / 2, -h * 0.6, w, 5 * s);
+    c.fillStyle = "#991b1b"; c.fillRect(-w / 2, -h, w, 3 * s);
+  } else if (o.kind === "cone") {
+    c.fillStyle = "#f97316";
+    c.beginPath(); c.moveTo(0, -h); c.lineTo(w - 2 * s, -3 * s); c.lineTo(2 * s, -3 * s); c.fill();
+    c.fillStyle = "#fff"; c.fillRect(w * 0.2, -h * 0.55, w * 0.6, 5 * s);
+    c.fillStyle = "#e05e0c"; c.fillRect(-w * 0.42, -3 * s, w * 0.84, 3 * s);
+  } else if (o.kind === "lixeira") {
+    c.fillStyle = "#9ca3af"; rr(c, -w / 2 + 3 * s, -h * 0.8, w - 6 * s, h * 0.8, 4 * s);
+    c.fillStyle = "#6b7280"; rr(c, -w / 2, -h, w, h * 0.2, 4 * s);
+    c.fillStyle = "#7b8494"; c.fillRect(-w / 2 + 7 * s, -h * 0.68, 3 * s, h * 0.5);
+  } else if (o.kind === "capim") {
+    c.strokeStyle = "#4d7c2f"; c.lineWidth = Math.max(1.5, 3 * s);
+    for (let i = 0; i < 6; i++) {
+      const bx = -w / 2 + i * (w / 5);
+      c.beginPath();
+      c.moveTo(bx, 0);
+      c.quadraticCurveTo(bx + 3 * s, -h * 0.6, bx - 2 * s + i * s, -h * (0.75 + (i % 3) * 0.1));
+      c.stroke();
+    }
+    c.fillStyle = "#6b9b3a"; c.beginPath(); c.ellipse(0, -2 * s, w / 2 - 2 * s, 4 * s, 0, 0, 7); c.fill();
+  } else if (o.kind === "jacare") {
+    // jacaré de frente (a gente corre na frente dele!)
+    c.fillStyle = "#3a5523";
+    c.beginPath(); c.ellipse(0, -h * 0.4, w * 0.42, h * 0.4, 0, 0, 7); c.fill();
+    c.fillStyle = "#4a6b2f";
+    c.beginPath(); c.ellipse(0, -h * 0.82, w * 0.26, h * 0.42, 0, 0, 7); c.fill();
+    c.fillStyle = "#2c4217";
+    c.beginPath(); c.ellipse(0, -h * 0.7, w * 0.3, h * 0.22, 0, 0, 7); c.fill();
+    // olhos
+    c.fillStyle = "#fde047";
+    c.beginPath(); c.arc(-w * 0.13, -h * 1.08, 3.4 * s, 0, 7); c.fill();
+    c.beginPath(); c.arc(w * 0.13, -h * 1.08, 3.4 * s, 0, 7); c.fill();
+    c.fillStyle = "#111";
+    c.beginPath(); c.arc(-w * 0.13, -h * 1.08, 1.4 * s, 0, 7); c.fill();
+    c.beginPath(); c.arc(w * 0.13, -h * 1.08, 1.4 * s, 0, 7); c.fill();
+    // dentes
+    c.fillStyle = "#fff";
+    for (let i = -3; i <= 3; i++) c.fillRect(i * w * 0.055 - 1.5 * s, -h * 0.72, 3 * s, 3 * s);
+  } else if (o.kind === "cercado") {
+    c.fillStyle = "#8a5c33";
+    c.fillRect(-w / 2, -h, 5 * s, h); c.fillRect(w / 2 - 5 * s, -h, 5 * s, h);
+    c.fillRect(-w / 2 - 3 * s, -h * 0.78, w + 6 * s, 8 * s);
+    c.fillRect(-w / 2 - 3 * s, -h * 0.5, w + 6 * s, 8 * s);
+    c.fillRect(-w / 2 - 3 * s, -h * 0.22, w + 6 * s, 8 * s);
+    c.fillStyle = "#fde047"; rr(c, -17 * s, -h * 0.98, 34 * s, 17 * s, 3 * s);
+    c.fillStyle = "#111"; c.font = "bold " + Math.round(13 * s) + "px sans-serif"; c.textAlign = "center";
+    c.fillText("⛔", 0, -h * 0.98 + 14 * s); c.textAlign = "left";
+  } else if (o.kind === "barraca") {
+    // barraca de praia
+    c.fillStyle = "#6b7280";
+    c.fillRect(-w / 2, -h, 4 * s, h); c.fillRect(w / 2 - 4 * s, -h, 4 * s, h);
+    // tolda listrada
+    for (let i = 0; i < 5; i++) {
+      c.fillStyle = i % 2 ? "#f8fafc" : "#3b82f6";
+      c.fillRect(-w / 2 + i * (w / 5), -h, w / 5 + 1, 14 * s);
+    }
+    c.fillStyle = "rgba(0,0,0,.18)"; c.fillRect(-w / 2, -h + 14 * s, w, 4 * s);
+    // cadeira
+    c.fillStyle = "#f8fafc"; rr(c, -w * 0.3, -h * 0.42, w * 0.6, 8 * s, 3 * s);
+    c.fillStyle = "#94a3b8";
+    c.fillRect(-w * 0.3, -h * 0.42, 4 * s, h * 0.42); c.fillRect(w * 0.3 - 4 * s, -h * 0.42, 4 * s, h * 0.42);
+  } else if (o.kind === "vend") {
+    // máquina de refrigerante
+    c.fillStyle = "#1d4ed8"; rr(c, -w / 2, -h, w, h, 4 * s);
+    c.fillStyle = "#0f172a"; rr(c, -w * 0.34, -h * 0.86, w * 0.68, h * 0.5, 2 * s);
+    c.fillStyle = "#38bdf8";
+    for (let j = 0; j < 3; j++)
+      for (let i = 0; i < 2; i++)
+        c.fillRect(-w * 0.28 + i * w * 0.3, -h * 0.8 + j * h * 0.15, w * 0.2, h * 0.09);
+    c.fillStyle = "#fde047"; rr(c, -w * 0.3, -h * 0.24, w * 0.6, 8 * s, 2 * s);
+    c.fillStyle = "#f8fafc"; c.fillRect(-w * 0.2, -h * 0.14, w * 0.4, 6 * s);
+    c.fillStyle = "rgba(56,189,248,.25)"; c.fillRect(-w / 2, -h, 6 * s, h);
+  } else if (o.kind === "arvoreCaida") {
+    // árvore cauda atravessando a faixa
+    c.fillStyle = "#6b4a24"; rr(c, -w / 2, -h * 0.5, w, h * 0.5, h * 0.28);
+    c.fillStyle = "#176138";
+    c.beginPath();
+    c.ellipse(w * 0.1, -h * 0.55, w * 0.42, h * 0.34, 0.3, 0, 7);
+    c.ellipse(-w * 0.15, -h * 0.5, w * 0.3, h * 0.26, -0.4, 0, 7);
+    c.fill();
+    c.fillStyle = "#1f8a4c";
+    c.beginPath(); c.ellipse(-w * 0.05, -h * 0.62, w * 0.22, h * 0.2, 0.2, 0, 7); c.fill();
+    c.fillStyle = "#a3714a"; c.beginPath(); c.ellipse(-w / 2 + h * 0.2, -h * 0.25, h * 0.14, h * 0.22, 0, 0, 7); c.fill();
+  }
+}
+
+// ---------- decorações laterais (olhando p/ câmera) ----------
+function drawSide(c, kind, t) {
+  if (kind === "tree") {
+    c.fillStyle = "#123a22"; c.fillRect(-8, -92, 16, 92);
+    c.fillStyle = "#176138"; c.beginPath(); c.ellipse(0, -104, 46, 26, 0, 0, 7); c.fill();
+    c.fillStyle = "#1f8a4c"; c.beginPath(); c.ellipse(-10, -114, 24, 13, 0, 0, 7); c.fill();
+  } else if (kind === "palm") {
+    const sway = Math.sin(t / 700) * 5;
+    c.strokeStyle = "#92613a"; c.lineWidth = 8;
+    c.beginPath(); c.moveTo(0, 0); c.quadraticCurveTo(10, -52, sway, -92); c.stroke();
+    c.fillStyle = "#2e8b57";
+    for (let i = 0; i < 5; i++) {
+      const a = -2.7 + i * 0.55;
+      c.beginPath(); c.ellipse(sway + Math.cos(a) * 24, -92 + Math.sin(a) * 11, 26, 6, a, 0, 7); c.fill();
+    }
+  } else if (kind === "pillar") {
+    c.fillStyle = "#39415a"; c.fillRect(-12, -118, 24, 118);
+    c.fillStyle = "#facc15"; c.fillRect(-12, -42, 24, 9);
+    c.fillStyle = "#fde68a"; c.fillRect(-9, -126, 18, 8);
+    c.fillStyle = "rgba(253,230,138,.16)";
+    c.beginPath(); c.moveTo(-9, -118); c.lineTo(9, -118); c.lineTo(30, -16); c.lineTo(-30, -16); c.closePath(); c.fill();
+  } else if (kind === "reeds") {
+    c.strokeStyle = "#557a2e"; c.lineWidth = 4;
+    for (let i = 0; i < 4; i++) {
+      const bx = -14 + i * 9, sway = Math.sin(t / 600 + i) * 4;
+      c.beginPath(); c.moveTo(bx, 0); c.quadraticCurveTo(bx + sway, -44, bx + sway * 2, -70 - (i % 3) * 12); c.stroke();
+    }
+    c.fillStyle = "#f9a8d4"; c.beginPath(); c.ellipse(12, -76, 8, 3.6, 0, 0, 7); c.fill();
+  } else if (kind === "bush") {
+    c.fillStyle = "#1f5c33";
+    c.beginPath();
+    c.arc(-14, -14, 19, 0, 7); c.arc(9, -19, 22, 0, 7); c.arc(26, -12, 15, 0, 7);
+    c.fill();
+  }
+}
+
+// ---------- corredor (de costas) ----------
+function drawRunner(c, t, py, tilt) {
+  const air = py > 2;
+  const f = Math.floor(t / 88) % 2;
+  const P = { skin: "#e8b48c", shirt: "#f8fafc", shorts: "#16a34a", shoe: "#ef4444", cap: "#dc2626" };
+  c.save();
+  c.rotate(tilt);
+  if (air) {
+    c.fillStyle = P.skin;
+    c.fillRect(-12, -16, 10, 12); c.fillRect(3, -12, 10, 12);
+    c.fillStyle = P.shoe; c.fillRect(-13, -6, 12, 5); c.fillRect(2, -4, 12, 5);
+    c.fillStyle = P.shorts; c.fillRect(-13, -25, 26, 12);
+  } else {
+    c.fillStyle = P.skin;
+    if (f) { c.fillRect(-12, -17, 10, 17); c.fillRect(3, -11, 10, 11); }
+    else { c.fillRect(-12, -11, 10, 11); c.fillRect(3, -17, 10, 17); }
+    c.fillStyle = P.shoe;
+    if (f) { c.fillRect(-14, -4, 12, 4); c.fillRect(3, -4, 12, 4); }
+    else { c.fillRect(-14, -4, 12, 4); c.fillRect(3, -4, 12, 4); }
+    c.fillStyle = P.shorts; c.fillRect(-13, -25, 26, 12);
+  }
+  // costas da camisa 10
+  c.fillStyle = P.shirt; rr(c, -14, -47, 28, 24, 6);
+  c.fillStyle = "#16a34a"; c.font = "bold 15px sans-serif"; c.textAlign = "center";
+  c.fillText("10", 0, -29);
+  // braços
+  c.fillStyle = P.shirt;
+  if (f) { rr(c, -20, -43, 7, 16, 3); rr(c, 13, -37, 7, 16, 3); }
+  else { rr(c, -20, -37, 7, 16, 3); rr(c, 13, -43, 7, 16, 3); }
+  c.fillStyle = P.skin;
+  if (f) { c.beginPath(); c.arc(-16.5, -25, 3.2, 0, 7); c.fill(); c.beginPath(); c.arc(16.5, -19, 3.2, 0, 7); c.fill(); }
+  else { c.beginPath(); c.arc(-16.5, -19, 3.2, 0, 7); c.fill(); c.beginPath(); c.arc(16.5, -25, 3.2, 0, 7); c.fill(); }
+  // cabeça de costas
+  c.fillStyle = P.skin; c.beginPath(); c.arc(0, -55, 9.5, 0, 7); c.fill();
+  // boné visto de trás
+  c.fillStyle = P.cap;
+  c.beginPath(); c.arc(0, -56, 9.8, Math.PI * 1.02, Math.PI * 1.98); c.fill();
+  c.fillRect(-9.8, -57, 19.6, 5);
+  c.fillStyle = "#fca5a5"; c.beginPath(); c.arc(0, -59, 2.2, 0, 7); c.fill();
+  c.fillStyle = "#3b2a20"; c.beginPath(); c.arc(0, -53, 9.2, Math.PI * 0.15, Math.PI * 0.85); c.fill();
+  c.textAlign = "left";
+  c.restore();
+}
+
+// ---------- fundos por tema ----------
+function drawSkyAndFar(c, th, t) {
+  const g = c.createLinearGradient(0, 0, 0, HORIZON);
+  g.addColorStop(0, th.sky[0]); g.addColorStop(1, th.sky[1]);
+  c.fillStyle = g; c.fillRect(0, 0, W, HORIZON + 1);
+  if (th.id === "amazonia") {
+    c.fillStyle = "rgba(253,230,138,.9)"; c.beginPath(); c.arc(W * 0.76, 48, 22, 0, 7); c.fill();
+    c.fillStyle = "#0c3520";
+    for (let x = -20; x < W + 20; x += 40) {
+      c.beginPath(); c.arc(x + ((x * 7) % 13), HORIZON + 2, 30 + ((x * 13) % 17), Math.PI, 0); c.fill();
+    }
+    c.fillStyle = "#0a2a19"; c.fillRect(0, HORIZON - 8, W, 9);
+  } else if (th.id === "rio") {
+    c.fillStyle = "#fde68a"; c.beginPath(); c.arc(110, 48, 20, 0, 7); c.fill();
+    for (let i = 0; i < 3; i++) {
+      const nx = ((i * 260 + t * 0.02) % (W + 200)) - 100;
+      c.fillStyle = "rgba(255,255,255,.85)";
+      c.beginPath();
+      c.ellipse(nx, 36 + (i % 2) * 18, 32, 9, 0, 0, 7);
+      c.ellipse(nx + 24, 32 + (i % 2) * 18, 20, 7, 0, 0, 7);
+      c.fill();
+    }
+    // mar
+    c.fillStyle = "#0e7490"; c.fillRect(0, HORIZON - 22, W, 23);
+    c.fillStyle = "#0c4a6e";
+    for (let i = 0; i < 13; i++) {
+      const bx = i * 62 + 8, bh = 14 + ((i * 37) % 24);
+      c.fillRect(bx, HORIZON - 22 - bh, 44, bh);
+    }
+    c.fillStyle = "#0b3a56";
+    c.beginPath();
+    c.moveTo(W * 0.52, HORIZON - 22);
+    c.quadraticCurveTo(W * 0.63, HORIZON - 96, W * 0.76, HORIZON - 22);
+    c.closePath(); c.fill();
+    c.fillStyle = "#e2e8f0";
+    c.fillRect(W * 0.632 - 1.5, HORIZON - 92, 3.5, 14);
+    c.fillRect(W * 0.632 - 13, HORIZON - 86, 28, 3);
+    c.beginPath(); c.arc(W * 0.632, HORIZON - 96, 4.5, 0, 7); c.fill();
+  } else if (th.id === "metro") {
+    const g2 = c.createRadialGradient(W / 2, HORIZON - 8, 6, W / 2, HORIZON - 8, 150);
+    g2.addColorStop(0, "#fef9c3"); g2.addColorStop(0.4, "rgba(254,240,138,.45)"); g2.addColorStop(1, "rgba(254,240,138,0)");
+    c.fillStyle = g2; c.fillRect(0, 0, W, HORIZON + 1);
+    c.fillStyle = "#fef3c7"; rr(c, W / 2 - 80, HORIZON - 34, 160, 35, 6);
+    c.fillStyle = "#262e42";
+    c.fillRect(W / 2 - 80, HORIZON - 34, 9, 35); c.fillRect(W / 2 + 71, HORIZON - 34, 9, 35);
+    c.fillStyle = "#0e7490"; rr(c, W / 2 - 48, HORIZON - 52, 96, 18, 4);
+    c.fillStyle = "#a5f3fc"; c.font = "bold 12px sans-serif"; c.textAlign = "center";
+    c.fillText("SAÍDA →", W / 2, HORIZON - 38); c.textAlign = "left";
+  } else if (th.id === "pantanal") {
+    c.fillStyle = "#fbbf24"; c.beginPath(); c.arc(W / 2, HORIZON - 30, 24, 0, 7); c.fill();
+    c.fillStyle = "rgba(251,191,36,.22)"; c.beginPath(); c.arc(W / 2, HORIZON - 30, 40, 0, 7); c.fill();
+    c.fillStyle = "#3c5a21";
+    c.beginPath(); c.moveTo(0, HORIZON);
+    for (let x = 0; x <= W; x += 70) c.quadraticCurveTo(x + 35, HORIZON - 8 - ((x * 11) % 13), x + 70, HORIZON - 2);
+    c.lineTo(W, HORIZON); c.closePath(); c.fill();
+    c.fillStyle = "#2c4217"; c.fillRect(0, HORIZON - 4, W, 5);
+    for (let i = 0; i < 3; i++) {
+      const bx = ((i * 311 + t * 0.03) % (W + 80)) - 40, by = 44 + i * 20;
+      const w2 = Math.floor(t / 260 + i) % 2;
+      c.strokeStyle = "rgba(240,240,255,.8)"; c.lineWidth = 2.2;
+      c.beginPath();
+      if (w2) { c.moveTo(bx, by); c.quadraticCurveTo(bx + 9, by - 7, bx + 18, by); c.quadraticCurveTo(bx + 27, by - 7, bx + 36, by); }
+      else { c.moveTo(bx, by - 4); c.quadraticCurveTo(bx + 9, by + 2, bx + 18, by - 4); c.quadraticCurveTo(bx + 27, by + 2, bx + 36, by - 4); }
+      c.stroke();
+    }
+  }
+}
+
+// ---------- estado ----------
+const S = {
+  state: "menu",
+  themeIdx: 0,
+  selIdx: 0,
+  playerX: 0, lane: 0,
+  py: 0, vy: 0, onGround: true, jumps: 0,
+  speed: 0, dist: 0, score: 0, coins: 0, nextMilestone: 100,
+  obstacles: [], coinsL: [], sides: [],
+  spawnIn: 0,
+  popups: [],
+  time: 0, shake: 0,
+  high: +(localStorage.getItem(HS_KEY) || 0),
+};
+
+function resetGame() {
+  S.playerX = 0; S.lane = 0;
+  S.py = 0; S.vy = 0; S.onGround = true; S.jumps = 0;
+  S.speed = 4.5; S.dist = 0; S.score = 0; S.coins = 0; S.nextMilestone = 100;
+  S.obstacles = []; S.coinsL = []; S.popups = []; S.spawnIn = 460;
+  S.shake = 0;
+  S.sides = [];
+  for (let side of [-1, 1]) {
+    let z = 40 + Math.random() * 80;
+    while (z < Z_MAX + 60) {
+      S.sides.push({ side: side, x: side * (1.95 + Math.random() * 0.5), z: z, kind: null });
+      z += 110 + Math.random() * 130;
+    }
+  }
+  for (const sd of S.sides) sd.kind = THEMES[S.themeIdx].sides[Math.floor(Math.random() * THEMES[S.themeIdx].sides.length)];
+}
+
+// ---------- spawn ----------
+function spawnPattern() {
+  const th = THEMES[S.themeIdx];
+  const safe = [-1, 0, 1][Math.floor(Math.random() * 3)]; // faixa sempre passável
+  const breather = Math.random() < 0.25 && S.dist > 300; // respiro: só moedas
+  if (!breather) {
+    for (const lane of [-1, 0, 1]) {
+      if (lane === safe) continue;
+      if (Math.random() < 0.78) {
+        const isTall = Math.random() < 0.45;
+        const kind = isTall
+          ? th.tall[0]
+          : th.low[Math.floor(Math.random() * th.low.length)];
+        const dims = {
+          tronco: { w: 78, h: 36 }, rocha: { w: 66, h: 42 },
+          bola: { w: 40, h: 36 }, lata: { w: 32, h: 40 },
+          cone: { w: 34, h: 40 }, lixeira: { w: 38, h: 46 },
+          capim: { w: 64, h: 32 }, jacare: { w: 70, h: 30 },
+          cercado: { w: 104, h: 158 }, barraca: { w: 88, h: 158 },
+          vend: { w: 54, h: 158 }, arvoreCaida: { w: 112, h: 158 },
+        }[kind];
+        S.obstacles.push({ lane, kind, z: Z_MAX, w: dims.w, h: dims.h, jumpable: !isTall });
+      }
+    }
+    // moedas: arco por cima de um obstáculo baixo da faixa segura, ou fileira
+    if (Math.random() < 0.65) {
+      const r = Math.random();
+      if (r < 0.5) {
+        // arco: as pontas ficam no chão, o meio exige pulo
+        for (let i = 0; i < 4; i++) {
+          const f = i / 3;
+          S.coinsL.push({ lane: safe, z: Z_MAX - 138 + i * 46, y: 26 + Math.sin(f * Math.PI) * 66 });
+        }
+      } else {
+        for (let i = 0; i < 5; i++) S.coinsL.push({ lane: safe, z: Z_MAX - 160 + i * 40, y: 14 });
+      }
+    }
+  } else {
+    for (let i = 0; i < 6; i++) S.coinsL.push({ lane: safe, z: Z_MAX - 220 + i * 44, y: 14 });
+  }
+}
+
+// ---------- loop ----------
+let last = 0;
+function loop(ts) {
+  const dt = Math.min(33, ts - last || 16);
+  last = ts; S.time = ts;
+  update(dt);
+  render(ts);
+  requestAnimationFrame(loop);
+}
+
+function update(dt) {
+  if (S.state !== "playing") return;
+  const k = dt / 16.7;
+
+  S.speed = Math.min(11, S.speed + 0.00015 * dt);
+  const move = S.speed * 1.9 * k;
+  S.dist += move;
+  S.score = Math.floor(S.dist / 12) + S.coins * 15;
+  if (S.score >= S.nextMilestone) {
+    beep(880, 0.09, "square", 0.05);
+    setTimeout(() => beep(1180, 0.12, "square", 0.05), 90);
+    S.popups.push({ x: W / 2, y: 160, txt: "Turbo! 🔥", life: 45, big: true });
+    S.nextMilestone += 100;
+  }
+
+  // troca de faixa (suave)
+  S.playerX += (S.lane - S.playerX) * Math.min(1, 0.22 * k);
+
+  // pulo
+  if (!S.onGround) {
+    S.vy -= 0.62 * k;
+    S.py += S.vy * k;
+    if (S.py <= 0) { S.py = 0; S.vy = 0; S.onGround = true; S.jumps = 0; }
+  }
+
+  // spawn
+  S.spawnIn -= move;
+  if (S.spawnIn <= 0) {
+    spawnPattern();
+    S.spawnIn = (0.95 + Math.random() * 0.7) * (170 + S.speed * 21);
+  }
+
+  // obstáculos
+  for (let i = S.obstacles.length - 1; i >= 0; i--) {
+    const o = S.obstacles[i];
+    o.z -= move;
+    if (o.z < 18 && o.z > -22 && Math.abs(S.playerX - o.lane) < 0.55) {
+      if (!o.jumpable || S.py < o.h) { gameOver(); return; }
+    }
+    if (o.z < -60) S.obstacles.splice(i, 1);
+  }
+
+  // moedas
+  for (let i = S.coinsL.length - 1; i >= 0; i--) {
+    const cn = S.coinsL[i];
+    cn.z -= move;
+    if (!cn.got && cn.z < 20 && cn.z > -18 && Math.abs(S.playerX - cn.lane) < 0.5) {
+      const coinY = cn.y, coinTop = coinY + 12, coinBot = coinY - 12;
+      const pTop = S.py + 58, pBot = S.py;
+      if (coinTop > pBot && coinBot < pTop) {
+        cn.got = true;
+        S.coins++;
+        const px = laneX(cn.lane, Math.max(cn.z, 0));
+        const py = groundY(Math.max(cn.z, 0)) - (cn.y + 12) * scaleAt(Math.max(cn.z, 0));
+        S.popups.push({ x: px, y: py, txt: "+15", life: 26 });
+        beep(1250, 0.07, "triangle", 0.045);
+        setTimeout(() => beep(1650, 0.08, "triangle", 0.04), 50);
+      }
+    }
+    if (cn.z < -40 || cn.got) S.coinsL.splice(i, 1);
+  }
+
+  // laterais
+  const th = THEMES[S.themeIdx];
+  for (const sd of S.sides) {
+    sd.z -= move;
+    if (sd.z < -40) {
+      sd.z += Z_MAX + 120 + Math.random() * 160;
+      sd.x = sd.side * (1.95 + Math.random() * 0.5);
+      sd.kind = th.sides[Math.floor(Math.random() * th.sides.length)];
+    }
+  }
+
+  for (let i = S.popups.length - 1; i >= 0; i--) {
+    S.popups[i].y -= 0.9 * k; S.popups[i].life -= k;
+    if (S.popups[i].life <= 0) S.popups.splice(i, 1);
+  }
+}
+
+// ---------- render ----------
+function render(ts) {
+  const th = THEMES[S.themeIdx];
+  ctx.clearRect(0, 0, W, H);
+  ctx.save();
+  if (S.shake > 0) {
+    ctx.translate((Math.random() - 0.5) * S.shake, (Math.random() - 0.5) * S.shake);
+    S.shake *= 0.88;
+  }
+
+  drawSkyAndFar(ctx, th, ts);
+
+  // chão fora da pista
+  ctx.fillStyle = th.ground;
+  ctx.fillRect(0, HORIZON, W, H - HORIZON);
+
+  // pista (trapézio)
+  const zNear = -F * 0.5, zFar = Z_MAX;
+  const sN = scaleAt(zNear), sF = scaleAt(zFar);
+  ctx.fillStyle = th.road;
+  ctx.beginPath();
+  ctx.moveTo(W / 2 - ROAD_HALF * LANE_W * sN, groundY(zNear));
+  ctx.lineTo(W / 2 - ROAD_HALF * LANE_W * sF, groundY(zFar));
+  ctx.lineTo(W / 2 + ROAD_HALF * LANE_W * sF, groundY(zFar));
+  ctx.lineTo(W / 2 + ROAD_HALF * LANE_W * sN, groundY(zNear));
+  ctx.closePath(); ctx.fill();
+
+  // bordas
+  ctx.strokeStyle = th.edge; ctx.lineWidth = 3.5;
+  for (const side of [-1, 1]) {
+    ctx.beginPath();
+    ctx.moveTo(W / 2 + side * ROAD_HALF * LANE_W * sN, groundY(zNear));
+    ctx.lineTo(W / 2 + side * ROAD_HALF * LANE_W * sF, groundY(zFar));
+    ctx.stroke();
+  }
+
+  // divisórias tracejadas
+  ctx.strokeStyle = "rgba(255,255,255,.7)";
+  for (const div of [-0.5, 0.5]) {
+    const step = 34;
+    const off = S.dist % step;
+    for (let z = -off; z < zFar; z += step) {
+      const z0 = Math.max(z, zNear), z1 = z + 18;
+      if (z1 <= z0) continue;
+      ctx.lineWidth = Math.max(1, 4 * scaleAt(z0));
+      ctx.beginPath();
+      ctx.moveTo(laneX(div, z0), groundY(z0));
+      ctx.lineTo(laneX(div, z1), groundY(z1));
+      ctx.stroke();
+    }
+  }
+
+  // objetos em profundidade (de longe p/ perto)
+  const objs = [];
+  for (const o of S.obstacles) objs.push({ z: o.z, draw: () => {
+    const s = scaleAt(o.z) * 1.28;
+    ctx.save(); ctx.translate(laneX(o.lane, o.z), groundY(o.z));
+    drawObstacle(ctx, o, s);
+    ctx.restore();
+  } });
+  for (const cn of S.coinsL) objs.push({ z: cn.z, draw: () => {
+    const s = scaleAt(cn.z) * 1.1;
+    const cx = laneX(cn.lane, cn.z), cy = groundY(cn.z) - cn.y * s;
+    const sp = Math.abs(Math.sin(ts / 240 + cn.z * 0.04));
+    ctx.fillStyle = "#f59e0b";
+    ctx.beginPath(); ctx.ellipse(cx, cy, Math.max(1.5, 11 * s * sp), 11 * s, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = "#fde047";
+    ctx.beginPath(); ctx.ellipse(cx, cy, Math.max(1, 7 * s * sp), 7 * s, 0, 0, 7); ctx.fill();
+    if (s > 0.45) {
+      ctx.fillStyle = "#b45309"; ctx.font = "bold " + Math.round(10 * s) + "px sans-serif";
+      ctx.textAlign = "center"; ctx.fillText("R$", cx, cy + 3.4 * s); ctx.textAlign = "left";
+    }
+  } });
+  for (const sd of S.sides) if (sd.z > -30) objs.push({ z: sd.z, draw: () => {
+    const s = scaleAt(sd.z) * 1.28;
+    ctx.save(); ctx.translate(laneX(sd.x, sd.z), groundY(sd.z));
+    ctx.scale(s, s);
+    drawSide(ctx, sd.kind, ts);
+    ctx.restore();
+  } });
+  objs.sort((a, b) => b.z - a.z);
+  for (const o of objs) o.draw();
+
+  // jogador
+  const psc = 1.28;
+  const px = laneX(S.playerX, 0);
+  // sombra
+  ctx.fillStyle = "rgba(0,0,0,.3)";
+  ctx.beginPath();
+  ctx.ellipse(px, groundY(0) + 2, 20 * psc * Math.max(0.45, 1 - S.py / 240), 5.5 * psc * Math.max(0.45, 1 - S.py / 240), 0, 0, 7);
+  ctx.fill();
+  ctx.save();
+  ctx.translate(px, groundY(0) - S.py * psc);
+  ctx.scale(psc, psc);
+  drawRunner(ctx, ts, S.py, (S.lane - S.playerX) * 0.12);
+  ctx.restore();
+
+  // popups
+  ctx.textAlign = "center";
+  for (const p of S.popups) {
+    ctx.globalAlpha = Math.min(1, p.life / 20);
+    ctx.fillStyle = p.big ? "#fde047" : "#fef08a";
+    ctx.font = (p.big ? "bold 26px" : "bold 14px") + " 'Segoe UI', sans-serif";
+    ctx.fillText(p.txt, p.x, p.y);
+  }
+  ctx.globalAlpha = 1;
+
+  // HUD
+  if (S.state !== "menu") {
+    ctx.textAlign = "right";
+    ctx.font = "bold 22px 'Segoe UI', monospace";
+    const flash = S.nextMilestone - S.score < 6 && S.state === "playing";
+    ctx.fillStyle = flash ? "#fde047" : "rgba(255,255,255,.9)";
+    ctx.fillText(String(S.score).padStart(5, "0"), W - 16, 34);
+    ctx.font = "12px 'Segoe UI', sans-serif";
+    ctx.fillStyle = "rgba(255,255,255,.5)";
+    ctx.fillText("🏆 " + Math.max(S.high, S.score), W - 16, 52);
+
+    ctx.textAlign = "left";
+    ctx.font = "bold 15px 'Segoe UI', sans-serif";
+    ctx.fillStyle = "rgba(255,255,255,.9)";
+    ctx.fillText("🪙 " + S.coins, 16, 32);
+    ctx.font = "bold 13px 'Segoe UI', sans-serif";
+    ctx.fillStyle = "#fde047";
+    ctx.fillText("⚡ " + Math.round(S.speed * 6) + " km/h", 16, 52);
+
+    ctx.textAlign = "center";
+    ctx.font = "12px 'Segoe UI', sans-serif";
+    ctx.fillStyle = "rgba(255,255,255,.55)";
+    ctx.fillText(th.emoji + " " + th.nome, W / 2, 24);
+  }
+  ctx.restore();
+}
+
+// ---------- fluxo ----------
+function startGame() {
+  resetGame();
+  S.state = "playing";
+  hide("menu"); hide("over");
+}
+function gameOver() {
+  S.state = "over";
+  S.shake = 15;
+  beep(140, 0.3, "sawtooth", 0.06);
+  setTimeout(() => beep(90, 0.4, "sawtooth", 0.06), 120);
+  const rec = S.score > S.high;
+  if (rec) { S.high = S.score; localStorage.setItem(HS_KEY, S.high); }
+  document.getElementById("final-score").textContent = S.score;
+  document.getElementById("record-line").style.display = rec ? "block" : "none";
+  const r2 = document.getElementById("record-line-2");
+  r2.style.display = "block";
+  r2.textContent = "Recorde: " + S.high + "  •  Moedas: " + S.coins + "  •  Pista: " + THEMES[S.themeIdx].nome;
+  show("over");
+}
+function toMenu() {
+  S.state = "menu";
+  resetGame();
+  hide("over"); show("menu");
+  updateCards();
+}
+function show(id) { document.getElementById(id).classList.remove("hidden"); }
+function hide(id) { document.getElementById(id).classList.add("hidden"); }
+
+// ---------- menu / cards ----------
+const cardsEl = document.getElementById("cards");
+function drawPreview(c, th) {
+  const cc = c.getContext("2d");
+  const pw = c.width, ph = c.height;
+  const hz = ph * 0.38;
+  const g = cc.createLinearGradient(0, 0, 0, hz);
+  g.addColorStop(0, th.sky[0]); g.addColorStop(1, th.sky[1]);
+  cc.fillStyle = g; cc.fillRect(0, 0, pw, ph);
+  // cenário
+  if (th.id === "amazonia") { cc.fillStyle = "#0c3520"; for (let x = 0; x < pw; x += 14) { cc.beginPath(); cc.arc(x, hz + 1, 12, Math.PI, 0); cc.fill(); } }
+  else if (th.id === "rio") { cc.fillStyle = "#0e7490"; cc.fillRect(0, hz - 8, pw, 9); cc.fillStyle = "#0c4a6e"; for (let i = 0; i < 8; i++) cc.fillRect(i * 26 + 4, hz - 8 - (10 + (i * 7) % 14), 18, 10 + (i * 7) % 14); }
+  else if (th.id === "metro") { cc.fillStyle = "#fef3c7"; rr(cc, pw / 2 - 20, hz - 12, 40, 13, 3); }
+  else { cc.fillStyle = "#fbbf24"; cc.beginPath(); cc.arc(pw / 2, hz - 6, 8, 0, 7); cc.fill(); }
+  // chão + pista
+  cc.fillStyle = th.ground; cc.fillRect(0, hz, pw, ph - hz);
+  cc.fillStyle = th.road;
+  cc.beginPath();
+  cc.moveTo(pw / 2 - 56, ph); cc.lineTo(pw / 2 - 14, hz); cc.lineTo(pw / 2 + 14, hz); cc.lineTo(pw / 2 + 56, ph);
+  cc.closePath(); cc.fill();
+  cc.strokeStyle = "rgba(255,255,255,.7)"; cc.lineWidth = 1.4;
+  for (const f of [0.36, 0.64]) {
+    cc.beginPath(); cc.moveTo(pw * f, ph); cc.lineTo(pw / 2 + (f - 0.5) * 28, hz); cc.stroke();
+  }
+  // corredor de costas
+  cc.save(); cc.translate(pw / 2, ph - 8); cc.scale(0.5, 0.5);
+  drawRunner(cc, 160, 0, 0);
+  cc.restore();
+  // moeda
+  cc.fillStyle = "#fde047"; cc.beginPath(); cc.arc(pw * 0.7, ph * 0.56, 5.5, 0, 7); cc.fill();
+  cc.fillStyle = "#b45309"; cc.font = "bold 8px sans-serif"; cc.textAlign = "center";
+  cc.fillText("R$", pw * 0.7, ph * 0.56 + 3);
+}
+
+function buildCards() {
+  cardsEl.innerHTML = "";
+  THEMES.forEach((th, i) => {
+    const d = document.createElement("div");
+    d.className = "card";
+    const c = document.createElement("canvas");
+    c.width = 200; c.height = 120;
+    const n = document.createElement("div"); n.className = "nome"; n.textContent = th.emoji + " " + th.nome;
+    const t = document.createElement("div"); t.className = "tag"; t.textContent = th.tag;
+    d.append(c, n, t);
+    d.addEventListener("click", () => { S.selIdx = i; S.themeIdx = i; updateCards(); beep(700, 0.05, "triangle", 0.03); });
+    cardsEl.appendChild(d);
+    drawPreview(c, th);
+  });
+  updateCards();
+}
+function updateCards() {
+  [...cardsEl.children].forEach((el, i) => el.classList.toggle("sel", i === S.selIdx));
+}
+
+// ---------- controles ----------
+function moveLane(dir) {
+  if (S.state !== "playing") return;
+  const nl = Math.max(-1, Math.min(1, S.lane + dir));
+  if (nl !== S.lane) { S.lane = nl; beep(420, 0.04, "triangle", 0.025); }
+}
+function jump() {
+  if (S.state !== "playing") return;
+  if (S.onGround) {
+    S.vy = 11.4; S.onGround = false; S.jumps = 1;
+    beep(520, 0.07, "square", 0.035);
+  } else if (S.jumps < 2) {
+    S.jumps = 2;
+    S.vy = 9.8;
+    beep(780, 0.08, "square", 0.04);
+    S.popups.push({ x: laneX(S.playerX, 0), y: groundY(0) - S.py * 1.28 - 74, txt: "×2", life: 25 });
+  }
+}
+
+window.addEventListener("keydown", (e) => {
+  if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " ", "Enter"].includes(e.key)) e.preventDefault();
+  if (S.state === "menu") {
+    if (e.key === "ArrowLeft") { S.selIdx = (S.selIdx + THEMES.length - 1) % THEMES.length; S.themeIdx = S.selIdx; updateCards(); }
+    if (e.key === "ArrowRight") { S.selIdx = (S.selIdx + 1) % THEMES.length; S.themeIdx = S.selIdx; updateCards(); }
+    if (e.key === "Enter" || e.key === " ") startGame();
+    return;
+  }
+  if (S.state === "over") {
+    if (e.key === "Enter" || e.key === " " || e.key.toLowerCase() === "r") startGame();
+    if (e.key === "Escape") toMenu();
+    return;
+  }
+  if (e.key === "ArrowLeft" || e.key.toLowerCase() === "a") moveLane(-1);
+  if (e.key === "ArrowRight" || e.key.toLowerCase() === "d") moveLane(1);
+  if (e.key === "ArrowUp" || e.key === " " || e.key.toLowerCase() === "w") jump();
+});
+
+// toque: deslize p/ os lados = faixa, deslize p/ cima ou toque = pulo
+let pStart = null;
+cvs.addEventListener("pointerdown", (e) => {
+  pStart = { x: e.clientX, y: e.clientY, t: Date.now() };
+});
+cvs.addEventListener("pointerup", (e) => {
+  if (!pStart) return;
+  const dx = e.clientX - pStart.x, dy = e.clientY - pStart.y;
+  pStart = null;
+  if (S.state !== "playing") { startGame(); return; }
+  if (Math.abs(dx) > 32 && Math.abs(dx) > Math.abs(dy)) moveLane(dx > 0 ? 1 : -1);
+  else if (dy < -28) jump();
+  else if (Math.abs(dx) < 14 && Math.abs(dy) < 14) jump(); // toque seco
+});
+cvs.addEventListener("pointercancel", () => { pStart = null; });
+
+document.getElementById("btn-play").addEventListener("click", startGame);
+document.getElementById("btn-retry").addEventListener("click", startGame);
+document.getElementById("btn-menu").addEventListener("click", toMenu);
+
+// ---------- init ----------
+buildCards();
+resetGame();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
