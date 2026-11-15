@@ -326,15 +326,6 @@
     }
 
     // ---------- desenho ----------
-    function roundRect(x, y, w, h, r) {
-      ctx.beginPath();
-      ctx.moveTo(x + r, y);
-      ctx.arcTo(x + w, y, y + h, r, 0);
-      ctx.arcTo(x + w, y + h, y, r, 0);
-      ctx.arcTo(x + w, y, y + h, x, r, 0);
-      ctx.arcTo(x, y, y + h, x, w, r, 0);
-      ctx.closePath();
-    }
     function draw(t) {
       const fever = combo >= 12;
       // fundo
@@ -363,11 +354,9 @@
         ctx.lineWidth = fever ? 4 : 3;
         if (laneFlash[i] > 0.05) {
           ctx.fillStyle = COLORS[i] + "77";
-          roundRect(rx, ry, rs, rs, 12);
-          ctx.fill();
+          ctx.fillRect(rx, ry, rs, rs);
         }
-        roundRect(rx, ry, rs, rs, 12);
-        ctx.stroke();
+        ctx.strokeRect(rx, ry, rs, rs);
         // lininha branca = o momento exato de apertar
         ctx.strokeStyle = "rgba(255,255,255,0.85)";
         ctx.lineWidth = 2;
@@ -391,20 +380,17 @@
         const s = 54;
         ctx.globalAlpha = n.missed ? 0.35 : 1;
         ctx.fillStyle = missGlow ? "#f43f5e" : COLORS[n.lane];
-        roundRect(x + LANE_W / 2 - s / 2, y - s / 2, s, s, 10);
-        ctx.fill();
+        ctx.fillRect(x + LANE_W / 2 - s / 2, y - s / 2, s, s);
         ctx.strokeStyle = "#ffffff";
         ctx.lineWidth = 2;
-        ctx.stroke();
+        ctx.strokeRect(x + LANE_W / 2 - s / 2, y - s / 2, s, s);
         ctx.globalAlpha = 1;
       }
       // partículas
       for (const p of particles) {
         ctx.globalAlpha = Math.max(0, 1 - p.age / 0.6);
         ctx.fillStyle = p.color;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.fillRect(p.x - p.r, p.y - p.r, p.r * 2, p.r * 2);
       }
       ctx.globalAlpha = 1;
       // popups

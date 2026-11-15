@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Damas Brasileiras</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  :root {
+    --bg: #12082b;
+    --bg2: #1d0f3f;
+    --roxo: #7c3aed;
+    --roxo-claro: #a78bfa;
+    --claro: #f5f0e6;
+    --escuro: #2b2333;
+    --texto: #ede9fe;
+  }
+
+  html, body { height: 100%; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: radial-gradient(1200px 600px at 50% -10%, #2b1465 0%, var(--bg2) 45%, var(--bg) 100%);
+    color: var(--texto);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 12px;
+    user-select: none;
+  }
+
+  h1 {
+    font-size: clamp(1.5rem, 5vw, 2.2rem);
+    margin-bottom: 4px;
+    background: linear-gradient(90deg, #facc15, var(--roxo-claro), #a78bfa);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .sub { color: #b8a8e8; font-size: 0.9rem; margin-bottom: 16px; text-align: center; }
+
+  /* ---- Menu de modos ---- */
+  .menu {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .btn {
+    font: inherit;
+    font-weight: 600;
+    color: var(--texto);
+    background: linear-gradient(135deg, var(--roxo), #5b21b6);
+    border: none;
+    border-radius: 12px;
+    padding: 12px 22px;
+    min-width: 250px;
+    cursor: pointer;
+    box-shadow: 0 4px 0 #3b1d78, 0 6px 18px rgba(124, 58, 237, 0.35);
+    transition: transform 0.08s, box-shadow 0.08s, filter 0.15s;
+  }
+  .btn:hover { filter: brightness(1.15); }
+  .btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #3b1d78; }
+  .btn.ghost {
+    background: transparent;
+    box-shadow: none;
+    border: 2px solid var(--roxo);
+    color: var(--roxo-claro);
+    font-size: 0.95rem;
+    padding: 10px 18px;
+    min-width: 0;
+  }
+  .btn.ghost:active { transform: none; }
+
+  /* ---- Placar ---- */
+  .placar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .placar div {
+    background: rgba(124, 58, 237, 0.12);
+    border: 2px solid rgba(167, 139, 250, 0.35);
+    border-radius: 12px;
+    padding: 6px 12px;
+    text-align: center;
+    min-width: 86px;
+    transition: border-color 0.3s, background 0.3s;
+  }
+  .placar div.ativo {
+    border-color: #facc15;
+    background: rgba(250, 204, 21, 0.12);
+  }
+  .placar .quem { font-size: 0.8rem; font-weight: 700; white-space: nowrap; }
+  .placar .quem.br { color: var(--claro); }
+  .placar .quem.pr { color: #cbd5e1; }
+  .placar .pts { font-size: 1.2rem; font-weight: 800; }
+  .placar .peca { font-size: 0.7rem; color: #b8a8e8; }
+
+  /* ---- Tabuleiro ---- */
+  .tabuleiro {
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    grid-template-rows: repeat(10, 1fr);
+    width: min(94vw, 480px, 78vh);
+    aspect-ratio: 1;
+    border: 4px solid #4c2f9e;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 0 24px rgba(0, 0, 0, 0.55);
+  }
+
+  .casa {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .casa.clara { background: #e8d9bd; }
+  .casa.escura { background: #43265e; cursor: default; }
+  .casa.escura.jogavel { cursor: pointer; }
+
+  .casa.destino::after {
+    content: '';
+    position: absolute;
+    width: 34%;
+    height: 34%;
+    border-radius: 50%;
+    background: rgba(250, 204, 21, 0.55);
+    box-shadow: 0 0 10px rgba(250, 204, 21, 0.8);
+    animation: pulo 0.8s ease infinite alternate;
+  }
+  .casa.capurar::after {
+    width: 82%;
+    height: 82%;
+    border-radius: 50%;
+    background: transparent;
+    border: 3px dashed rgba(250, 204, 21, 0.9);
+  }
+
+  /* ---- Peças ---- */
+  .peca {
+    position: absolute;
+    width: 82%;
+    height: 82%;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: clamp(0.7rem, 3.2vw, 1.05rem);
+    transition: transform 0.12s;
+  }
+  .peca.br {
+    background: radial-gradient(circle at 35% 30%, #fffdf5 0%, var(--claro) 55%, #d9cdb4 100%);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.55),
+      inset 0 0 0 3px rgba(120, 100, 60, 0.35),
+      inset 0 0 0 6px var(--claro),
+      inset 0 0 0 8px rgba(120, 100, 60, 0.3);
+  }
+  .peca.pr {
+    background: radial-gradient(circle at 35% 30%, #55496b 0%, #2b2333 55%, #15101c 100%);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.7),
+      inset 0 0 0 3px rgba(200, 190, 255, 0.3),
+      inset 0 0 0 6px #241d2e,
+      inset 0 0 0 8px rgba(200, 190, 255, 0.25);
+  }
+  .casa.selecionada .peca {
+    transform: scale(1.1);
+    box-shadow: 0 0 14px 4px rgba(250, 204, 21, 0.8),
+      inset 0 0 0 3px rgba(250, 204, 21, 0.8),
+      inset 0 0 0 6px transparent,
+      inset 0 0 0 8px rgba(250, 204, 21, 0.5);
+  }
+  .casa.selecionada { z-index: 2; }
+
+  @keyframes pulo {
+    from { transform: scale(1); }
+    to   { transform: scale(1.25); }
+  }
+
+  /* ---- Status / ações ---- */
+  .status {
+    margin-top: 12px;
+    font-size: 1.05rem;
+    font-weight: 700;
+    min-height: 1.5em;
+    text-align: center;
+  }
+
+  .acoes { margin-top: 12px; display: flex; gap: 10px; }
+
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+  <h1>Damas Brasileiras</h1>
+
+  <div class="menu" id="menu">
+    <p class="sub">Tabuleiro 10×10 · 20 peças · captura obrigatória!<br>Escolha como quer jogar:</p>
+    <button class="btn" onclick="iniciarJogo('cpu')">🤖 Jogar contra a máquina</button>
+    <button class="btn" onclick="iniciarJogo('pvp')">👥 Dois jogadores</button>
+  </div>
+
+  <div id="jogo" class="hidden" style="display:flex; flex-direction:column; align-items:center;">
+    <div class="placar">
+      <div id="p-br"><div class="quem br" id="rot-br">⚪ Branco</div><div class="pts" id="pts-br">0</div><div class="peca" id="pe-br">20</div></div>
+      <div id="p-e"><div class="quem">Empates</div><div class="pts" id="pts-e">0</div></div>
+      <div id="p-pr"><div class="quem pr" id="rot-pr">⚫ Preto</div><div class="pts" id="pts-pr">0</div><div class="peca" id="pe-pr">20</div></div>
+    </div>
+
+    <div class="tabuleiro" id="tabuleiro"></div>
+
+    <div class="status" id="status"></div>
+
+    <div class="acoes">
+      <button class="btn ghost" onclick="novaPartida()">🔄 Nova partida</button>
+      <button class="btn ghost" onclick="voltarMenu()">🏠 Menu</button>
+    </div>
+  </div>
+
+<script>
+(function () {
+  'use strict';
+
+  const N = 10;
+  // 0 = vazio, 1 = branca simples, 2 = branca dama, 3 = preta simples, 4 = preta dama
+  const BR = 1, PR = 2;
+
+  let modo = null;        // 'cpu' | 'pvp'
+  let g = [];             // grid 10x10
+  let vez = BR;
+  let fim = false;
+  let vitorias = { BR: 0, PR: 0, E: 0 };
+  let selecao = null;     // {r, c} peça selecionada
+  let destinos = new Map(); // "r,c" -> [r,c] (casa de pouso do destino)
+
+  const $ = id => document.getElementById(id);
+  const tabEl = $('tabuleiro');
+  const emB = (r, c) => r >= 0 && r < N && c >= 0 && c < N;
+  const corDe = p => p ? (p <= 2 ? BR : PR) : 0;
+  const key = (r, c) => r + ',' + c;
+
+  /* ---------------- Regras (Damas Brasileiras) ----------------
+     - Tabuleiro 10×10, 20 peças por lado (linhas 0-3 e 6-9, casas escuras)
+     - Simples: anda 1 casa diagonal para frente
+     - Simples: CAPTURA para frente E para trás (regra brasileira!)
+     - Dama: desliza ilimitado nas 4 diagonais, captura em qualquer direção
+     - Captura obrigatória, sempre a maior captura
+     - Dama promovida ao terminar a jogada (não continua capturando como dama na mesma jogada)
+  ---------------------------------------------------------------- */
+
+  function novaMesa() {
+    const gr = Array.from({ length: N }, () => Array(N).fill(0));
+    for (let r = 0; r < 4; r++) for (let c = 0; c < N; c++) if ((r + c) % 2 === 1) gr[r][c] = 3; // pretas em cima (3 = preta simples)
+    for (let r = 6; r < 10; r++) for (let c = 0; c < N; c++) if ((r + c) % 2 === 1) gr[r][c] = 1;
+    return gr;
+  }
+
+  const linhaRei = cor => cor === BR ? 0 : N - 1;
+
+  // Capturas de peça simples (recursivo) -> lista de sequências terminais {tr,tc,capt:[[r,c]]}
+  // (capt = casas já capturadas na sequência, tratadas como livres — impede recapturar a mesma peça)
+  function capSimples(gr, r, c, cor, capt) {
+    const res = [];
+    for (const dr of [-1, 1]) {
+      for (const dc of [-1, 1]) {
+        const nr = r + dr, nc = c + dc, br = nr + dr, bc = nc + dc;
+        if (!emB(nr, nc)) continue;
+        const alvo = ocupada(gr, capt, nr, nc);
+        if (alvo && corDe(alvo) !== cor && emB(br, bc) && !ocupada(gr, capt, br, bc)) {
+          const nCapt = capt.concat([[nr, nc]]);
+          if (br === linhaRei(cor)) {
+            res.push({ tr: br, tc: bc, capt: nCapt }); // promove no fim; para de capturar
+          } else {
+            const sub = capSimples(gr, br, bc, cor, nCapt);
+            if (sub.length) res.push(...sub);
+            else res.push({ tr: br, tc: bc, capt: nCapt });
+          }
+        }
+      }
+    }
+    return res;
+  }
+
+  // casa ocupada, considerando as peças JÁ capturadas na sequência (ficam livres)
+  function ocupada(gr, capt, r, c) {
+    for (const [a, b] of capt) if (a === r && b === c) return 0;
+    return gr[r][c];
+  }
+
+
+  function damaTemCaptura(gr, capt, r, c, cor) {
+    for (const dr of [-1, 1]) for (const dc of [-1, 1]) {
+      let nr = r + dr, nc = c + dc;
+      while (emB(nr, nc)) {
+        const q = ocupada(gr, capt, nr, nc);
+        if (!q) { nr += dr; nc += dc; continue; }
+        if (corDe(q) === cor) break; // peça própria bloqueia
+        if (emB(nr + dr, nc + dc) && !ocupada(gr, capt, nr + dr, nc + dc)) return true;
+        break;
+      }
+    }
+    return false;
+  }
+
+  // Capturas de dama (deslizamento + salto) -> sequências terminais
+  function capDama(gr, r, c, cor, capt) {
+    const res = [];
+    for (const dr of [-1, 1]) for (const dc of [-1, 1]) {
+      // desliza nesta direção: casas vazias até a primeira peça
+      let nr = r + dr, nc = c + dc;
+      while (emB(nr, nc) && !ocupada(gr, capt, nr, nc)) { nr += dr; nc += dc; }
+      if (!emB(nr, nc)) continue;
+      const q = ocupada(gr, capt, nr, nc);
+      if (corDe(q) === cor) continue; // bloqueada
+      // salta sobre o adversário e continua deslizando pelas casas vazias
+      const cr2 = nr, cc2 = nc; // casa da peça capturada
+      nr += dr; nc += dc;
+      while (emB(nr, nc) && !ocupada(gr, capt.concat([[cr2, cc2]]), nr, nc)) {
+        const nCapt = capt.concat([[cr2, cc2]]);
+        if (damaTemCaptura(gr, nCapt, nr, nc, cor)) {
+          res.push(...capDama(gr, nr, nc, cor, nCapt));
+        } else {
+          res.push({ tr: nr, tc: nc, capt: nCapt });
+        }
+        nr += dr; nc += dc;
+      }
+    }
+    return res;
+  }
+
+  function geramJogadas(gr, cor) {
+    const caps = [], simples = [];
+    for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+      const p = gr[r][c];
+      if (!p || corDe(p) !== cor) continue;
+      const rei = p % 2 === 0;
+      if (rei) {
+        for (const dr of [-1, 1]) for (const dc of [-1, 1]) {
+          let nr = r + dr, nc = c + dc;
+          while (emB(nr, nc) && !gr[nr][nc]) {
+            simples.push({ fr: r, fc: c, tr: nr, tc: nc, capt: [] });
+            nr += dr; nc += dc;
+          }
+        }
+        const seqs = capDama(gr, r, c, cor, []);
+        for (const s of seqs) caps.push({ fr: r, fc: c, tr: s.tr, tc: s.tc, capt: s.capt });
+      } else {
+        const dr = cor === BR ? -1 : 1;
+        for (const dc of [-1, 1]) {
+          const nr = r + dr, nc = c + dc;
+          if (emB(nr, nc) && !gr[nr][nc]) simples.push({ fr: r, fc: c, tr: nr, tc: nc, capt: [] });
+        }
+        const seqs = capSimples(gr, r, c, cor, []);
+        for (const s of seqs) caps.push({ fr: r, fc: c, tr: s.tr, tc: s.tc, capt: s.capt });
+      }
+    }
+    return { caps, simples };
+  }
+
+  function jogadasLegais(gr, cor) {
+    const { caps, simples } = geramJogadas(gr, cor);
+    return caps.length ? caps : simples;
+  }
+
+  function aplica(gr, j, cor) {
+    const copia = gr.map(l => l.slice());
+    const p = copia[j.fr][j.fc];
+    copia[j.fr][j.fc] = 0;
+    for (const [cr, cc] of j.capt) copia[cr][cc] = 0;
+    let novo = p;
+    // promoção no fim da jogada (simples que chegou na linha da dama)
+    if (p % 2 === 1) {
+      if (cor === BR && j.tr === 0) novo = 2;
+      if (cor === PR && j.tr === N - 1) novo = 4;
+    }
+    copia[j.tr][j.tc] = novo;
+    return copia;
+  }
+
+  /* ---------------- IA (minimax + alpha-beta) ---------------- */
+
+  function avalia(gr) {
+    let e = 0;
+    for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+      const p = gr[r][c];
+      if (!p) continue;
+      if (p === 1) e += 100 + (9 - r) * 3;                 // branca simples avança
+      else if (p === 2) e += 260 + (9 - r);               // branca dama
+      else if (p === 3) e -= 100 + r * 3;                 // preta simples
+      else e -= 260 + r;                                  // preta dama
+    }
+    return e;
+  }
+
+  const PRF = 100000;
+
+  function minimax(gr, cor, prof, a, b) {
+    const legal = jogadasLegais(gr, cor);
+    if (!legal.length) return cor === PR ? -PRF : PRF; // quem não pode jogar, perde (valor do ponto de vista do Preto)
+    if (prof === 0) return avalia(gr);
+
+    const caps = legal.length && legal[0].capt.length ? legal : null;
+    const movs = caps ? legal.slice().sort((x, y) => y.capt.length - x.capt.length) : legal;
+    let best = cor === PR ? -Infinity : Infinity;
+
+    if (cor === PR) {
+      for (const j of movs) {
+        const v = minimax(aplica(gr, j, cor), BR, prof - 1, a, b);
+        if (v > best) best = v;
+        if (best > a) a = best;
+        if (b <= a) break;
+      }
+    } else {
+      for (const j of movs) {
+        const v = minimax(aplica(gr, j, cor), PR, prof - 1, a, b);
+        if (v < best) best = v;
+        if (best < b) b = best;
+        if (b <= a) break;
+      }
+    }
+    return best;
+  }
+
+  function melhorJogadaIA(gr, cor) {
+    const legal = jogadasLegais(gr, cor);
+    const caps = legal[0].capt.length ? legal : null;
+    const movs = (caps || legal).slice();
+    // ordem: capturas maiores primeiro, depois avanço
+    movs.sort((x, y) => (y.capt.length - x.capt.length) ||
+      ((cor === BR ? x.fr - x.tr : x.tr - x.fr) - (cor === BR ? y.fr - y.tr : y.tr - y.fr)));
+    let best = cor === PR ? -Infinity : Infinity;
+    let escolha = movs[0];
+    for (const j of movs) {
+      const v = minimax(aplica(gr, j, cor), cor === PR ? BR : PR, 4, -Infinity, Infinity);
+      if (cor === PR ? v > best : v < best) { best = v; escolha = j; }
+    }
+    return escolha;
+  }
+
+  /* ---------------- UI ---------------- */
+
+  function desenha() {
+    tabEl.innerHTML = '';
+    for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+      const casa = document.createElement('div');
+      casa.className = (r + c) % 2 === 1 ? 'casa escura' : 'casa clara';
+      casa.dataset.r = r;
+      casa.dataset.c = c;
+      const p = g[r][c];
+      if (p) {
+        const pe = document.createElement('div');
+        pe.className = 'peca ' + (corDe(p) === BR ? 'br' : 'pr');
+        if (p % 2 === 0) pe.textContent = '👑';
+        casa.appendChild(pe);
+      }
+      if (selecao && selecao.r === r && selecao.c === c) casa.classList.add('selecionada');
+      const d = destinos.get(key(r, c));
+      if (d) {
+        casa.classList.add('destino', 'jogavel');
+        if (capturasDaSelecao) casa.classList.add('capturar');
+      }
+      tabEl.appendChild(casa);
+    }
+    atualizaStatus();
+  }
+
+  let capturasDaSelecao = false;
+
+  function contagem(cor) {
+    let n = 0;
+    for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+      const p = g[r][c];
+      if (p && corDe(p) === cor) n++;
+    }
+    return n;
+  }
+
+  function atualizaPlacar() {
+    $('pts-br').textContent = vitorias.BR;
+    $('pts-pr').textContent = vitorias.PR;
+    $('pts-e').textContent = vitorias.E;
+    $('pe-br').textContent = contagem(BR) + ' peças';
+    $('pe-pr').textContent = contagem(PR) + ' peças';
+    $('p-br').classList.toggle('ativo', !fim && vez === BR);
+    $('p-pr').classList.toggle('ativo', !fim && vez === PR);
+  }
+
+  function nome(cor) {
+    if (modo === 'cpu') return cor === PR ? '🤖 Máquina' : '😎 Você';
+    return cor === BR ? '⚪ Branco' : '⚫ Preto';
+  }
+
+  function atualizaStatus() {
+    const s = $('status');
+    if (fim) return;
+    s.textContent = modo === 'cpu' && vez === PR
+      ? '🤖 Máquina pensando...'
+      : 'Vez de ' + nome(vez) + (modo === 'pvp' ? '' : ' — escolha uma peça');
+    atualizaPlacar();
+  }
+
+  window.iniciarJogo = function (m) {
+    modo = m;
+    $('menu').classList.add('hidden');
+    $('jogo').classList.remove('hidden');
+    $('rot-br').textContent = '😎 ' + (m === 'cpu' ? 'Você' : 'Branco');
+    $('rot-pr').textContent = m === 'cpu' ? '🤖 Máquina' : '⚫ Preto';
+    vitorias = { BR: 0, PR: 0, E: 0 };
+    novaPartida();
+  };
+
+  window.novaPartida = function () {
+    g = novaMesa();
+    vez = BR;
+    fim = false;
+    selecao = null;
+    destinos = new Map();
+    capturasDaSelecao = false;
+    desenha();
+    atualizaPlacar();
+    if (modo === 'cpu' && vez === PR) pensarIA();
+  };
+
+  window.voltarMenu = function () {
+    $('jogo').classList.add('hidden');
+    $('menu').classList.remove('hidden');
+  };
+
+  function termina(quem) {
+    fim = true;
+    vitorias[quem]++;
+    desenha();
+    atualizaPlacar();
+    $('status').textContent = '🏆 ' + nome(quem) + ' venceu!';
+  }
+
+  function fazJogada(j) {
+    g = aplica(g, j, vez);
+    selecao = null;
+    destinos = new Map();
+    capturasDaSelecao = false;
+    const adversario = vez === BR ? PR : BR;
+    if (!jogadasLegais(g, adversario).length) { termina(vez); return; }
+    vez = adversario;
+    desenha();
+    atualizaPlacar();
+    if (modo === 'cpu' && vez === PR) pensarIA();
+  }
+
+  let pensando = false;
+  function pensarIA() {
+    pensando = true;
+    desenha();
+    setTimeout(() => {
+      if (fim || vez !== PR) return;
+      const j = melhorJogadaIA(g, PR);
+      pensando = false;
+      if (j) fazJogada(j);
+    }, 400);
+  }
+
+  tabEl.addEventListener('click', e => {
+    if (fim || pensando) return;
+    if (modo === 'cpu' && vez === PR) return;
+    const casa = e.target.closest('.casa');
+    if (!casa) return;
+    const r = +casa.dataset.r, c = +casa.dataset.c;
+
+    // jogando destino?
+    const d = destinos.get(key(r, c));
+    if (d) {
+      const j = { fr: selecao.r, fc: selecao.c, tr: d[0], tc: d[1], capt: [] };
+      const legal = jogadasLegais(g, vez).find(l => l.fr === selecao.r && l.fc === selecao.c && l.tr === d[0] && l.tc === d[1]);
+      if (legal) fazJogada(legal);
+      return;
+    }
+
+    // selecionar peça própria
+    const p = g[r][c];
+    if (p && corDe(p) === vez) {
+      selecao = { r, c };
+      destinos = new Map();
+      capturasDaSelecao = false;
+      const legal = jogadasLegais(g, vez).filter(l => l.fr === r && l.fc === c);
+      if (legal.length) {
+        for (const l of legal) {
+          destinos.set(key(l.tr, l.tc), [l.tr, l.tc]);
+          capturasDaSelecao = l.capt.length > 0;
+        }
+      }
+      desenha();
+      return;
+    }
+
+    // clicou em outro lugar: desmarcar
+    selecao = null;
+    destinos = new Map();
+    capturasDaSelecao = false;
+    desenha();
+  });
+})();
+</script>
+</body>
+</html>
