@@ -47,7 +47,14 @@
     color: transparent;
   }
 
-  .sub { color: #b8a8e8; font-size: 0.9rem; margin-bottom: 16px; text-align: center; }
+  .sub {
+    color: #b8a8e8;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    margin-bottom: 16px;
+    text-align: center;
+    max-width: 92%;
+  }
 
   /* ---- Menu de modos ---- */
   .menu {
@@ -55,6 +62,11 @@
     flex-direction: column;
     gap: 10px;
     align-items: center;
+  }
+  .menu .btn {
+    width: 100%;
+    max-width: 340px;
+    box-sizing: border-box;
   }
 
   .btn {
@@ -151,6 +163,17 @@
     border-radius: 12px;
     animation: pulo 0.8s ease infinite alternate;
   }
+  /* peça obrigada a capturar (regra oficial): anel vermelho pulsante */
+  .casa.deve::before {
+    content: '';
+    position: absolute;
+    inset: 4%;
+    border: 3px solid rgba(255, 107, 107, 0.9);
+    border-radius: 50%;
+    box-shadow: 0 0 10px rgba(255, 107, 107, 0.55);
+    animation: pulo 0.9s ease infinite alternate;
+    pointer-events: none;
+  }
 
   .casa.destino::after {
     content: '';
@@ -230,6 +253,17 @@
     font-weight: 700;
     min-height: 1.5em;
     text-align: center;
+    max-width: min(94vw, 460px);
+    padding: 8px 16px;
+    border-radius: 12px;
+    border: 2px solid rgba(167, 139, 250, 0.25);
+    background: rgba(255, 255, 255, 0.05);
+    transition: background 0.25s, border-color 0.25s, color 0.25s;
+  }
+  .status.aviso {
+    color: #ffd8a8;
+    background: rgba(255, 122, 61, 0.16);
+    border-color: rgba(255, 122, 61, 0.7);
   }
 
   .acoes { margin-top: 12px; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
@@ -466,8 +500,8 @@
     const bMenu = $('btn-forcar-menu');
     const bJogo = $('btn-forcar');
     if (bMenu) bMenu.textContent = forcarCaptura
-      ? '📏 Captura obrigatória: LIGADA (regra oficial)'   // toque para desligar
-      : '📏 Captura obrigatória: DESLIGADA (movimento livre)'; // toque para ligar
+      ? '📏 Captura obrigatória: LIGADA'      // toque para desligar
+      : '📏 Captura obrigatória: DESLIGADA';  // toque para ligar
     if (bJogo) bJogo.textContent = forcarCaptura
       ? '📏 Captura: obrigatória'
       : '📏 Captura: livre';
@@ -553,6 +587,14 @@
 
   function desenha() {
     tabEl.innerHTML = '';
+    // peças obrigadas a capturar (regra oficial) -> anel vermelho
+    const deveSet = new Set();
+    if (!fim && forcarCaptura) {
+      const legal = jogadasLegais(g, vez);
+      if (legal.length && legal[0].capt.length) {
+        for (const l of legal) deveSet.add(key(l.fr, l.fc));
+      }
+    }
     for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
       const casa = document.createElement('div');
       casa.className = (r + c) % 2 === 1 ? 'casa escura' : 'casa clara';
@@ -574,6 +616,9 @@
       const k = key(r, c);
       if (comerSet.has(k)) casa.classList.add('comer');
       else if (trajetoSet.has(k)) casa.classList.add('trajeto');
+      if (deveSet.has(k) && !(selecao && selecao.r === r && selecao.c === c)) {
+        casa.classList.add('deve');
+      }
       tabEl.appendChild(casa);
     }
     atualizaStatus();
@@ -606,13 +651,17 @@
   function atualizaStatus() {
     const s = $('status');
     if (fim) return;
+    let texto, aviso = false;
     if (modo === 'cpu' && vez === PR) {
-      s.textContent = '🤖 Máquina pensando...';
+      texto = '🤖 Máquina pensando...';
     } else if (forcarCaptura && temCaptura(g, vez)) {
-      s.textContent = '⚠️ Captura obrigatória! Vez de ' + nome(vez);
+      aviso = true;
+      texto = '⚠️ Captura obrigatória! Vez de ' + nome(vez);
     } else {
-      s.textContent = 'Vez de ' + nome(vez) + (modo === 'pvp' ? '' : ' — escolha uma peça');
+      texto = 'Vez de ' + nome(vez) + (modo === 'pvp' ? '' : ' — escolha uma peça');
     }
+    s.textContent = texto;
+    s.classList.toggle('aviso', aviso);
     atualizaPlacar();
   }
 
@@ -649,7 +698,9 @@
     vitorias[quem]++;
     desenha();
     atualizaPlacar();
-    $('status').textContent = '🏆 ' + nome(quem) + ' venceu!';
+    const s = $('status');
+    s.textContent = '🏆 ' + nome(quem) + ' venceu!';
+    s.classList.remove('aviso');
   }
 
   /* ---------- Animação de jogada ----------
