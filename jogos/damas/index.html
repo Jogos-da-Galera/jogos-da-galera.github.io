@@ -569,20 +569,68 @@
 
   /* ---------------- IA (minimax + alpha-beta) ---------------- */
 
+  const PROFUNDIDADE = 6;   // profundidade da busca (meio-joelhos alternados)
+  const PRF = 100000;
+
+  /* Heurística — valores do ponto de vista do Preto (máquina): positivo = bom p/ Preto.
+     Além do material, pontua:
+     - avanço rumo à rainha + AAMEAÇA DE VIRADA (homem prestes a coroar vale MUITO)
+     - homem bloqueado de virar (as duas casas de avanço ocupadas) perde o bônus
+     - "posições de comida": peça que pode capturar agora
+     - peças dobradas (protegidas por outra da mesma cor)
+     - centro e, no fim de jogo, superioridade de damas */
   function avalia(gr) {
-    let e = 0;
+    let e = 0, total = 0, brDamas = 0, prDamas = 0;
     for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
       const p = gr[r][c];
       if (!p) continue;
-      if (p === 1) e += 100 + (9 - r) * 3;                 // branca simples avança
-      else if (p === 2) e += 260 + (9 - r);               // branca dama
-      else if (p === 3) e -= 100 + r * 3;                 // preta simples
-      else e -= 260 + r;                                  // preta dama
+      total++;
+      const centro = (c === 4 || c === 5) ? 6 : (c === 3 || c === 6) ? 3 : 0;
+      if (p === 3) {                                    // preta simples — desce, rainha na linha 9
+        let v = 100 + r * 4 + centro;
+        if (r >= 7) {
+          const desce = cc => emB(r + 1, cc) && !gr[r + 1][cc];
+          v += (desce(c - 1) || desce(c + 1)) ? (r - 7) * 45 : 8;  // quase rainha (ou travada)
+        }
+        e += v;
+      } else if (p === 4) {
+        e += 250 + r + centro;
+        prDamas++;
+      } else if (p === 1) {                             // branca simples — sobe, rainha na linha 0
+        let v = 100 + (9 - r) * 4 + centro;
+        if (r <= 2) {
+          const sobe = cc => emB(r - 1, cc) && !gr[r - 1][cc];
+          v += (sobe(c - 1) || sobe(c + 1)) ? (2 - r) * 45 : 8;   // ameaça de virada (ou travada)
+        }
+        e -= v;
+      } else {
+        e -= 250 + (9 - r) + centro;
+        brDamas++;
+      }
     }
+    for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+      const p = gr[r][c];
+      if (!p) continue;
+      const cor = corDe(p), sgn = cor === PR ? 1 : -1;
+      // peças dobradas: protegidas por outra da mesma cor
+      if (p % 2 === 1) {
+        const dr = cor === BR ? 1 : -1;   // trás = onde a proteção fica
+        const n = (emB(r + dr, c - 1) && corDe(gr[r + dr][c - 1]) === cor)
+                + (emB(r + dr, c + 1) && corDe(gr[r + dr][c + 1]) === cor);
+        if (n) e += sgn * n * 6;
+      } else {
+        let n = 0;
+        for (const dr of [-1, 1]) for (const dc of [-1, 1])
+          if (emB(r + dr, c + dc) && corDe(gr[r + dr][c + dc]) === cor) n++;
+        if (n) e += sgn * Math.min(n, 2) * 4;
+      }
+      // "posição de comida": essa peça consegue capturar agora?
+      const comCaptura = p % 2 === 0 ? capDama(gr, r, c, cor, []).length : capSimples(gr, r, c, cor, []).length;
+      if (comCaptura) e += sgn * 12;
+    }
+    if (total <= 6) e += (prDamas - brDamas) * 35;   // no fim de jogo, dama vale ouro
     return e;
   }
-
-  const PRF = 100000;
 
   function minimax(gr, cor, prof, a, b) {
     const legal = jogadasLegais(gr, cor);
@@ -590,7 +638,10 @@
     if (prof === 0) return avalia(gr);
 
     const caps = legal.length && legal[0].capt.length ? legal : null;
-    const movs = caps ? legal.slice().sort((x, y) => y.capt.length - x.capt.length) : legal;
+    // capturas maiores primeiro; senão, avanço rumo à rainha primeiro (melhora a poda)
+    const movs = (caps || legal).slice().sort((x, y) =>
+      (y.capt.length - x.capt.length) ||
+      ((cor === BR ? x.fr - x.tr : x.tr - x.fr) - (cor === BR ? y.fr - y.tr : y.tr - y.fr)));
     let best = cor === PR ? -Infinity : Infinity;
 
     if (cor === PR) {
@@ -620,10 +671,12 @@
     movs.sort((x, y) => (y.capt.length - x.capt.length) ||
       ((cor === BR ? x.fr - x.tr : x.tr - x.fr) - (cor === BR ? y.fr - y.tr : y.tr - y.fr)));
     let best = cor === PR ? -Infinity : Infinity;
+    let alfa = best;   // carrega o alpha entre as jogadas raiz -> poda muito melhor
     let escolha = movs[0];
     for (const j of movs) {
-      const v = minimax(aplica(gr, j, cor), cor === PR ? BR : PR, 5, -Infinity, Infinity);
+      const v = minimax(aplica(gr, j, cor), cor === PR ? BR : PR, PROFUNDIDADE, alfa, Infinity);
       if (cor === PR ? v > best : v < best) { best = v; escolha = j; }
+      alfa = best;
     }
     return escolha;
   }
