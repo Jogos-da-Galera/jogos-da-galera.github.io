@@ -108,7 +108,7 @@
   .placar .quem.br { color: var(--claro); }
   .placar .quem.pr { color: #cbd5e1; }
   .placar .pts { font-size: 1.2rem; font-weight: 800; }
-  .placar .peca { font-size: 0.7rem; color: #b8a8e8; }
+  .placar .qtd { font-size: 0.7rem; color: #b8a8e8; }
 
   /* ---- Tabuleiro ---- */
   .tabuleiro {
@@ -132,6 +132,24 @@
   .casa.clara { background: #e8d9bd; }
   .casa.escura { background: #43265e; cursor: default; }
   .casa.escura.jogavel { cursor: pointer; }
+
+  /* caminho da captura (aparece com a peça selecionada) */
+  .casa.trajeto::after {
+    content: '';
+    position: absolute;
+    width: 22%;
+    height: 22%;
+    border-radius: 50%;
+    background: rgba(250, 204, 21, 0.4);
+  }
+  .casa.comer::after {
+    content: '';
+    position: absolute;
+    inset: 5%;
+    border: 3px dashed rgba(255, 107, 107, 0.95);
+    border-radius: 12px;
+    animation: pulo 0.8s ease infinite alternate;
+  }
 
   .casa.destino::after {
     content: '';
@@ -221,9 +239,9 @@
 
   <div id="jogo" class="hidden" style="display:flex; flex-direction:column; align-items:center;">
     <div class="placar">
-      <div id="p-br"><div class="quem br" id="rot-br">⚪ Branco</div><div class="pts" id="pts-br">0</div><div class="peca" id="pe-br">20</div></div>
+      <div id="p-br"><div class="quem br" id="rot-br">⚪ Branco</div><div class="pts" id="pts-br">0</div><div class="qtd" id="pe-br">20</div></div>
       <div id="p-e"><div class="quem">Empates</div><div class="pts" id="pts-e">0</div></div>
-      <div id="p-pr"><div class="quem pr" id="rot-pr">⚫ Preto</div><div class="pts" id="pts-pr">0</div><div class="peca" id="pe-pr">20</div></div>
+      <div id="p-pr"><div class="quem pr" id="rot-pr">⚫ Preto</div><div class="pts" id="pts-pr">0</div><div class="qtd" id="pe-pr">20</div></div>
     </div>
 
     <div class="tabuleiro" id="tabuleiro"></div>
@@ -255,6 +273,22 @@
   let vitorias = { BR: 0, PR: 0, E: 0 };
   let selecao = null;     // {r, c} peça selecionada
   let destinos = new Map(); // "r,c" -> [r,c] (casa de pouso do destino)
+  let trajetoSet = new Set(); // "r,c" casas vazias do caminho da captura
+  let comerSet = new Set();   // "r,c" peças que serão comidas
+
+  function limpaSelecao() {
+    selecao = null;
+    destinos = new Map();
+    trajetoSet = new Set();
+    comerSet = new Set();
+  }
+
+  // marca as casas vazias ESTRICTAMENTE entre dois quadrados consecutivos da mesma diagonal
+  function marcarEntre(ar, ac, br, bc, set) {
+    const dr = Math.sign(br - ar), dc = Math.sign(bc - ac);
+    let r = ar + dr, c = ac + dc;
+    while (r !== br || c !== bc) { set.add(key(r, c)); r += dr; c += dc; }
+  }
 
   const $ = id => document.getElementById(id);
   const tabEl = $('tabuleiro');
@@ -341,9 +375,11 @@
       while (emB(nr, nc) && !ocupada(gr, capt.concat([[cr2, cc2]]), nr, nc)) {
         const nCapt = capt.concat([[cr2, cc2]]);
         if (damaTemCaptura(gr, nCapt, nr, nc, cor)) {
-          res.push(...capDama(gr, nr, nc, cor, nCapt));
+          for (const s of capDama(gr, nr, nc, cor, nCapt)) {
+            res.push({ tr: s.tr, tc: s.tc, capt: s.capt, pousos: [[nr, nc], ...s.pousos] });
+          }
         } else {
-          res.push({ tr: nr, tc: nc, capt: nCapt });
+          res.push({ tr: nr, tc: nc, capt: nCapt, pousos: [[nr, nc]] });
         }
         nr += dr; nc += dc;
       }
@@ -366,7 +402,7 @@
           }
         }
         const seqs = capDama(gr, r, c, cor, []);
-        for (const s of seqs) caps.push({ fr: r, fc: c, tr: s.tr, tc: s.tc, capt: s.capt });
+        for (const s of seqs) caps.push({ fr: r, fc: c, tr: s.tr, tc: s.tc, capt: s.capt, pousos: s.pousos });
       } else {
         const dr = cor === BR ? -1 : 1;
         for (const dc of [-1, 1]) {
@@ -374,7 +410,16 @@
           if (emB(nr, nc) && !gr[nr][nc]) simples.push({ fr: r, fc: c, tr: nr, tc: nc, capt: [] });
         }
         const seqs = capSimples(gr, r, c, cor, []);
-        for (const s of seqs) caps.push({ fr: r, fc: c, tr: s.tr, tc: s.tc, capt: s.capt });
+        for (const s of seqs) {
+          // simples pousa simetricamente após cada salto: po_i = 2*alvo_i - pos_i
+          let pr = r, pc = c;
+          const pousos = s.capt.map(([er, ec]) => {
+            const lr = 2 * er - pr, lc = 2 * ec - pc;
+            pr = lr; pc = lc;
+            return [lr, lc];
+          });
+          caps.push({ fr: r, fc: c, tr: s.tr, tc: s.tc, capt: s.capt, pousos });
+        }
       }
     }
     return { caps, simples };
@@ -394,8 +439,7 @@
   window.alternarForcar = function () {
     forcarCaptura = !forcarCaptura;
     atualizaForcarUI();
-    selecao = null;
-    destinos = new Map();
+    limpaSelecao();
     if (!fim) desenha();
   };
 
@@ -508,6 +552,9 @@
         casa.classList.add('destino', 'jogavel');
         if (d[2]) casa.classList.add('capturar');
       }
+      const k = key(r, c);
+      if (comerSet.has(k)) casa.classList.add('comer');
+      else if (trajetoSet.has(k)) casa.classList.add('trajeto');
       tabEl.appendChild(casa);
     }
     atualizaStatus();
@@ -564,8 +611,9 @@
     g = novaMesa();
     vez = BR;
     fim = false;
-    selecao = null;
-    destinos = new Map();
+    iaToken++;           // invalida qualquer "pensando" da partida anterior
+    pensando = false;
+    limpaSelecao();
     desenha();
     atualizaPlacar();
     if (modo === 'cpu' && vez === PR) pensarIA();
@@ -586,8 +634,7 @@
 
   function fazJogada(j) {
     g = aplica(g, j, vez);
-    selecao = null;
-    destinos = new Map();
+    limpaSelecao();
     const adversario = vez === BR ? PR : BR;
     if (!jogadasLegais(g, adversario).length) { termina(vez); return; }
     vez = adversario;
@@ -597,13 +644,16 @@
   }
 
   let pensando = false;
+  let iaToken = 0;   // invalida timeouts de "pensar" de partidas antigas
   function pensarIA() {
+    const token = ++iaToken;
     pensando = true;
     desenha();
     setTimeout(() => {
+      if (token !== iaToken) return;   // mudou a partida: ignora
+      pensando = false;
       if (fim || vez !== PR) return;
       const j = melhorJogadaIA(g, PR);
-      pensando = false;
       if (j) fazJogada(j);
     }, 400);
   }
@@ -626,14 +676,25 @@
     // selecionar peça própria
     const p = g[r][c];
     if (p && corDe(p) === vez) {
+      limpaSelecao();
       selecao = { r, c };
-      destinos = new Map();
       const legal = jogadasLegais(g, vez).filter(l => l.fr === r && l.fc === c);
       if (legal.length) {
         for (const l of legal) {
           const k = key(l.tr, l.tc);
           const atual = destinos.get(k);
           if (!atual || l.capt.length > 0) destinos.set(k, [l.tr, l.tc, l.capt.length > 0]); // captura tem prioridade
+          // caminho da captura: P (peça comida) e L (pouso após cada captura)
+          let pr = r, pc = c;
+          for (let i = 0; i < l.capt.length; i++) {
+            const [er, ec] = l.capt[i];
+            const [lr, lc] = l.pousos[i];
+            comerSet.add(key(er, ec));
+            marcarEntre(pr, pc, er, ec, trajetoSet);
+            marcarEntre(er, ec, lr, lc, trajetoSet);
+            trajetoSet.add(key(lr, lc)); // pouso intermediário
+            pr = lr; pc = lc;
+          }
         }
       }
       desenha();
@@ -641,8 +702,7 @@
     }
 
     // clicou em outro lugar: desmarcar
-    selecao = null;
-    destinos = new Map();
+    limpaSelecao();
     desenha();
   });
 
