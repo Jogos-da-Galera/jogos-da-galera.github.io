@@ -112,6 +112,7 @@
 
   /* ---- Tabuleiro ---- */
   .tabuleiro {
+    position: relative;
     display: grid;
     grid-template-columns: repeat(10, 1fr);
     grid-template-rows: repeat(10, 1fr);
@@ -204,6 +205,19 @@
   }
   .casa.selecionada { z-index: 2; }
 
+  /* animação de jogada: peça-fantasma desliza pelo caminho */
+  .ghost {
+    position: absolute;
+    width: 10%;
+    height: 10%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    z-index: 5;
+  }
+  .peca.escondida { visibility: hidden; }
+
   @keyframes pulo {
     from { transform: scale(1); }
     to   { transform: scale(1.25); }
@@ -270,6 +284,8 @@
   let vez = BR;
   let fim = false;
   let forcarCaptura = true;   // regra oficial: captura obrigatória (e a maior). Desligado = movimento livre.
+  let animar = true;          // animação das jogadas
+  let animando = false;       // true enquanto uma animação está no ar (bloqueia cliques)
   let vitorias = { BR: 0, PR: 0, E: 0 };
   let selecao = null;     // {r, c} peça selecionada
   let destinos = new Map(); // "r,c" -> [r,c] (casa de pouso do destino)
@@ -427,8 +443,11 @@
 
   function jogadasLegais(gr, cor) {
     const { caps, simples } = geramJogadas(gr, cor);
-    if (forcarCaptura && caps.length) return caps;      // regra oficial: só a (maior) captura
-    return caps.concat(simples);                       // modo livre: captura OU movimento simples
+    if (forcarCaptura && caps.length) {
+      const max = Math.max(...caps.map(c => c.capt.length));
+      return caps.filter(c => c.capt.length === max);   // regra oficial: a MAIOR captura
+    }
+    return caps.concat(simples);                        // modo livre: captura OU movimento simples
   }
 
   // existe captura disponível para a cor?
@@ -613,6 +632,7 @@
     fim = false;
     iaToken++;           // invalida qualquer "pensando" da partida anterior
     pensando = false;
+    animando = false;
     limpaSelecao();
     desenha();
     atualizaPlacar();
@@ -632,15 +652,99 @@
     $('status').textContent = '🏆 ' + nome(quem) + ' venceu!';
   }
 
+  /* ---------- Animação de jogada ----------
+     Peça-fantasma desliza pelo caminho (parando nos pousos das capturas);
+     as comidas somem com fade quando o fantasma as salta; promoção ganha um "pop". */
+  function animaNovaJogada(j, oldG, aoTerminar) {
+    if (!animar) { if (aoTerminar) aoTerminar(); return; }
+    const pMovida = oldG[j.fr][j.fc];
+    if (!pMovida) { if (aoTerminar) aoTerminar(); return; }
+    const promocao = pMovida % 2 === 1 && g[j.tr][j.tc] % 2 === 0;
+
+    // peça final: escondida até o fantasma chegar
+    const finalCasa = tabEl.children[j.tr * N + j.tc];
+    const pecaFinal = finalCasa ? finalCasa.querySelector('.peca') : null;
+
+    // caminho: origem -> [P1, L1, P2, L2, ...] (o último pouso é o destino)
+    const pts = [[j.fr, j.fc]];
+    for (let i = 0; i < j.capt.length; i++) pts.push(j.capt[i], j.pousos[i]);
+    if (!j.capt.length) pts.push([j.tr, j.tc]);
+    const segs = pts.length - 1;
+    const segDur = j.capt.length ? Math.max(80, Math.min(160, 520 / segs)) : 220;
+    const total = segs * segDur;
+
+    animando = true;
+    if (pecaFinal) pecaFinal.classList.add('escondida');
+
+    // fantasma da peça em movimento
+    const ghost = document.createElement('div');
+    ghost.className = 'ghost';
+    ghost.style.left = (j.fc * 10) + '%';
+    ghost.style.top = (j.fr * 10) + '%';
+    const gp = document.createElement('div');
+    gp.className = 'peca ' + (corDe(pMovida) === BR ? 'br' : 'pr');
+    if (pMovida % 2 === 0) gp.textContent = '👑';
+    ghost.appendChild(gp);
+    tabEl.appendChild(ghost);
+
+    const keyframes = pts.map(([r, c]) => ({
+      transform: 'translate(' + ((c - j.fc) * 100) + '%, ' + ((r - j.fr) * 100) + '%)'
+    }));
+    const anim = ghost.animate(keyframes, { duration: total, easing: 'ease-in-out' });
+
+    // peças comidas: fade no momento em que o fantasma as salta
+    j.capt.forEach(([r, c], i) => {
+      const alvo = oldG[r][c];
+      if (!alvo) return;
+      const cg = document.createElement('div');
+      cg.className = 'ghost';
+      cg.style.left = (c * 10) + '%';
+      cg.style.top = (r * 10) + '%';
+      const cp = document.createElement('div');
+      cp.className = 'peca ' + (corDe(alvo) === BR ? 'br' : 'pr');
+      if (alvo % 2 === 0) cp.textContent = '👑';
+      cg.appendChild(cp);
+      tabEl.appendChild(cg);
+      cg.animate(
+        [{ opacity: 1, transform: 'scale(1)' }, { opacity: 0, transform: 'scale(0.3)' }],
+        { duration: 200, delay: Math.max(0, (2 * i + 1) * segDur - 60), fill: 'forwards' }
+      ).onfinish = () => cg.remove();
+    });
+
+    let pronto = false;
+    const terminar = () => {
+      if (pronto) return;
+      pronto = true;
+      ghost.remove();
+      if (pecaFinal) {
+        pecaFinal.classList.remove('escondida');
+        if (promocao) pecaFinal.animate(
+          [{ transform: 'scale(0.5)' }, { transform: 'scale(1.25)' }, { transform: 'scale(1)' }],
+          { duration: 320 }
+        );
+      }
+      animando = false;
+      if (aoTerminar) aoTerminar();
+    };
+    anim.onfinish = terminar;
+    setTimeout(terminar, total + 600); // segurança (aba em segundo plano etc.)
+  }
+
   function fazJogada(j) {
+    const oldG = g;
     g = aplica(g, j, vez);
     limpaSelecao();
     const adversario = vez === BR ? PR : BR;
-    if (!jogadasLegais(g, adversario).length) { termina(vez); return; }
-    vez = adversario;
-    desenha();
-    atualizaPlacar();
-    if (modo === 'cpu' && vez === PR) pensarIA();
+    const semJogada = !jogadasLegais(g, adversario).length;
+    if (semJogada) {
+      termina(vez);
+    } else {
+      vez = adversario;
+      desenha();
+      atualizaPlacar();
+    }
+    // a máquina só "começa a pensar" depois que a peça em movimento aterrissa
+    animaNovaJogada(j, oldG, !semJogada && modo === 'cpu' && vez === PR ? () => pensarIA() : null);
   }
 
   let pensando = false;
@@ -648,7 +752,7 @@
   function pensarIA() {
     const token = ++iaToken;
     pensando = true;
-    desenha();
+    atualizaStatus();   // sem reconstruir o tabuleiro (preserva animações em andamento)
     setTimeout(() => {
       if (token !== iaToken) return;   // mudou a partida: ignora
       pensando = false;
@@ -659,7 +763,7 @@
   }
 
   tabEl.addEventListener('click', e => {
-    if (fim || pensando) return;
+    if (fim || pensando || animando) return;
     if (modo === 'cpu' && vez === PR) return;
     const casa = e.target.closest('.casa');
     if (!casa) return;

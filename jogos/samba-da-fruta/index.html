@@ -70,7 +70,7 @@
   var NIVEIS = LEVELS.length;
   var WILD = "W";                 // peça coringa: casa com qualquer fruta
   var WILD_CHANCE = 0.05;         // raridade da coringa ao repor o tabuleiro
-  var SHUFFLE_PER = 10000;        // a cada N pontos de total, ganha 1 embaralhada
+  var BANK_PER = 10000;         // a cada N pontos de total, ganha 1 jogada extra pro banco
   var EXTRA_MOVES = 3;            // quando não há jogada válida, ganha jogadas extras
 
   // Variantes (o "select" da tela inicial)
@@ -87,8 +87,8 @@
   var grid = null;                     // grid[y][x] = {t, row, col, born, pop, isB, line}
   var score = 0, total = 0, level = 1, moves = 30;
   var goal = 1500, missing = 0;
-  var shuffles = 0, shuffleMilestone = SHUFFLE_PER;
-  var phase = "idle";                  // idle | swap | swapback | pop | fall | shuffle
+  var bank = 0, bankMilestone = BANK_PER;
+  var phase = "idle";                  // idle | swap | swapback | pop | fall
   var anim = { t: 0, dur: 0, data: null };
   var sel = null;                      // {x, y}
   var particles = [], floats = [];
@@ -228,8 +228,8 @@
     theme = tIdx;
     score = 0;
     total = 0;
-    shuffles = 0;
-    shuffleMilestone = SHUFFLE_PER;
+    bank = 0;
+    bankMilestone = BANK_PER;
     recorde = false;
     loadHi(theme);
     particles = []; floats = [];
@@ -343,7 +343,7 @@
     b.row = y1; b.col = x1;
   }
 
-  function doShuffle(mode) { // mode: "auto" (fichou) | "manual" (botão) | "silent"
+  function doShuffle(mode) { // mode: "auto" (garantia de jogadas válidas) | "silent"
     var types = [];
     for (var y = 0; y < GRID; y++) for (var x = 0; x < GRID; x++) types.push(grid[y][x].t);
     var ok = false;
@@ -357,18 +357,8 @@
           grid[y2][x2].t = types[y2 * GRID + x2];
       ok = hasValidMoves() && findRuns().length === 0;
     }
-    if (mode === "manual") {
-      sfx.shuffle();
+    if (mode === "auto") {
       showMsg("🔀 Tabuleiro renascendo!", 1.2);
-      phase = "shuffle";
-      anim = { t: 0, dur: 0.55, data: null };
-      for (var y3 = 0; y3 < GRID; y3++)
-        for (var x3 = 0; x3 < GRID; x3++) {
-          grid[y3][x3].born = Math.min(grid[y3][x3].born, 0.15);
-          grid[y3][x3].row = y3; grid[y3][x3].col = x3;
-        }
-    } else if (mode === "auto") {
-      showMsg("🔀 Sem jogadas — embaralhando!", 1.4);
     }
   }
 
@@ -468,7 +458,7 @@
     });
 
     score += ptsTotal;
-    checkShuffleBonus();
+    checkBankBonus();
     sfx.pop(chain);
 
     // marca pops
@@ -523,32 +513,15 @@
     cascade(d.chain + 1);
   }
 
-  function onShuffleDone() {
-    phase = "idle";
-    if (state === "play" && grid && !hasValidMoves()) doShuffle("auto");
-  }
-
-  // a cada SHUFFLE_PER pontos de total, o jogador ganha 1 embaralhada
-  function checkShuffleBonus() {
-    if (total + score >= shuffleMilestone) {
-      shuffles++;
-      shuffleMilestone += SHUFFLE_PER;
-      addFloat("+1 embaralhada! 🔀", W / 2, BY + BH - 60);
-      showMsg("+1 chance de embaralhar! 🔀", 1.4);
+  // a cada BANK_PER pontos de total, o jogador ganha 1 jogada extra pro banco
+  function checkBankBonus() {
+    if (total + score >= bankMilestone) {
+      bank++;
+      bankMilestone += BANK_PER;
+      addFloat("+1 jogada extra no banco! 🏦", W / 2, BY + BH - 60);
+      showMsg("+1 jogada extra no banco! 🏦", 1.4);
       sfx.shuffle();
     }
-  }
-
-  function doManualShuffle() {
-    if (phase !== "idle" || state !== "play") return;
-    if (shuffles <= 0) {
-      sfx.fail();
-      showMsg("Faltam " + fmt(Math.max(0, shuffleMilestone - (total + score))) + " pts pro próximo 🔀", 1.3);
-      return;
-    }
-    shuffles--;
-    sel = null;
-    doShuffle("manual");
   }
 
   function grantExtraMoves() {
@@ -573,11 +546,19 @@
         addFloat("🎉 Nível " + level + " de " + NIVEIS + " completo! Bônus de jogadas: +" + bonus, W / 2, BY + BH / 2);
       }
     } else if (moves <= 0) {
-      missing = goal - score;
-      total += score;
-      saveHi();
-      state = "lose";
-      sfx.lose();
+      if (bank > 0) {
+        bank--;
+        moves += EXTRA_MOVES;
+        addFloat("🏦 Banco: +" + EXTRA_MOVES + " jogadas!", W / 2, BY + BH - 60);
+        showMsg("🏦 Fim das jogadas — o banco pagou +" + EXTRA_MOVES + " extras!", 1.8);
+        sfx.shuffle();
+      } else {
+        missing = goal - score;
+        total += score;
+        saveHi();
+        state = "lose";
+        sfx.lose();
+      }
     }
   }
 
@@ -615,8 +596,6 @@
     if (audio.ctx && audio.ctx.state === "suspended") audio.ctx.resume();
     var p = point(e), i;
 
-    if (phase === "shuffle") return;
-
     if (state === "menu") {
       for (i = 0; i < regions.length; i++) {
         if (inRect(p.x, p.y, regions[i])) {
@@ -645,8 +624,7 @@
     for (i = 0; i < regions.length; i++) {
       var rg = regions[i];
       if (inRect(p.x, p.y, rg)) {
-        if (rg.kind === "shuffle") doManualShuffle();
-        else { sfx.select(); state = "menu"; phase = "idle"; }
+        sfx.select(); state = "menu"; phase = "idle";
         return;
       }
     }
@@ -695,7 +673,6 @@
     if (phase === "swapback" && anim.t >= anim.dur) { phase = "idle"; }
     if (phase === "pop" && anim.t >= anim.dur) onPopDone();
     if (phase === "fall" && anim.t >= anim.dur) onFallDone();
-    if (phase === "shuffle" && anim.t >= anim.dur) onShuffleDone();
 
     render();
     requestAnimationFrame(tick);
@@ -773,9 +750,9 @@
     ctx.fillStyle = "#9d8cd0";
     ctx.fillText("JOGADAS", mx + mw / 2, my + 34);
 
-    // botão embaralhar
+    // banco de jogadas extras
     var sx = 16, sy = 118, sw2 = 88, sh2 = 46;
-    if (shuffles > 0) {
+    if (bank > 0) {
       var sg = ctx.createLinearGradient(sx, sy, sx, sy + sh2);
       sg.addColorStop(0, "#0d9488");
       sg.addColorStop(1, "#0f766e");
@@ -787,11 +764,10 @@
       ctx.stroke();
       ctx.fillStyle = "#fff";
       ctx.font = "700 15px 'Segoe UI', sans-serif";
-      ctx.fillText("🔀 x" + shuffles, sx + sw2 / 2, sy + 17);
+      ctx.fillText("🏦 x" + bank, sx + sw2 / 2, sy + 17);
       ctx.font = "600 9px 'Segoe UI', sans-serif";
       ctx.fillStyle = "rgba(255,255,255,0.75)";
-      ctx.fillText("EMBARALHAR", sx + sw2 / 2, sy + 34);
-      regions.push({ kind: "shuffle", x: sx, y: sy, w: sw2, h: sh2 });
+      ctx.fillText("JOGADAS EXTRAS", sx + sw2 / 2, sy + 34);
     } else {
       ctx.fillStyle = "rgba(255,255,255,0.05)";
       rr(sx, sy, sw2, sh2, 12);
@@ -801,8 +777,8 @@
       ctx.stroke();
       ctx.fillStyle = "rgba(255,255,255,0.4)";
       ctx.font = "700 15px 'Segoe UI', sans-serif";
-      ctx.fillText("🔀 🔒", sx + sw2 / 2, sy + 17);
-      var left = shuffleMilestone - (total + score);
+      ctx.fillText("🏦 🔒", sx + sw2 / 2, sy + 17);
+      var left = bankMilestone - (total + score);
       ctx.font = "600 9px 'Segoe UI', sans-serif";
       ctx.fillText("faltam " + fmt(Math.max(0, left)) + " pts", sx + sw2 / 2, sy + 34);
     }
@@ -813,7 +789,7 @@
     ctx.fillStyle = "#9d8cd0";
     ctx.fillText("🏆 Recorde: " + fmt(hi), 120, 140);
 
-    // barra de progresso para a meta (à direita do botão embaralhar)
+    // barra de progresso para a meta (à direita do banco)
     var gx = 116, gw = 270, gy = 156;
     ctx.fillStyle = "rgba(255,255,255,0.1)";
     rr(gx, gy, gw, 8, 4);
@@ -1086,7 +1062,7 @@
     drawHud();
     drawBoard();
 
-    // mensagem central (embaralhar / bônus)
+    // mensagem central (bônus / banco)
     if (msg) {
       var a = Math.min(1, msg.t / 0.15, (msg.dur - msg.t) / 0.3);
       ctx.globalAlpha = Math.max(0, a);
