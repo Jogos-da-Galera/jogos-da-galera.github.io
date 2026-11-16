@@ -164,6 +164,41 @@
     animation: pulo 0.8s ease infinite alternate;
   }
   /* peça obrigada a capturar (regra oficial): anel vermelho pulsante */
+  /* ---- Fim de jogo (overlay sobreposto) ---- */
+  .tab-wrap { position: relative; }
+  .fim-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(16, 6, 34, 0.84);
+    border-radius: 10px;
+    z-index: 5;
+    animation: surgir 0.25s ease;
+  }
+  .fim-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    text-align: center;
+    padding: 10px 18px;
+    animation: saltar 0.5s ease;
+  }
+  .fim-emoji { font-size: 3.4rem; animation: quicar 0.7s ease infinite alternate; }
+  .fim-titulo {
+    font-size: clamp(1.3rem, 5vw, 1.8rem);
+    font-weight: 900;
+    color: #ffd84d;
+    text-shadow: 0 2px 12px rgba(250, 204, 21, 0.35);
+  }
+  .fim-sub { color: #e9d5ff; font-size: 0.95rem; margin-bottom: 6px; }
+  .btn.fim-btn { min-width: 0; padding: 10px 22px; }
+  @keyframes surgir { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes saltar { 0% { transform: scale(0.6); } 70% { transform: scale(1.08); } 100% { transform: scale(1); } }
+  @keyframes quicar { from { transform: translateY(0); } to { transform: translateY(-10px); } }
+
   .casa.deve::before {
     content: '';
     position: absolute;
@@ -292,7 +327,17 @@
       <div id="p-pr"><div class="quem pr" id="rot-pr">⚫ Preto</div><div class="pts" id="pts-pr">0</div><div class="qtd" id="pe-pr">20</div></div>
     </div>
 
-    <div class="tabuleiro" id="tabuleiro"></div>
+    <div class="tab-wrap">
+      <div class="tabuleiro" id="tabuleiro"></div>
+      <div class="fim-overlay hidden" id="fim-overlay">
+        <div class="fim-card">
+          <div class="fim-emoji" id="fim-emoji">🏆</div>
+          <div class="fim-titulo" id="fim-titulo">Você venceu!</div>
+          <div class="fim-sub" id="fim-sub"></div>
+          <button class="btn fim-btn" onclick="novaPartida()">🔄 Jogar de novo</button>
+        </div>
+      </div>
+    </div>
 
     <div class="status" id="status"></div>
 
@@ -683,6 +728,7 @@
     pensando = false;
     animando = false;
     limpaSelecao();
+    $('fim-overlay').classList.add('hidden');
     desenha();
     atualizaPlacar();
     if (modo === 'cpu' && vez === PR) pensarIA();
@@ -693,14 +739,46 @@
     $('menu').classList.remove('hidden');
   };
 
+  const frasesVitoria = [
+    'Que partida! Você foi imbatível! 👑',
+    'A máquina está pedindo hora para rever a aula 😄',
+    'Imparável! Quer uma revanche? 🔄',
+    'Mandou bem demais, campeão! 🎩'
+  ];
+  const frasesDerrota = [
+    'A máquina venceu essa — mas a revanche é sua! 💪',
+    'Ficou perto... bora tentar de novo? 🔄'
+  ];
+
+  function mostrarOverlay(quem) {
+    const eo = $('fim-emoji'), t = $('fim-titulo'), sub = $('fim-sub');
+    if (modo === 'cpu') {
+      if (quem === BR) {
+        eo.textContent = '🎉';
+        t.textContent = 'Você venceu!';
+        sub.textContent = frasesVitoria[Math.floor(Math.random() * frasesVitoria.length)];
+      } else {
+        eo.textContent = '🤖';
+        t.textContent = 'A máquina venceu!';
+        sub.textContent = frasesDerrota[Math.floor(Math.random() * frasesDerrota.length)];
+      }
+    } else {
+      eo.textContent = '🎉';
+      t.textContent = nome(quem) + ' venceu!';
+      sub.textContent = 'Que final! Vamos de revanche? 🔄';
+    }
+    $('fim-overlay').classList.remove('hidden');
+  }
+
   function termina(quem) {
     fim = true;
-    vitorias[quem]++;
+    vitorias[quem === BR ? 'BR' : 'PR']++;   // quem é a cor (1/2), o placar usa 'BR'/'PR'
     desenha();
     atualizaPlacar();
     const s = $('status');
     s.textContent = '🏆 ' + nome(quem) + ' venceu!';
     s.classList.remove('aviso');
+    mostrarOverlay(quem);
   }
 
   /* ---------- Animação de jogada ----------
