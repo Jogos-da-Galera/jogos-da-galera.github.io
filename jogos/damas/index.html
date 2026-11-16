@@ -155,12 +155,14 @@
     border-radius: 50%;
     background: rgba(250, 204, 21, 0.4);
   }
+  /* peça que VAI ser capturada: contorno vermelho */
   .casa.comer::after {
     content: '';
     position: absolute;
-    inset: 5%;
-    border: 3px dashed rgba(255, 107, 107, 0.95);
-    border-radius: 12px;
+    inset: 6%;
+    border: 3px solid rgba(255, 107, 107, 0.95);
+    border-radius: 50%;
+    box-shadow: 0 0 12px rgba(255, 107, 107, 0.6);
     animation: pulo 0.8s ease infinite alternate;
   }
   /* peça obrigada a capturar (regra oficial): anel vermelho pulsante */
@@ -199,13 +201,14 @@
   @keyframes saltar { 0% { transform: scale(0.6); } 70% { transform: scale(1.08); } 100% { transform: scale(1); } }
   @keyframes quicar { from { transform: translateY(0); } to { transform: translateY(-10px); } }
 
+  /* peça que DEVE capturar (regra oficial): anel dourado pulsante */
   .casa.deve::before {
     content: '';
     position: absolute;
     inset: 4%;
-    border: 3px solid rgba(255, 107, 107, 0.9);
+    border: 3px solid rgba(255, 216, 168, 0.95);
     border-radius: 50%;
-    box-shadow: 0 0 10px rgba(255, 107, 107, 0.55);
+    box-shadow: 0 0 12px rgba(255, 216, 168, 0.6);
     animation: pulo 0.9s ease infinite alternate;
     pointer-events: none;
   }
@@ -264,7 +267,7 @@
   .casa.selecionada { z-index: 2; }
 
   /* animação de jogada: peça-fantasma desliza pelo caminho */
-  .ghost {
+  .fantasma {
     position: absolute;
     width: 10%;
     height: 10%;
@@ -294,6 +297,9 @@
     border: 2px solid rgba(167, 139, 250, 0.25);
     background: rgba(255, 255, 255, 0.05);
     transition: background 0.25s, border-color 0.25s, color 0.25s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .status.aviso {
     color: #ffd8a8;
@@ -343,6 +349,7 @@
 
     <div class="acoes">
       <button class="btn ghost" onclick="novaPartida()">🔄 Nova partida</button>
+      <button class="btn ghost" id="btn-desistir" onclick="desistir()">🏳️ Desistir</button>
       <button class="btn ghost" id="btn-forcar" onclick="alternarForcar()"></button>
       <button class="btn ghost" onclick="voltarMenu()">🏠 Menu</button>
     </div>
@@ -748,20 +755,40 @@
 
   function atualizaStatus() {
     const s = $('status');
+    // botão "desistir" só aparece quando dá pra desistir
+    $('btn-desistir').classList.toggle('hidden', fim || (modo === 'cpu' && vez === PR));
     if (fim) return;
     let texto, aviso = false;
     if (modo === 'cpu' && vez === PR) {
       texto = '🤖 Máquina pensando...';
     } else if (forcarCaptura && temCaptura(g, vez)) {
       aviso = true;
-      texto = '⚠️ Captura obrigatória! Vez de ' + nome(vez);
+      texto = modo === 'cpu' ? '⚠️ Captura obrigatória!' : '⚠️ Captura obrigatória — ' + nome(vez);
     } else {
-      texto = 'Vez de ' + nome(vez) + (modo === 'pvp' ? '' : ' — escolha uma peça');
+      texto = 'Vez de ' + nome(vez);
     }
     s.textContent = texto;
     s.classList.toggle('aviso', aviso);
     atualizaPlacar();
   }
+
+  function desistir() {
+    if (fim) return;
+    if (modo === 'cpu' && vez === PR) return;  // na vez da máquina, não vale
+    const vencedor = (modo === 'cpu') ? PR : (vez === BR ? PR : BR);
+    fim = true;
+    vitorias[vencedor === BR ? 'BR' : 'PR']++;
+    $('fim-emoji').textContent = '🏳️';
+    $('fim-titulo').textContent = modo === 'cpu' ? 'A máquina venceu!' : 'Venceu ' + nome(vencedor) + '!';
+    $('fim-sub').textContent = modo === 'cpu'
+      ? 'Você desistiu da partida. Bora de revanche? 💪'
+      : 'Partida desistida.';
+    $('fim-overlay').classList.remove('hidden');
+    desenha();
+    atualizaPlacar();
+    atualizaStatus();
+  }
+  window.desistir = desistir;
 
   window.iniciarJogo = function (m) {
     modo = m;
@@ -860,7 +887,7 @@
 
     // fantasma da peça em movimento
     const ghost = document.createElement('div');
-    ghost.className = 'ghost';
+    ghost.className = 'fantasma';
     ghost.style.left = (j.fc * 10) + '%';
     ghost.style.top = (j.fr * 10) + '%';
     const gp = document.createElement('div');
@@ -879,7 +906,7 @@
       const alvo = oldG[r][c];
       if (!alvo) return;
       const cg = document.createElement('div');
-      cg.className = 'ghost';
+      cg.className = 'fantasma';
       cg.style.left = (c * 10) + '%';
       cg.style.top = (r * 10) + '%';
       const cp = document.createElement('div');
