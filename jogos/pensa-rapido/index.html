@@ -256,21 +256,22 @@
       hat(t + beatInterval / 2);
       const b = beats;
       beats++;
-      // a música acelera: intervalo encurta a cada beat (do 1.4s até 0.8s)
-      beatInterval = Math.max(0.8, 1.4 - b * 0.005);
+      // a música acelera devagar: intervalo encurta a cada beat (do 1.4s até 0.75s)
+      beatInterval = Math.max(0.75, 1.4 - b * 0.0025);
       levelEl.textContent = levelOf(b);
 
       let lanes = [];
       if (b < WARMUP_BEATS) {
         lanes = [b % LANES]; // intro calmo: um por vez, andando nas faixas
       } else {
+        const lvl = levelOf(b);
         const r = Math.random();
-        if (b > 16 && r < 0.16) {
-          // acorde! duas faixas juntas
+        if (r < Math.min(0.25, 0.06 + 0.03 * lvl)) {
+          // acorde! duas faixas juntas — mais comum conforme o nível sobe
           const a = Math.floor(Math.random() * LANES);
           const c = (a + 1 + Math.floor(Math.random() * (LANES - 1))) % LANES;
           lanes = [a, c];
-        } else if (r < 0.85) {
+        } else if (r < Math.min(0.95, 0.8 + 0.03 * lvl)) {
           lanes = [Math.floor(Math.random() * LANES)];
         }
       }
@@ -511,7 +512,7 @@
         while (nextBeat < t + 0.35) { scheduleBeat(nextBeat); nextBeat += beatInterval; }
         const mult = 1 + Math.min(4, Math.floor(combo / 10));
         for (const n of notes) {
-          if (!n.hit && !n.missed && t > n.landAt + MISS_AFTER) {
+          if (!n.hit && !n.held && !n.missed && t > n.landAt + MISS_AFTER) {
             n.missed = true;
             doMiss(n);
           }

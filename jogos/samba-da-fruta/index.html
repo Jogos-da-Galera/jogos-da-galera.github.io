@@ -64,12 +64,14 @@
     { g: 3400, m: 32 }, { g: 3900, m: 32 }, { g: 4400, m: 34 }, { g: 4900, m: 34 }, { g: 5500, m: 34 },
     { g: 6100, m: 36 }, { g: 6800, m: 36 }, { g: 7500, m: 36 }, { g: 8300, m: 38 }, { g: 9200, m: 38 },
     { g: 10100, m: 38 }, { g: 11100, m: 40 }, { g: 12200, m: 40 }, { g: 13400, m: 40 }, { g: 14700, m: 42 },
-    { g: 16100, m: 42 }, { g: 17600, m: 44 }, { g: 19200, m: 44 }, { g: 20900, m: 46 }
+    { g: 16100, m: 42 }, { g: 17600, m: 44 }, { g: 19200, m: 44 }, { g: 20900, m: 46 }, { g: 22600, m: 46 },
+    { g: 24500, m: 48 }, { g: 26500, m: 48 }, { g: 28600, m: 50 }, { g: 30800, m: 50 }, { g: 33100, m: 52 }
   ];
   var NIVEIS = LEVELS.length;
   var WILD = "W";                 // peça coringa: casa com qualquer fruta
   var WILD_CHANCE = 0.05;         // raridade da coringa ao repor o tabuleiro
   var SHUFFLE_PER = 10000;        // a cada N pontos de total, ganha 1 embaralhada
+  var EXTRA_MOVES = 3;            // quando não há jogada válida, ganha jogadas extras
 
   // Variantes (o "select" da tela inicial)
   var THEMES = [
@@ -549,9 +551,16 @@
     doShuffle("manual");
   }
 
+  function grantExtraMoves() {
+    moves += EXTRA_MOVES;
+    addFloat("+" + EXTRA_MOVES + " jogadas extras! ✨", W / 2, BY + BH - 60);
+    showMsg("✨ Sem jogadas — +" + EXTRA_MOVES + " jogadas extras!", 1.6);
+    sfx.shuffle();
+  }
+
   function afterCascades() {
     phase = "idle";
-    if (!hasValidMoves()) { doShuffle("auto"); }
+    if (!hasValidMoves()) { grantExtraMoves(); }
     if (score >= goal) {
       var bonus = moves * 20;
       total += score + bonus;
