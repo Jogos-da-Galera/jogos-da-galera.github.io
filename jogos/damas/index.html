@@ -251,6 +251,7 @@
   let g = [];             // grid 10x10
   let vez = BR;
   let fim = false;
+  let forcarCaptura = true;   // regra oficial: captura obrigatória (e a maior). Desligado = movimento livre.
   let vitorias = { BR: 0, PR: 0, E: 0 };
   let selecao = null;     // {r, c} peça selecionada
   let destinos = new Map(); // "r,c" -> [r,c] (casa de pouso do destino)
@@ -381,7 +382,32 @@
 
   function jogadasLegais(gr, cor) {
     const { caps, simples } = geramJogadas(gr, cor);
-    return caps.length ? caps : simples;
+    if (forcarCaptura && caps.length) return caps;      // regra oficial: só a (maior) captura
+    return caps.concat(simples);                       // modo livre: captura OU movimento simples
+  }
+
+  // existe captura disponível para a cor?
+  function temCaptura(gr, cor) {
+    return geramJogadas(gr, cor).caps.length > 0;
+  }
+
+  window.alternarForcar = function () {
+    forcarCaptura = !forcarCaptura;
+    atualizaForcarUI();
+    selecao = null;
+    destinos = new Map();
+    if (!fim) desenha();
+  };
+
+  function atualizaForcarUI() {
+    const bMenu = $('btn-forcar-menu');
+    const bJogo = $('btn-forcar');
+    if (bMenu) bMenu.textContent = forcarCaptura
+      ? '📏 Captura obrigatória: LIGADA (regra oficial)'   // toque para desligar
+      : '📏 Captura obrigatória: DESLIGADA (movimento livre)'; // toque para ligar
+    if (bJogo) bJogo.textContent = forcarCaptura
+      ? '📏 Captura: obrigatória'
+      : '📏 Captura: livre';
   }
 
   function aplica(gr, j, cor) {
@@ -480,14 +506,12 @@
       const d = destinos.get(key(r, c));
       if (d) {
         casa.classList.add('destino', 'jogavel');
-        if (capturasDaSelecao) casa.classList.add('capturar');
+        if (d[2]) casa.classList.add('capturar');
       }
       tabEl.appendChild(casa);
     }
     atualizaStatus();
   }
-
-  let capturasDaSelecao = false;
 
   function contagem(cor) {
     let n = 0;
@@ -516,9 +540,13 @@
   function atualizaStatus() {
     const s = $('status');
     if (fim) return;
-    s.textContent = modo === 'cpu' && vez === PR
-      ? '🤖 Máquina pensando...'
-      : 'Vez de ' + nome(vez) + (modo === 'pvp' ? '' : ' — escolha uma peça');
+    if (modo === 'cpu' && vez === PR) {
+      s.textContent = '🤖 Máquina pensando...';
+    } else if (forcarCaptura && temCaptura(g, vez)) {
+      s.textContent = '⚠️ Captura obrigatória! Vez de ' + nome(vez);
+    } else {
+      s.textContent = 'Vez de ' + nome(vez) + (modo === 'pvp' ? '' : ' — escolha uma peça');
+    }
     atualizaPlacar();
   }
 
@@ -538,7 +566,6 @@
     fim = false;
     selecao = null;
     destinos = new Map();
-    capturasDaSelecao = false;
     desenha();
     atualizaPlacar();
     if (modo === 'cpu' && vez === PR) pensarIA();
@@ -561,7 +588,6 @@
     g = aplica(g, j, vez);
     selecao = null;
     destinos = new Map();
-    capturasDaSelecao = false;
     const adversario = vez === BR ? PR : BR;
     if (!jogadasLegais(g, adversario).length) { termina(vez); return; }
     vez = adversario;
@@ -602,12 +628,12 @@
     if (p && corDe(p) === vez) {
       selecao = { r, c };
       destinos = new Map();
-      capturasDaSelecao = false;
       const legal = jogadasLegais(g, vez).filter(l => l.fr === r && l.fc === c);
       if (legal.length) {
         for (const l of legal) {
-          destinos.set(key(l.tr, l.tc), [l.tr, l.tc]);
-          capturasDaSelecao = l.capt.length > 0;
+          const k = key(l.tr, l.tc);
+          const atual = destinos.get(k);
+          if (!atual || l.capt.length > 0) destinos.set(k, [l.tr, l.tc, l.capt.length > 0]); // captura tem prioridade
         }
       }
       desenha();
@@ -617,9 +643,10 @@
     // clicou em outro lugar: desmarcar
     selecao = null;
     destinos = new Map();
-    capturasDaSelecao = false;
     desenha();
   });
+
+  atualizaForcarUI();
 })();
 </script>
 </body>
