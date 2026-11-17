@@ -344,7 +344,8 @@
       <div class="row">
         <button class="btn ghost niv" data-nivel="facil" onclick="escolheNivel('facil')">😴 Fácil</button>
         <button class="btn ghost niv" data-nivel="intermediario" onclick="escolheNivel('intermediario')">🙂 Médio</button>
-        <button class="btn ghost niv" data-nivel="dificil" onclick="escolheNivel('dificil')">🔥 Difícil</button>
+        <button class="btn ghost niv" data-nivel="dificil" onclick="escolheNivel('dificil')">🧠 Difícil</button>
+        <button class="btn ghost niv" data-nivel="impossivel" onclick="escolheNivel('impossivel')">🔥 Impossível</button>
       </div>
     </div>
     <button class="btn" onclick="iniciarJogo('cpu')">🤖 Jogar contra a máquina</button>
@@ -392,7 +393,7 @@
   const BR = 1, PR = 2;
 
   let modo = null;        // 'cpu' | 'pvp'
-  let nivel = 'intermediario'; // 'facil' | 'intermediario' | 'dificil' (só vale contra a máquina)
+  let nivel = 'intermediario'; // 'facil' | 'intermediario' | 'dificil' | 'impossivel' (só vale contra a máquina)
   let iaJogadas = 0;      // quantas jogadas a máquina já fez nesta partida
   let g = [];             // grid 10x10
   let vez = BR;
@@ -1015,8 +1016,11 @@
       } else if (nivel === 'intermediario') {
         // alterna: 1 com heurística, 1 aleatória (repete)
         j = (iaJogadas % 2 === 0) ? melhorJogadaIA(g, PR) : aleatoria();
+      } else if (nivel === 'dificil') {
+        // 3 jogadas com heurística, 1 aleatória (repete)
+        j = (iaJogadas % 4 === 3) ? aleatoria() : melhorJogadaIA(g, PR);
       } else {
-        // difícil: sempre heurística
+        // impossível: sempre heurística
         j = melhorJogadaIA(g, PR);
       }
       iaJogadas++;
