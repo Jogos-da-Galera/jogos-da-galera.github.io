@@ -95,6 +95,24 @@
   }
   .btn.ghost:active { transform: none; }
 
+  /* ---- Seletor de nível ---- */
+  .niveis {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    margin: 4px 0 8px;
+  }
+  .niveis .lbl { font-size: 0.85rem; color: #b8a8e8; }
+  .niveis .row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .niv { min-width: 0; padding: 9px 14px; font-size: 0.85rem; }
+  .niv.sel {
+    border-color: #facc15;
+    color: #ffd84d;
+    background: rgba(250, 204, 21, 0.14);
+    box-shadow: 0 0 12px rgba(250, 204, 21, 0.25);
+  }
+
   /* ---- Placar ---- */
   .placar {
     display: flex;
@@ -321,6 +339,14 @@
 
   <div class="menu" id="menu">
     <p class="sub">Tabuleiro 10×10 · 20 peças por lado<br>Escolha como quer jogar:</p>
+    <div class="niveis">
+      <span class="lbl">Nível da máquina:</span>
+      <div class="row">
+        <button class="btn ghost niv" data-nivel="facil" onclick="escolheNivel('facil')">😴 Fácil</button>
+        <button class="btn ghost niv" data-nivel="intermediario" onclick="escolheNivel('intermediario')">🙂 Médio</button>
+        <button class="btn ghost niv" data-nivel="dificil" onclick="escolheNivel('dificil')">🔥 Difícil</button>
+      </div>
+    </div>
     <button class="btn" onclick="iniciarJogo('cpu')">🤖 Jogar contra a máquina</button>
     <button class="btn" onclick="iniciarJogo('pvp')">👥 Dois jogadores</button>
     <button class="btn ghost" id="btn-forcar-menu" onclick="alternarForcar()"></button>
@@ -366,6 +392,8 @@
   const BR = 1, PR = 2;
 
   let modo = null;        // 'cpu' | 'pvp'
+  let nivel = 'intermediario'; // 'facil' | 'intermediario' | 'dificil' (só vale contra a máquina)
+  let iaJogadas = 0;      // quantas jogadas a máquina já fez nesta partida
   let g = [];             // grid 10x10
   let vez = BR;
   let fim = false;
@@ -790,6 +818,16 @@
   }
   window.desistir = desistir;
 
+  window.escolheNivel = function (n) {
+    nivel = n;
+    atualizaNivelUI();
+  };
+
+  function atualizaNivelUI() {
+    document.querySelectorAll('.niv').forEach(b =>
+      b.classList.toggle('sel', b.dataset.nivel === nivel));
+  }
+
   window.iniciarJogo = function (m) {
     modo = m;
     $('menu').classList.add('hidden');
@@ -806,6 +844,7 @@
     fim = false;
     iaToken++;           // invalida qualquer "pensando" da partida anterior
     pensando = false;
+    iaJogadas = 0;
     animando = false;
     limpaSelecao();
     $('fim-overlay').classList.add('hidden');
@@ -966,7 +1005,21 @@
       if (token !== iaToken) return;   // mudou a partida: ignora
       pensando = false;
       if (fim || vez !== PR) return;
-      const j = melhorJogadaIA(g, PR);
+      const legal = jogadasLegais(g, PR);
+      if (!legal.length) return;
+      const aleatoria = () => legal[Math.floor(Math.random() * legal.length)];
+      let j;
+      if (nivel === 'facil') {
+        // 3 jogadas aleatórias, 1 com heurística (repete)
+        j = (iaJogadas % 4 === 3) ? melhorJogadaIA(g, PR) : aleatoria();
+      } else if (nivel === 'intermediario') {
+        // alterna: 1 com heurística, 1 aleatória (repete)
+        j = (iaJogadas % 2 === 0) ? melhorJogadaIA(g, PR) : aleatoria();
+      } else {
+        // difícil: sempre heurística
+        j = melhorJogadaIA(g, PR);
+      }
+      iaJogadas++;
       if (j) fazJogada(j);
     }, 400);
   }
@@ -1020,6 +1073,7 @@
   });
 
   atualizaForcarUI();
+  atualizaNivelUI();
 })();
 </script>
 </body>
