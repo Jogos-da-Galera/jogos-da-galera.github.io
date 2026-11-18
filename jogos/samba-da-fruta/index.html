@@ -438,24 +438,48 @@
       }
     });
 
-    // bombas destruídas: além de limparem, rendem pontos extras
+    // bombas destruídas: além de limparem, rendem pontos extras.
+    // Cascata: bomba atingida pela explosão de outra também detona
+    // (fila de bombas, cada uma explode no máximo 1 vez).
+    var bombQueue = [];
     Object.keys(clear).forEach(function (key) {
-      var xy = key.split(","), x = +xy[0], y = +xy[1];
-      var p = grid[y][x];
-      if (!p.isB || creates[key]) return;
-      var pts = p.isB === "blast" ? 200 : 120;
-      ptsTotal += pts;
-      addFloat("+" + pts + " 💥", cellCenter(x, y).x, cellCenter(x, y).y - 14);
-      if (p.isB === "row") for (var c = 0; c < GRID; c++) bombClear[c + "," + y] = 1;
-      if (p.isB === "col") for (var r = 0; r < GRID; r++) bombClear[x + "," + r] = 1;
-      if (p.isB === "blast") {
+      var cxy = key.split(",");
+      if (grid[+cxy[1]][+cxy[0]].isB) bombQueue.push(key);
+    });
+    var exploded = {};
+    while (bombQueue.length) {
+      var bkey = bombQueue.shift();
+      if (exploded[bkey]) continue;
+      exploded[bkey] = 1;
+      var bxy = bkey.split(","), bx = +bxy[0], by = +bxy[1];
+      var bp = grid[by][bx];
+      var bpts = bp.isB === "blast" ? 200 : 120;
+      ptsTotal += bpts;
+      addFloat("+" + bpts + " 💥", cellCenter(bx, by).x, cellCenter(bx, by).y - 14);
+      var hit = [];
+      if (bp.isB === "row") {
+        for (var hc = 0; hc < GRID; hc++) { var hk = hc + "," + by; bombClear[hk] = 1; hit.push(hk); }
+      }
+      if (bp.isB === "col") {
+        for (var hr = 0; hr < GRID; hr++) { var hk2 = bx + "," + hr; bombClear[hk2] = 1; hit.push(hk2); }
+      }
+      if (bp.isB === "blast") {
         for (var dy = -1; dy <= 1; dy++) for (var dx = -1; dx <= 1; dx++) {
-          var nx = x + dx, ny = y + dy;
-          if (nx >= 0 && ny >= 0 && nx < GRID && ny < GRID) bombClear[nx + "," + ny] = 1;
+          var nx = bx + dx, ny = by + dy;
+          if (nx >= 0 && ny >= 0 && nx < GRID && ny < GRID) {
+            var hk3 = nx + "," + ny;
+            bombClear[hk3] = 1; hit.push(hk3);
+          }
         }
         sfx.bomb();
       }
-    });
+      // bombas atingidas por essa explosão entram na fila
+      for (var hi = 0; hi < hit.length; hi++) {
+        var hxy = hit[hi].split(",");
+        var hp = grid[+hxy[1]][+hxy[0]];
+        if (hp.isB && !exploded[hit[hi]]) bombQueue.push(hit[hi]);
+      }
+    }
 
     score += ptsTotal;
     checkBankBonus();
@@ -1078,6 +1102,20 @@
     }
 
     if (state === "win" || state === "lose" || state === "victory") drawOverlay();
+  }
+
+  // -------- Gancho de teste (usado apenas por test-bombas.js em Node) --------
+  if (typeof globalThis !== "undefined" && globalThis.__SAMBATEST) {
+    globalThis.__samba = {
+      newPiece: newPiece,
+      newGame: newGame,
+      findRuns: findRuns,
+      cascade: cascade,
+      onPopDone: onPopDone,
+      setGrid: function (g) { grid = g; phase = "idle"; anim = { t: 0, dur: 0, data: null }; },
+      getGrid: function () { return grid; },
+      animData: function () { return anim.data; }
+    };
   }
 
   requestAnimationFrame(tick);

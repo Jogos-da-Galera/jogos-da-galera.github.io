@@ -28,24 +28,28 @@ async function init() {
   route();
 }
 
-/** Renderiza os chips de filtro de categoria (com "Todas"). */
+/**
+ * Renderiza os chips de filtro de categoria (com "Todas").
+ * Comportamento toggle: clicar num chip seleciona a categoria; clicar de novo
+ * desmarca. Sem nenhum chip selecionado, todos os jogos são mostrados.
+ */
 function renderCategoryFilters() {
   const wrap = document.getElementById("filter-categories");
   const categories = [...new Set(jogos.flatMap((j) => j.categorias ?? []))].sort();
   wrap.innerHTML = "";
 
-  const all = chip("Todas", true);
-  wrap.appendChild(all);
-  categories.forEach((c) => wrap.appendChild(chip(c)));
+  wrap.appendChild(chip("Todas", ""));
+  categories.forEach((c) => wrap.appendChild(chip(c, c)));
 
-  function chip(label, active = false) {
+  function chip(label, value) {
     const el = document.createElement("button");
-    el.className = "chip" + (active ? " active" : "");
+    el.className = "chip";
     el.textContent = label;
-    el.dataset.category = label === "Todas" ? "" : label;
+    el.dataset.category = value;
     el.addEventListener("click", () => {
+      const wasActive = el.classList.contains("active");
       wrap.querySelectorAll(".chip").forEach((c) => c.classList.remove("active"));
-      el.classList.add("active");
+      if (!wasActive) el.classList.add("active");
       applyFilters();
     });
     return el;
@@ -56,7 +60,7 @@ function renderCategoryFilters() {
 function applyFilters() {
   const name = document.getElementById("filter-name").value.trim().toLowerCase();
   const catEl = document.querySelector("#filter-categories .chip.active");
-  const category = catEl ? catEl.dataset.category : "";
+  const category = catEl ? catEl.dataset.category : ""; // vazio = todos os jogos
 
   const filtered = jogos.filter((j) => {
     const matchName = !name || j.nome.toLowerCase().includes(name);
