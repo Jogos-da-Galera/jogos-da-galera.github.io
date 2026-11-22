@@ -65,7 +65,9 @@
     { g: 6100, m: 36 }, { g: 6800, m: 36 }, { g: 7500, m: 36 }, { g: 8300, m: 38 }, { g: 9200, m: 38 },
     { g: 10100, m: 38 }, { g: 11100, m: 40 }, { g: 12200, m: 40 }, { g: 13400, m: 40 }, { g: 14700, m: 42 },
     { g: 16100, m: 42 }, { g: 17600, m: 44 }, { g: 19200, m: 44 }, { g: 20900, m: 46 }, { g: 22600, m: 46 },
-    { g: 24500, m: 48 }, { g: 26500, m: 48 }, { g: 28600, m: 50 }, { g: 30800, m: 50 }, { g: 33100, m: 52 }
+    { g: 24500, m: 48 }, { g: 26500, m: 48 }, { g: 28600, m: 50 }, { g: 30800, m: 50 }, { g: 33100, m: 52 },
+    { g: 35600, m: 52 }, { g: 38200, m: 54 }, { g: 41000, m: 54 }, { g: 43900, m: 56 }, { g: 47000, m: 56 },
+    { g: 50300, m: 58 }, { g: 53800, m: 58 }, { g: 57500, m: 60 }, { g: 61400, m: 60 }, { g: 65600, m: 62 }
   ];
   var NIVEIS = LEVELS.length;
   var WILD = "W";                 // peça coringa: casa com qualquer fruta
@@ -166,17 +168,10 @@
     return false;
   }
 
-  function wildOnBoard() {
-    for (var y = 0; y < GRID; y++)
-      for (var x = 0; x < GRID; x++)
-        if (grid[y] && grid[y][x] && isWild(grid[y][x])) return true;
-    return false;
-  }
-
   function randType(x, y) {
     var n = THEMES[theme].frutas.length;
-    // coringa raro: só 1 por vez, nunca ao lado de outro coringa
-    if (Math.random() < WILD_CHANCE && !wildOnBoard() && !neighborIsWild(x, y)) return WILD;
+    // coringa raro: pode haver mais de um na tela, mas nunca ao lado de outro coringa
+    if (Math.random() < WILD_CHANCE && !neighborIsWild(x, y)) return WILD;
     return (Math.random() * n) | 0;
   }
 
@@ -442,6 +437,8 @@
     // Cascata: bomba atingida pela explosão de outra também detona
     // (fila de bombas, cada uma explode no máximo 1 vez).
     var bombQueue = [];
+    var wilds = {};
+    var wildList = [];
     Object.keys(clear).forEach(function (key) {
       var cxy = key.split(",");
       if (grid[+cxy[1]][+cxy[0]].isB) bombQueue.push(key);
@@ -473,6 +470,19 @@
         }
         sfx.bomb();
       }
+      // cada explosão (linha, coluna ou 3x3) solta um coringa ✨ em uma
+      // célula aleatória da área atingida
+      if (hit.length) {
+        for (var wtr = 0; wtr < hit.length; wtr++) {
+          var wi = (Math.random() * hit.length) | 0;
+          var wkey = hit[wi];
+          if (!creates[wkey] && !wilds[wkey]) {
+            wilds[wkey] = 1;
+            wildList.push(wkey);
+            break;
+          }
+        }
+      }
       // bombas atingidas por essa explosão entram na fila
       for (var hi = 0; hi < hit.length; hi++) {
         var hxy = hit[hi].split(",");
@@ -495,7 +505,7 @@
 
     particlesBurst(clear, bombClear);
     phase = "pop";
-    anim = { t: 0, dur: 0.22, data: { chain: chain, clear: clear, bombClear: bombClear, creates: createList } };
+    anim = { t: 0, dur: 0.22, data: { chain: chain, clear: clear, bombClear: bombClear, creates: createList, wilds: wildList } };
   }
 
   function onPopDone() {
@@ -509,6 +519,14 @@
       grid[c.y][c.x] = newPiece(c.t, c.y, c.x, { isB: c.isB });
 
       grid[c.y][c.x].born = -0.3; // surge com "power-up"
+    });
+    // coringas ✨ soltos pelas explosões
+    (d.wilds || []).forEach(function (k) {
+      var xy = k.split(","), wx = +xy[0], wy = +xy[1];
+      if (!grid[wy][wx]) {
+        grid[wy][wx] = newPiece(WILD, wy, wx);
+        grid[wy][wx].born = -0.3; // surge com "power-up"
+      }
     });
     // gravidade
     var n = THEMES[theme].frutas.length;
