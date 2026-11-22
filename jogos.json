@@ -1,5 +1,15 @@
 [
   {
+    "id": "mel-exploradora",
+    "nome": "Mel Exploradora",
+    "descricao": "A Mel, uma salsichinha cor de mel, está sozinha no mundo! 🐶 Explore 5 cenários estilo Mario — floresta, beira de estrada, bairro e cidade — desviando de buracos e rios, comendo comida pra ganhar energia ⚡ e usando seus poderes: morder 🦴 e latir 📢 (o osso turbin o latido, a cenoura dá turbo!). No fim da fase, pule na estrela mais alta pra valer mais pontos. E no lar de adoção, enfrente o chefe final: o cachorrinho do mal que não deixa ninguém ser adotado! 🩷",
+    "categorias": [
+      "Plataforma",
+      "Aventura",
+      "Ação"
+    ]
+  },
+  {
     "id": "minhoquinha",
     "nome": "Minhoquinha",
     "descricao": "O clássico snake de sempre! Controle a minhoquinha com as setas do teclado (ou WASD), coma as maçãs e não bata nas paredes nem em você mesmo. Quanto maior, mais pontos!",
