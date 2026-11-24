@@ -1944,11 +1944,14 @@ function drawFamilyPerson(x, gy, s, role) {
     // coque
     ctx.beginPath(); ctx.arc(x, hy - 19 * s, 8 * s, 0, 7); ctx.fill();
   } else if (role === "kid") {
-    // duas coquinhas
+    // cabelinho de menino: tufinho despenteado no topo
     ctx.beginPath();
-    ctx.arc(x - 15 * s, hy - 12 * s, 6.5 * s, 0, 7);
-    ctx.arc(x + 15 * s, hy - 12 * s, 6.5 * s, 0, 7);
-    ctx.fill();
+    ctx.moveTo(x - 8 * s, hy - 13 * s);
+    ctx.lineTo(x - 4 * s, hy - 22 * s);
+    ctx.lineTo(x, hy - 15 * s);
+    ctx.lineTo(x + 5 * s, hy - 21 * s);
+    ctx.lineTo(x + 8 * s, hy - 13 * s);
+    ctx.closePath(); ctx.fill();
   }
   // olhinhos + sorriso + bochechas
   ctx.fillStyle = "#3a2a20";
