@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 300">
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="42%" r="60%">
+      <stop offset="0%" stop-color="#3a2c5e"/>
+      <stop offset="100%" stop-color="#0a0812"/>
+    </radialGradient>
+    <radialGradient id="flame" cx="50%" cy="65%" r="60%">
+      <stop offset="0%" stop-color="#fff3b0"/>
+      <stop offset="45%" stop-color="#ffcf5e"/>
+      <stop offset="100%" stop-color="#f48c4c"/>
+    </radialGradient>
+  </defs>
+  <rect width="480" height="300" fill="url(#glow)"/>
+  <!-- labirinto -->
+  <g stroke="#6f5fa8" stroke-width="6" fill="none" stroke-linecap="round" opacity="0.85">
+    <path d="M30 40 h120 v70 h-80 v60 h60"/>
+    <path d="M40 260 v-90 h70 v-40"/>
+    <path d="M450 40 h-130 v80 h90"/>
+    <path d="M430 260 v-100 h-70 v-30"/>
+    <path d="M140 60 h50 M140 100 h30 M110 230 h40 M120 160 h30 v30"/>
+    <path d="M340 60 h-40 M330 90 h-20 M350 230 h-40 M360 160 h-30 v30"/>
+  </g>
+  <!-- chave -->
+  <g transform="translate(96 150) rotate(-30)">
+    <circle cx="0" cy="0" r="16" fill="none" stroke="#ffd24a" stroke-width="8"/>
+    <rect x="14" y="-4" width="52" height="8" rx="4" fill="#ffd24a"/>
+    <rect x="48" y="-4" width="8" height="18" rx="3" fill="#ffd24a"/>
+    <rect x="34" y="-4" width="8" height="14" rx="3" fill="#ffd24a"/>
+  </g>
+  <!-- porta de saída (verde) -->
+  <g transform="translate(378 118)">
+    <rect x="-24" y="-38" width="48" height="76" rx="6" fill="#1d4d36" stroke="#2fd18a" stroke-width="5"/>
+    <circle cx="13" cy="2" r="5" fill="#2fd18a"/>
+    <path d="M-8 14 l-8 22 M8 14 l8 22 M0 12 v24" stroke="#2fd18a" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <!-- lamparina -->
+  <g transform="translate(240 150)">
+    <ellipse cx="0" cy="6" rx="30" ry="8" fill="#3d3358"/>
+    <rect x="-16" y="-14" width="32" height="18" rx="6" fill="#574a7e"/>
+    <path d="M0 -58 C 14 -40, 20 -30, 20 -20 A 20 20 0 0 1 -20 -20 C -20 -30, -14 -40, 0 -58 Z" fill="url(#flame)"/>
+  </g>
+  <!-- prisão (grade) no topo -->
+  <g stroke="#8a7cc0" stroke-width="5" opacity="0.7">
+    <path d="M190 0 v70 M220 0 v70 M250 0 v70 M280 0 v70 M310 0 v70"/>
+    <path d="M180 18 h140 M180 50 h140"/>
+  </g>
+  <text x="240" y="282" text-anchor="middle" font-family="system-ui, sans-serif" font-size="22" font-weight="800" fill="#ffd24a" letter-spacing="4">ENCARCERADO</text>
+</svg>
