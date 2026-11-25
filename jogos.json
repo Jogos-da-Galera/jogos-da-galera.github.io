@@ -1,6 +1,7 @@
 [
   {
     "id": "encarcerado",
+    "dificuldade": 5,
     "nome": "A Fuga",
     "descricao": "Você escapou do seu bloco... mas ainda está preso num presídio-labirinto escuro! 🕯️ Sua visão é limitada: colete lamparinas pra aumentar a luz (ela apaga com o tempo!), ache a chave 🔑 e a porta verde 🚪 pra subir de andar — são 10 andares, cada um maior e mais perigoso. Fuja da polícia 👮 (se ela te vê, você volta pro início do andar!), socar 🐀🧍 quem te incomodar — cada soco abaixa sua disposição 💪 — e coma 🍞 pra se recuperar. Em cada andar esconde um mapa do presídio 🗺️ que revela o andar inteiro no minimapa — dá pra achar ou fugir sem ele. Consegue escapar em quanto tempo?",
     "categorias": [
@@ -11,6 +12,7 @@
   },
   {
     "id": "mel-exploradora",
+    "dificuldade": 3,
     "nome": "Mel Exploradora",
     "descricao": "A Mel, uma salsichinha cor de mel, está sozinha no mundo! 🐶 Explore 5 cenários estilo Mario — floresta, beira de estrada, bairro e cidade — desviando de buracos e rios, comendo comida pra ganhar energia ⚡ e usando seus poderes: morder 🦴 e latir 📢 (o osso turbin o latido, a cenoura dá turbo!). No fim da fase, pule na estrela mais alta pra valer mais pontos. E no lar de adoção, enfrente o chefe final: o cachorrinho do mal que não deixa ninguém ser adotado! 🩷",
     "categorias": [
@@ -21,6 +23,7 @@
   },
   {
     "id": "minhoquinha",
+    "dificuldade": 2,
     "nome": "Minhoquinha",
     "descricao": "O clássico snake de sempre! Controle a minhoquinha com as setas do teclado (ou WASD), coma as maçãs e não bata nas paredes nem em você mesmo. Quanto maior, mais pontos!",
     "categorias": [
@@ -31,6 +34,7 @@
   },
   {
     "id": "damas",
+    "dificuldade": 3,
     "nome": "Damas Brasileiras",
     "descricao": "O clássico de domingo! 🎩 Tabuleiro 10×10 com 20 peças por lado e peças que capturam para trás como manda a tradição brasileira. Coroa a sua na última fileira e deslize sem limites. Jogue com a regra oficial (captura obrigatória, a maior!) ou em movimento livre — você escolhe o que mover. Contra a máquina ou contra um amigo no mesmo dispositivo.",
     "categorias": [
@@ -41,6 +45,7 @@
   },
   {
     "id": "jogo-da-velha",
+    "dificuldade": 1,
     "nome": "Jogo da Velha",
     "descricao": "O clássico 3 em linha! Jogue contra a máquina (imbatível, bom proveito 😏) ou contra um amigo no mesmo dispositivo. Placar com vitórias e empates.",
     "categorias": [
@@ -51,6 +56,7 @@
   },
   {
     "id": "tetris",
+    "dificuldade": 3,
     "nome": "Tetris",
     "descricao": "O rei dos clássicos! Encaixe as peças coloridas e complete linhas para pontuar. 1 linha = 40 pts, 2 = 100, 3 = 300 e o famoso Tetris = 1200 (tudo multiplicado pelo nível)! A cada 10 linhas você sobe de nível e fica mais rápido.",
     "categorias": [
@@ -61,6 +67,7 @@
   },
   {
     "id": "breakout",
+    "dificuldade": 2,
     "nome": "Tijolinho",
     "descricao": "O clássico de destruir tijolos! Mova a raquete com o mouse, o toque ou as setas e devolva a bolinha para quebrar todos os tijolos coloridos. Linhas de cima valem mais pontos, você tem 3 vidas e a bola fica cada vez mais rápida. Destrua tudo para ir ao próximo nível!",
     "categorias": [
@@ -71,6 +78,7 @@
   },
   {
     "id": "2048",
+    "dificuldade": 3,
     "nome": "2048",
     "descricao": "O puzzle de somar tiles que dominou o mundo! Mova o tabuleiro com as setas, o WASD ou deslizando o dedo e combine os números iguais até chegar ao mágico 2048. Depois de vencer, continue subindo o placar — como vai longe você?",
     "categorias": [
@@ -81,6 +89,7 @@
   },
   {
     "id": "memoria-emojis",
+    "dificuldade": 1,
     "nome": "Memória de Emojis",
     "descricao": "O clássico jogo da memória com 4 temas para escolher: Emojis, Dinossauros, Animais e Profissões! Vire dois cartões por vez e encontre todos os 8 pares em poucas tentativas. Acompanhe seu placar e tente bater seu recorde! 🧠",
     "categorias": [
@@ -91,6 +100,7 @@
   },
   {
     "id": "horta-invadida",
+    "dificuldade": 3,
     "nome": "Horta Invadida",
     "descricao": "Os bichinhos invadiram a horta! 🐌🦗🐜 Defenda as plantinhas no clássico estilo Space Invaders: mova o fazendeiro com as setas/WASD, lance sementes com o espaço e elimine caramujos, grilos e formigas antes que eles cheguem às suas couves. Sobreviva aos níveis cada vez mais rápidos!",
     "categorias": [
@@ -101,6 +111,7 @@
   },
   {
     "id": "bolinhas",
+    "dificuldade": 3,
     "nome": "Bolinhas",
     "descricao": "O clássico jogo de bolinhas coloridas! Mire com o mouse, o toque ou as setas e lance a bolinha do lançador. Reúna 3 ou mais da mesma cor para explodir, e cuidado com as bolinhas soltas que caem! A cada nível uma fileira nova desce do topo — não deixe as bolinhas passarem da linha vermelha!",
     "categorias": [
@@ -111,6 +122,7 @@
   },
   {
     "id": "papai-noel",
+    "dificuldade": 4,
     "nome": "Papai Noel: Noite de Entrega",
     "descricao": "Run & gun no céu! 🎅 Voar pela noite no trenó, atirar bolas de neve em goblins, zepelins do Grinch e nevascas, e jogar os presentes nas casas destacadas em dourado. 5 níveis criativos — incluindo a ventania e o chefe final, o GRANDE ZEPIM do Grinch! 👿",
     "categorias": [
@@ -121,6 +133,7 @@
   },
   {
     "id": "corre-corre",
+    "dificuldade": 3,
     "nome": "Corre-Corre",
     "descricao": "O clássico runner do modo offline, mas com estilo! 🏃 Escolha seu corredor — Godzilla, Ninjazinho, Entregador de comida, Bandido fugindo da polícia ou o Pikmin correndo no jardim 🌿 — e pule nos obstáculos de cada pista: rochas, prédios (com a cidade inteira ao fundo!), caixas, toneis, cones, barreiras, viaturas, vasos e arbustos... e alguns bem GIGANTES! Use o pulo duplo, abaixe para esquivar dos pássaros, faça near miss para ganhar bônus e veja o ritmo aumentar. Quanto mais longe você corre, melhor!",
     "categorias": [
@@ -131,6 +144,7 @@
   },
   {
     "id": "corrida-maluca",
+    "dificuldade": 3,
     "nome": "Corrida Maluca",
     "descricao": "Runner 3D em terceira pessoa numa estrada de 3 faixas! 🏁 Escolha a pista: Floresta Amazônica 🌿, Rio de Janeiro 🏖️, Metrô de São Paulo 🚇 ou Pantanal 🐊. Mova para os lados (← →) para trocar de faixa, pule (↑/espaço, com pulo duplo!) os obstáculos baixos — troncos, bolas, cones, jacarés… — e cuidado: cercas, barracas, vends e árvores caídas são ALTOS demais para pular, aí só resta mudar de faixa! Pegue moedas 🪙 e aguenta a corrida: a velocidade ACELERA sem parar!",
     "categorias": [
@@ -141,6 +155,7 @@
   },
   {
     "id": "samba-da-fruta",
+    "dificuldade": 3,
     "nome": "Samba da Fruta",
     "descricao": "O match-3 de frutas que o Brasil merece! 🍉 Escolha a variante (Frutas Tropicais, Caipirinha, Quitandas ou Churrasco) e atravesse os 40 níveis: troque frutas vizinhas para casar 3+ e bata a META de pontos nas jogadas disponíveis. Casos de 4 viram bombas de linha (+120 pts) e 5+ viram bombas 3x3 (+200 pts) — e toda explosão solta um coringa ✨ que casa com qualquer fruta (pode ter vários na tela!). A cada 10.000 pontos totais você guarda 1 jogada extra no banco 🏦, que é usada quando as jogadas acabam. Sobrar jogadas dá bônus — aproveite as cascatas para fazer combos enormes!",
     "categorias": [
@@ -150,6 +165,7 @@
   },
   {
     "id": "sapinho-varia",
+    "dificuldade": 3,
     "nome": "Sapinho Varia",
     "descricao": "O clássico de atravessar e levar os filhotes pra casa, com 4 temas para trocar a qualquer momento! 🐸🐔🐊🦫 Sapinho na rua, galinha caçando pintinhos, sapinho no pantano e capivara no rio. Atravesse o tráfego (ou os crocodilos!), pegue os filhotes e entregue em casa antes do tempo acabar. Cada tema tem seu próprio recorde!",
     "categorias": [
@@ -160,6 +176,7 @@
   },
   {
     "id": "quebra-cabeca",
+    "dificuldade": 2,
     "nome": "Quebra-Cabeça",
     "descricao": "Monte a imagem trocando as peças de lugar! 🧩 São 20 cenas inspiradas nos nossos clássicos (minhoquinha, tetris, 2048, papai noel, samba da fruta...) e 4 níveis: 😊 Fácil 2×2 (para as crianças), 🙂 Médio 3×3, 😎 Normal 4×4 e 🤯 Avançado 6×6. Arraste as peças ou toque em duas para trocar — as que estão no lugar certo brilham em verde. Acompanhe tempo, jogadas e recorde! ⭐",
     "categorias": [
@@ -169,6 +186,7 @@
   },
   {
     "id": "sudoku",
+    "dificuldade": 3,
     "nome": "Sudoku",
     "descricao": "O clássico dos números! 🧩 Preencha o tabuleiro 9×9 sem repetir números na linha, na coluna ou na caixa 3×3. 3 dificuldades (😊 😎 🤯), 3 dicas por partida, erros destacados, timer e recorde de tempo por dificuldade. Jogue com teclado (números, setas, H p/ dica) ou toque — suporta swipe!",
     "categorias": [
@@ -179,6 +197,7 @@
   },
   {
     "id": "show-do-milhao",
+    "dificuldade": 1,
     "nome": "Show do Milhão",
     "descricao": "O quiz do Silvio, sem teletransportador! 🎉 15 perguntas e uma escada de R$ 1 mil até R$ 1 milhão. Use seus truques: Pular (3x), 50:50 e a opinião da Plateia. Errou? Fica com o último valor seguro — ou pare quando quiser e leve o que já acumulou!",
     "categorias": [
@@ -188,6 +207,7 @@
   },
   {
     "id": "flappy-varia",
+    "dificuldade": 4,
     "nome": "Flappy Varia",
     "descricao": "O Flappy Bird que nunca te deixa entediado! 📎🚀🐠🌴 Um toque, clássico e viciante — mas com 4 temas para trocar a qualquer momento: um avião de papel escapando no escritório, um foguete entre asteroides no espaço, um peixinho entre corais no fundo do mar e um sapinho entre bambus na selva. Cada tema tem seu próprio recorde: qual você bate primeiro?",
     "categorias": [
@@ -198,6 +218,7 @@
   },
   {
     "id": "corrida-brick",
+    "dificuldade": 3,
     "nome": "Corrida Brick",
     "descricao": "Corrida retrô inspirada nos brick games! 🏁 Troque de faixa para desviar do trânsito, colete munição para atirar nos carros à frente e pegue turbo para acelerar com invencibilidade por alguns segundos. Quanto mais tempo na pista, mais rápido fica!",
     "categorias": [
@@ -208,6 +229,7 @@
   },
   {
     "id": "entregador-turbo",
+    "dificuldade": 3,
     "nome": "Entregador Turbo",
     "descricao": "O clássico Paperboy, mas de comida! 🛵🍔 Rode de scooter pela cidade, busque o pedido no restaurante, encontre a casa certa (olha o 📍) e entregue antes do tempo acabar. Pule para desviar de pedestres e cachorros — mas cuidado: bater derruba a caixa e você perde uma vida! Quanto mais rápido entregar, maior a gorjeta. 5 níveis com cidades cada vez mais quentes (e mais perigosas).",
     "categorias": [
@@ -218,6 +240,7 @@
   },
   {
     "id": "perdidos-no-jardim",
+    "dificuldade": 4,
     "nome": "Perdidos no Jardim",
     "descricao": "Acordou perdido num quintal gigante! 🌿 Escolha seu pikmin — Azul (água 💧), Vermelho (fogo 🔥) ou Amarelo (raio ⚡), cada um com seu tiro e especial — e explore o jardim de cima, estilo Pokémon clássico. Atire em joaninhas gigantes, besouros, baratas e insetos (uns têm MUITA vida!), pegue power-ups de tiro rápido, velocidade e invencibilidade, e carregue as frutas 🍓 até a Nave Mãe (uma cebola vermelha 🧅). O jardim é gerado aleatório: cada partida é diferente!",
     "categorias": [
@@ -228,6 +251,7 @@
   },
   {
     "id": "mundo-de-blocos",
+    "dificuldade": 3,
     "nome": "Mundo de Blocos",
     "descricao": "Um mini-Minecraft de construção em 3D! 🧱 Explore um mundo de blocos gerado com colinas, areia e árvores, quebre blocos para colher madeira, terra, pedra e mais, e use a hotbar para construir casas, torres e o que sua imaginação mandar. O mundo é limitado e salva automaticamente — suas construções ficam lá! Funciona no celular com alavanca virtual e botões.",
     "categorias": [
@@ -238,6 +262,7 @@
   },
   {
     "id": "aldeia",
+    "dificuldade": 5,
     "nome": "Aldeia",
     "descricao": "Um RTS minimalista inspirado em Age of Empires: crie aldeões, colete comida, madeira e ouro, construa quartéis, treine infantaria e arqueiros e ataque a aldeia inimiga controlada por IA. O mapa é ortogonal e gerado aleatoriamente a cada partida.",
     "categorias": [
@@ -248,6 +273,7 @@
   },
   {
     "id": "stacker",
+    "dificuldade": 4,
     "nome": "Stacker Game",
     "descricao": "O clássico empilhador! 🧱 Solte os blocos (clique, toque ou espaço) e monte a torre até o presente no topo. Os tamanhos variam (de 1 até vários tiles!) — mas PRECISA apoiar: pelo menos 1 tile em cima do anterior. Apoiou inteiro? PERFEITO vale mais! Chegou ao topo? Sobe de nível, fica mais rápido e começa o relógio ⏱: o recorde de tempo de cada nível é salvo. 🎁",
     "categorias": [
@@ -258,6 +284,7 @@
   },
   {
     "id": "amiguinho",
+    "dificuldade": 2,
     "nome": "Amiguinho",
     "descricao": "Bichinho virtual estilo tamagotchi! 🐾 Escolha a espécie (capivara, hamster, gatinho, cachorrinho ou pinguim), dê um nome e cuide do seu amiguinho por toda a vida: do ovo até a velhice. Alimente, brinque, dê banho, limpe o coco, dê remédio quando adoecer e coloque pra dormir. Cada fase da vida tem tarefas próprias: estudar na infância e adolescência, trabalhar quando adulto (com bons estudos você ganha o dobro!), e cuidar de um idoso. O relógio avança e a vida também...",
     "categorias": [
@@ -268,6 +295,7 @@
   },
   {
     "id": "pensa-rapido",
+    "dificuldade": 4,
     "nome": "Pensa Rápido!",
     "descricao": "O ritmo dos Jogos da Galera! 🎵 Peças dos nossos jogos (🐍🧱🍉🐸🚀...) caem em 4 faixas na batida da música. Aperte D, F, J, K (ou toque na faixa) na hora certa, quando a peça cruzar a linha: PERFEITO vale mais e combo alto liga o MODO FRENTE ⚡. Cuidado: a música acelera o tempo todo e errar drena sua energia — zerou, acabou! Bata seu recorde!",
     "categorias": [

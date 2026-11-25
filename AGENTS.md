@@ -52,11 +52,13 @@ Array de objetos:
   "id": "minhoquinha",
   "nome": "Minhoquinha",
   "descricao": "texto usado na página principal",
+  "dificuldade": 2,
   "categorias": ["Arcade", "Clássicos"]
 }
 ```
 
 - `id`: padrão posix, vira a pasta `jogos/<id>/` — sem acentos/maiúsculas.
+- `dificuldade`: 1 a 5 (1 = moleza, 5 = insano). O grid é ordenado do mais fácil ao mais difícil e cada tile/página de jogo mostra um selo colorido de dificuldade.
 - As categorias dos chips de filtro são derivadas automaticamente do JSON.
 
 ## Como adicionar um novo jogo

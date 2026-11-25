@@ -68,7 +68,24 @@ function applyFilters() {
     return matchName && matchCat;
   });
 
+  // Ordena do mais fácil ao mais difícil (sort estável: preserva a ordem
+  // original do JSON para jogos com a mesma dificuldade).
+  filtered.sort((a, b) => (a.dificuldade ?? 3) - (b.dificuldade ?? 3));
+
   renderGrid(filtered);
+}
+
+/** Selo de dificuldade: 1 (moleza) a 5 (insano). */
+function difficultyLabel(level) {
+  const labels = { 1: "🟢 Moleza", 2: "😊 Fácil", 3: "😎 Médio", 4: "🔥 Difícil", 5: "💀 Insano" };
+  return labels[level] ?? "";
+}
+
+function difficultyBadge(level) {
+  const el = document.createElement("span");
+  el.className = `difficulty-badge difficulty-${level}`;
+  el.textContent = difficultyLabel(level);
+  return el;
 }
 
 /** Renderiza o grid de tiles. */
@@ -95,6 +112,11 @@ function renderGrid(list) {
     title.className = "tile-title";
     title.textContent = jogo.nome;
 
+    let diff = null;
+    if (jogo.dificuldade) {
+      diff = difficultyBadge(jogo.dificuldade);
+    }
+
     const cats = document.createElement("div");
     cats.className = "category-chips small";
     (jogo.categorias ?? []).forEach((c) => {
@@ -104,7 +126,7 @@ function renderGrid(list) {
       cats.appendChild(el);
     });
 
-    body.append(title, cats);
+    body.append(title, diff, cats);
     tile.append(img, body);
     grid.appendChild(tile);
   });
@@ -124,6 +146,7 @@ function showGamePage(id) {
 
   const cats = document.getElementById("game-categories");
   cats.innerHTML = "";
+  if (jogo.dificuldade) cats.appendChild(difficultyBadge(jogo.dificuldade));
   (jogo.categorias ?? []).forEach((c) => {
     const el = document.createElement("span");
     el.className = "chip static";

@@ -248,6 +248,60 @@ body {
   margin-top: 6px;
 }
 
+.sort-hint {
+  max-width: 1100px;
+  margin: 8px auto 0;
+  padding: 0 20px;
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+}
+
+/* ---------- Selo de dificuldade (1 = moleza, 5 = insano) ---------- */
+
+.difficulty-badge {
+  display: inline-block;
+  padding: 3px 12px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  border: 2px solid;
+}
+
+.difficulty-1 {
+  color: #86efac;
+  border-color: #22c55e;
+  background: rgba(34, 197, 94, 0.12);
+}
+
+.difficulty-2 {
+  color: #a7f3d0;
+  border-color: #34d399;
+  background: rgba(52, 211, 153, 0.12);
+}
+
+.difficulty-3 {
+  color: #fde68a;
+  border-color: #eab308;
+  background: rgba(234, 179, 8, 0.12);
+}
+
+.difficulty-4 {
+  color: #fdba74;
+  border-color: #f97316;
+  background: rgba(249, 115, 22, 0.12);
+}
+
+.difficulty-5 {
+  color: #fca5a5;
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.12);
+}
+
+.tile .difficulty-badge {
+  margin-top: 8px;
+}
+
 /* ---------- Grid de tiles ---------- */
 
 .games-grid {
