@@ -130,6 +130,7 @@ const sfx = {
   hit:   () => beep(220, 0.12, 'square', 0.1, 90),
   lamp:  () => beep(520, 0.14, 'triangle', 0.1, 780),
   food:  () => beep(440, 0.1, 'sine', 0.1, 660),
+  chain: () => beep(300, 0.1, 'square', 0.08, 520),
   key:   () => { beep(660, 0.12, 'triangle', 0.1); setTimeout(() => beep(990, 0.18, 'triangle', 0.1), 90); },
   door:  () => { beep(440, 0.1, 'triangle', 0.1); setTimeout(() => beep(660, 0.1, 'triangle', 0.1), 100); setTimeout(() => beep(880, 0.2, 'triangle', 0.1), 200); },
   locked:() => beep(120, 0.16, 'square', 0.06),
@@ -152,6 +153,7 @@ let seenT = 0;
 const pl = { x: 2, y: 2, a: 0, fuel: 40, disp: 100, hasKey: false, punchT: 0, punchCd: 0 };
 let F = { f: 1, vis: 4, spd: 1.5, cone: 1.15, drain: 1 };   // parâmetros do andar atual
 let floorsDone = 0, arrests = 0, punches = 0, t0 = 0, totalMs = 0;
+let points = 0, chainsFloor = 0;   // pontos (elos de corrente) por andar e no total
 let arrestT = 0, grace = 0, introT = 0, msgT = 0, msgTxt = '', doorMsgCd = 0, warnFuel = false;
 
 function msg(s) { msgTxt = s; msgT = 2.2; }
@@ -283,7 +285,8 @@ function setupFloor(f) {
   startX = pl.x; startY = pl.y;
   pl.hasKey = false;
   // 1º andar: começa com luz cheia e a escuridão chega aos poucos
-  pl.fuel = f === 1 ? 100 : Math.min(100, 40 + f * 3);
+  pl.fuel = f === 1 ? 100 : Math.min(100, 62 + f * 4);
+  chainsFloor = 0;
   pl.disp = Math.min(100, pl.disp + 25);
   pl.punchCd = 0; pl.punchT = 0;
   pl.a = Math.random() * TAU;
@@ -324,6 +327,8 @@ function setupFloor(f) {
 
   items.push(...spread(3 + Math.floor(f / 2), 4, 2).map(([x, y]) => ({ t: 'lamp', x: x + 0.5, y: y + 0.5, seen: false, taken: false })));
   items.push(...spread(2 + Math.floor(f / 3), 3, 2).map(([x, y]) => ({ t: 'food', x: x + 0.5, y: y + 0.5, seen: false, taken: false })));
+  // 3 elos de corrente por andar (valem pontos)
+  items.push(...spread(3, 6, 4).map(([x, y]) => ({ t: 'chain', x: x + 0.5, y: y + 0.5, seen: false, taken: false })));
 
   // inimigos
   enemies = [];
@@ -343,7 +348,7 @@ function setupFloor(f) {
     vis: f === 1 ? 2.6 : 3.5 + f * 0.28,        // distância em que a polícia te vê
     cone: f === 1 ? 0.7 : 1.15,                 // ângulo do campo de visão da polícia
     spd: f === 1 ? 1.15 : 1.45 + f * 0.09,      // velocidade da patrulha
-    drain: f === 1 ? 0.4 : 0.9 + f * 0.05       // velocidade com que a luz apaga
+    drain: f === 1 ? 0.35 : 0.7 + f * 0.04      // velocidade com que a luz apaga
   };
   seen = new Uint8Array(rows * cols);
   seenT = 0; grace = 2.5; introT = 1.8; warnFuel = false;
@@ -480,7 +485,19 @@ function update(dt) {
     if (Math.hypot(pl.x - it.x, pl.y - it.y) < 0.45) {
       it.taken = true;
       if (it.t === 'key') { pl.hasKey = true; sfx.key(); msg('Você achou a CHAVE! 🔑 Agora encontre a porta verde! 🚪'); }
-      if (it.t === 'lamp') { pl.fuel = Math.min(100, pl.fuel + 35); warnFuel = false; sfx.lamp(); msg('Lamparina coletada! 🕯️ Visão ampliada.'); }
+      if (it.t === 'lamp') {
+        const antes = pl.fuel;
+        pl.fuel = Math.min(100, pl.fuel + 55);
+        warnFuel = false; sfx.lamp();
+        msg('Lamparina coletada! 🕯️ +' + Math.round(pl.fuel - antes) + ' de luz — visão bem ampliada!');
+      }
+      if (it.t === 'chain') {
+        chainsFloor++;
+        points += 100;
+        sfx.chain();
+        if (chainsFloor >= 3) { points += 300; msg('Cadeia completa! ⛓️⛓️⛓️ +400 pts — bônus do andar!'); }
+        else msg('Elo de corrente! ⛓️ +100 pts (' + chainsFloor + '/3 — complete os 3 p/ bônus!)');
+      }
       if (it.t === 'food') { pl.disp = Math.min(100, pl.disp + 18); sfx.food(); msg('Comida! Disposição recuperada. 🍞'); }
       if (it.t === 'map') {
         seen.fill(1);
@@ -575,7 +592,7 @@ function render(t) {
     if (d > vision || !los(pl.x, pl.y, it.x, it.y)) continue;
     const sx = X(it.x) + TILE / 2, sy = Y(it.y) + TILE / 2;
     ctx.font = TILE * 0.62 + 'px system-ui'; ctx.textAlign = 'center';
-    ctx.fillText(it.t === 'key' ? '🔑' : it.t === 'lamp' ? '🕯️' : it.t === 'map' ? '🗺️' : '🍞', sx, sy + 5);
+    ctx.fillText(it.t === 'key' ? '🔑' : it.t === 'lamp' ? '🕯️' : it.t === 'map' ? '🗺️' : it.t === 'chain' ? '⛓️' : '🍞', sx, sy + 5);
   }
   for (const e of enemies) {
     const d = Math.hypot(e.x - pl.x, e.y - pl.y);
@@ -618,11 +635,11 @@ function render(t) {
   // ===== escuridão: polígono de luz via ray casting =====
   mctx.globalCompositeOperation = 'source-over';
   mctx.clearRect(0, 0, W, H);
-  mctx.fillStyle = 'rgba(0,0,0,0.97)';
+  mctx.fillStyle = 'rgba(0,0,0,0.92)';
   mctx.fillRect(0, 0, W, H);
   mctx.globalCompositeOperation = 'destination-out';
   const px = X(pl.x), py = Y(pl.y);
-  const R = vision * TILE * (0.98 + 0.02 * Math.sin(t * 2.1));
+  const R = Math.max(vision * 1.18, vision * 0.7 + 1.6) * TILE * (0.98 + 0.02 * Math.sin(t * 2.1));
   const N = 240, maxR = vision * 1.02;
   mctx.beginPath();
   mctx.moveTo(px, py);
@@ -646,6 +663,19 @@ function render(t) {
   mctx.fillStyle = lg2;
   mctx.fill();
   ctx.drawImage(mask, 0, 0, W, H);
+
+  // aviso: tela fica levemente vermelha quando a polícia se aproxima (chance de fugir)
+  let nearP = Infinity;
+  for (const e of enemies) if (e.kind === 'police' && e.daze <= 0)
+    nearP = Math.min(nearP, Math.hypot(e.x - pl.x, e.y - pl.y));
+  if (nearP < 5 && state === 'playing') {
+    const a = (1 - nearP / 5) * (0.26 + 0.06 * Math.sin(t * 9));
+    const rg = ctx.createRadialGradient(W / 2, H / 2, H * 0.3, W / 2, H / 2, H * 0.78);
+    rg.addColorStop(0, 'rgba(255,30,30,0)');
+    rg.addColorStop(1, 'rgba(255,30,30,' + a.toFixed(3) + ')');
+    ctx.fillStyle = rg;
+    ctx.fillRect(0, 0, W, H);
+  }
 
   // lamparinas e mapas brilham fracamente mesmo no escuro (ajuda a achá-los)
   for (const it of items) {
@@ -679,7 +709,9 @@ function render(t) {
   ctx.fillText('🕯️', fx, 17);
   const fuelCol = pl.fuel > 50 ? '#ffcf5e' : pl.fuel > 20 ? '#ff9d4a' : '#e05555';
   bar(fx + 18, 8, 90, 10, pl.fuel / 100, fuelCol);
-  ctx.fillStyle = '#ff8080'; ctx.textAlign = 'right';
+  ctx.fillStyle = '#fff'; ctx.textAlign = 'right';
+  ctx.fillText('⭐' + points, W - 56, 17);
+  ctx.fillStyle = '#ff8080';
   ctx.fillText('🚨' + arrests, W - 10, 17);
 
   drawMinimap();
@@ -734,7 +766,7 @@ function drawMinimap() {
     ctx.fillRect(mx + x * cs, my + y * cs, cs, cs);
   }
   for (const it of items) if (it.seen && !it.taken) {
-    ctx.fillStyle = it.t === 'key' ? '#ffd24a' : it.t === 'lamp' ? '#ff9d4a' : it.t === 'map' ? '#8fd4ff' : '#ff6b6b';
+    ctx.fillStyle = it.t === 'key' ? '#ffd24a' : it.t === 'lamp' ? '#ff9d4a' : it.t === 'map' ? '#8fd4ff' : it.t === 'chain' ? '#7fd0ff' : '#ff6b6b';
     ctx.fillRect(mx + it.x * cs - 1, my + it.y * cs - 1, 3, 3);
   }
   for (const e of enemies) if (e.seen && e.kind === 'police') {
@@ -763,6 +795,7 @@ function showMenu() {
     '<li>👮 A <b>polícia</b> patrulha: se ela te vir, você é <b>preso de volta ao início</b> (e perde luz!).</li>' +
     '<li>🐀🧍 Ratos e outros presos te incomodam. <b>Socar</b> (Espaço/F) resolve, mas cada soco abaixa sua <b>disposição 💪</b>.</li>' +
     '<li>🍞 Comida recupera disposição. Ela também sobe sozinha, devagarinho.</li>' +
+    '<li>⭐ Cada andar esconde <b>3 elos de corrente</b> ⛓️: cada um vale <b>+100 pts</b>, e coletar os <b>3 dá bônus de +300 pts</b>!</li>' +
     '<li>🗺️ Todo andar esconde um <b>mapa do presídio</b>: quem achar, vê o andar inteiro no minimapa!</li>' +
     '<li>📈 O 1º andar é tranquilo, mas cada andar seguinte é <b>maior, mais escuro e com mais patrulha</b>. Boa sorte.</li>' +
     '</ul>' +
@@ -776,7 +809,7 @@ function showMenu() {
 function startGame() {
   try { audio().resume(); } catch (e) {}
   overlay.classList.add('hidden');
-  floorsDone = 0; arrests = 0; punches = 0;
+  floorsDone = 0; arrests = 0; punches = 0; points = 0; chainsFloor = 0;
   pl.disp = 100; pl.fuel = 43; pl.hasKey = false;
   t0 = performance.now();
   setupFloor(1);
@@ -794,6 +827,7 @@ function winGame() {
     '<h1>🏆 VOCÊ ESCAPOU!</h1>' +
     '<p class="big">' + fmt(totalMs) + '</p>' +
     (isNew ? '<p style="color:#8ff0a4;font-weight:700">✨ Novo recorde!</p>' : '<p>🏆 Recorde: ' + fmt(+best) + '</p>') +
+    '<p>⭐ Pontos: <b>' + points + '</b></p>' +
     '<p>🚨 Prisas: <b>' + arrests + '</b> · 👊 Socos: <b>' + punches + '</b></p>' +
     '<p>Dez andares, escuridão total, e você saiu vivo. A galera vai ouvir essa. 🕊️</p>' +
     '<button class="btn green" id="btnAgain">🔁 Jogar de novo</button>' +
