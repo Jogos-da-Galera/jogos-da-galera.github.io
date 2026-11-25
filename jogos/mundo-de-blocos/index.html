@@ -91,7 +91,16 @@
   }
   #btnPlay { background: linear-gradient(#7bd44a, #4fae2b); color: #083; text-shadow: 0 1px 0 rgba(255,255,255,.4); }
   #btnPlay:active { transform: translateY(1px); }
+  #btnCreative { background: linear-gradient(#ffb347, #f4841d); color: #4d2600; text-shadow: 0 1px 0 rgba(255,255,255,.4); }
+  #btnCreative:active { transform: translateY(1px); }
   #btnReset { background: #33405e; color: #cdd6f4; }
+
+  #modeBadge {
+    position: fixed; top: 10px; right: 10px; z-index: 6;
+    background: rgba(0,0,0,.55); color: #ffd98a; border: 1px solid rgba(255,200,120,.5);
+    border-radius: 8px; padding: 6px 12px; font-size: 14px; font-weight: 700;
+    pointer-events: none; display: none;
+  }
 
   /* controles touch */
   #touch { display: none; }
@@ -114,6 +123,11 @@
   #tJump { right: 24px; bottom: 130px; width: 68px; height: 68px; }
   #tBreak { right: 108px; bottom: 84px; width: 64px; height: 64px; }
   #tPlace { right: 30px; bottom: 44px; width: 64px; height: 64px; }
+  #tFly, #tDown { display: none; }
+  #touch.creative #tFly { display: flex; }
+  #touch.creative #tDown { display: flex; }
+  #tFly { right: 110px; bottom: 148px; width: 54px; height: 54px; font-size: 24px; }
+  #tDown { right: 24px; bottom: 212px; width: 54px; height: 54px; font-size: 22px; }
 </style>
 </head>
 <body>
@@ -122,10 +136,13 @@
 <div id="hotbar"></div>
 <div id="saveflash">💾 mundo salvo</div>
 <button id="btnPause" title="Pausa (menu)">⏸️</button>
+<div id="modeBadge">🧱 Criativo · ∞ blocos</div>
 
 <div id="touch">
   <div id="stick"><div id="stickdot"></div></div>
   <div class="tbtn" id="tJump">⬆️</div>
+  <div class="tbtn" id="tDown">⬇️</div>
+  <div class="tbtn" id="tFly">🕊️</div>
   <div class="tbtn" id="tBreak">⛏️</div>
   <div class="tbtn" id="tPlace">🧱</div>
 </div>
@@ -133,18 +150,20 @@
 <div id="overlay">
   <div class="panel">
     <h1>🧱 Mundo de Blocos</h1>
-    <div class="sub">Um mini-Minecraft de construção: quebre blocos, colete recursos e construa no que der!</div>
+    <div class="sub">Um mini-Minecraft de construção: quebre blocos, colete recursos e construa no que der! No <b>Modo Criativo</b> você tem <b>blocos infinitos</b> e pode <b>voar</b> — perfeito para construir à vontade.</div>
     <h2>Controles</h2>
     <ul>
       <li><kbd>W A S D</kbd> mover &nbsp;·&nbsp; <kbd>Espaço</kbd> pular &nbsp;·&nbsp; <kbd>mouse</kbd> olhar</li>
       <li><kbd>Clique esq.</kbd> quebra bloco (o bloco vai pro seu inventário)</li>
       <li><kbd>Clique dir.</kbd> coloca o bloco selecionado (gasta 1 do inventário)</li>
       <li><kbd>1</kbd>–<kbd>9</kbd> ou <kbd>scroll</kbd> escolhe o bloco na hotbar</li>
+      <li><b>✈️ Criativo:</b> <kbd>espaço</kbd> duas vezes = voar/parar de voar · segure <kbd>espaço</kbd> sobe · segure <kbd>Shift</kbd> desce</li>
       <li><b>📱 Celular:</b> metade <b>esquerda</b> = andar (toque e arraste) · metade <b>direita</b> = olhar (arraste) · <b>toque rápido</b> = colocar bloco · segure <b>⛏️</b> = quebrar · <b>⬆️</b> = pular · <b>⏸️</b> = pausa</li>
     </ul>
     <div class="sub" style="margin-top:12px">O mundo é limitado (48×48) e <b>salva automaticamente</b> no seu navegador. Quebre árvores para pegar madeira e folhas, cavifique pedra — e monte o que quiser!</div>
     <div class="btns">
-      <button id="btnPlay">▶️ Jogar</button>
+      <button id="btnPlay">▶️ Modo Normal</button>
+      <button id="btnCreative">🧱 Modo Criativo</button>
       <button id="btnRespawn" title="Se ficar preso, use este botão">🏠 Início</button>
       <button id="btnReset">🗑️ Apagar mundo</button>
     </div>
@@ -188,6 +207,10 @@ let px = 24.5, py = 10, pz = 24.5, vx = 0, vy = 0, vz = 0;
 let yaw = 0, pitch = 0;
 let onGround = false;
 let hasSave = false;
+let creative = false;             // modo criativo: blocos infinitos + voo
+let flying = false;
+let descHeld = false;             // segurar "descer" no celular
+let lastSpaceTap = 0;
 let breaking = false, placing = false;
 let lastAct = 0;
 let hitPos = null, hitHits = 0, hitNormal = null;
@@ -655,6 +678,11 @@ function playerIntersectsCell(bx, by, bz) {
 }
 
 let keys = {};
+function updateFlight(dt) {
+  if (!flying) return;
+  vy = jumpHeld ? 8 : (descHeld || keys.ShiftLeft || keys.ShiftRight ? -8 : 0);
+  vy = Math.max(-8, Math.min(8, vy));
+}
 function update(dt) {
   // input
   let fx = 0, fz = 0;
@@ -672,8 +700,12 @@ function update(dt) {
   const fl = Math.hypot(fx, fz);
   if (fl > 0) { vx = fx / fl * sp; vz = fz / fl * sp; } else { vx = 0; vz = 0; }
 
-  vy -= 24 * dt;
-  if (jumpHeld && onGround) { vy = 8.2; onGround = false; }
+  if (creative && flying) {
+    updateFlight();
+  } else {
+    vy -= 24 * dt;
+    if (jumpHeld && onGround) { vy = 8.2; onGround = false; }
+  }
 
   // eixo X
   let nx = px + vx * dt;
@@ -712,6 +744,13 @@ function doBreak() {
   const [ex, ey, ez] = eyePos();
   const hit = raycast(ex, ey, ez, dx, dy, dz, 6);
   if (!hit) return;
+  // modo criativo: quebra instantânea, sem coletar
+  if (creative) {
+    setB(hit.x, hit.y, hit.z, AIR);
+    dirty(hit.x, hit.z);
+    markSave();
+    return;
+  }
   const key = hit.x + "," + hit.y + "," + hit.z;
   if (hitPos !== key) { hitPos = key; hitHits = 0; }
   hitHits++;
@@ -735,8 +774,8 @@ function doPlace() {
   if (getB(bx, by, bz) !== AIR) return;
   if (playerIntersectsCell(bx, by, bz)) return;
   const t = HOTBAR[sel];
-  if ((inv[t] || 0) <= 0) return;
-  inv[t]--;
+  if (!creative && (inv[t] || 0) <= 0) return;
+  if (!creative) inv[t]--;
   setB(bx, by, bz, t);
   dirty(bx, bz);
   renderHotbar();
@@ -821,7 +860,7 @@ function buildHotbarIcons() {
     const k = document.createElement("span");
     k.className = "key"; k.textContent = i + 1;
     const n = document.createElement("span");
-    n.className = "cnt"; n.textContent = inv[t] || 0;
+    n.className = "cnt"; n.textContent = creative ? "∞" : (inv[t] || 0);
     s.appendChild(cv); s.appendChild(k); s.appendChild(n);
     // seleção por toque (celular) e clique (mouse, sem pointer lock)
     s.addEventListener("touchstart", e => {
@@ -836,8 +875,18 @@ function renderHotbar() {
   const slots = hotbarEl.children;
   for (let i = 0; i < slots.length; i++) {
     slots[i].className = "slot" + (i === sel ? " sel" : "");
-    slots[i].querySelector(".cnt").textContent = inv[HOTBAR[i]] || 0;
+    slots[i].querySelector(".cnt").textContent = creative ? "∞" : (inv[HOTBAR[i]] || 0);
   }
+}
+
+// aplica o modo (normal/criativo): ícones, badge e controles de voo
+function setCreative(c) {
+  creative = c;
+  flying = false;
+  buildHotbarIcons();
+  document.getElementById("modeBadge").style.display = creative ? "block" : "none";
+  document.getElementById("touch").classList.toggle("creative", c && touchMode);
+  markSave();
 }
 
 // ---------- save / load ----------
@@ -856,7 +905,7 @@ function b64dec(s) {
 function doSave() {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
-      v: 1, seed, world: b64enc(world), inv,
+      v: 1, seed, world: b64enc(world), inv, creative,
       pos: [px, py, pz, yaw, pitch],
     }));
     const f = document.getElementById("saveflash");
@@ -875,6 +924,7 @@ function loadSave() {
     if (world.length !== WX * WY * WZ) return false;
     inv = d.inv || {};
     HOTBAR.forEach(t => { if (inv[t] == null) inv[t] = 0; });
+    creative = !!d.creative;
     if (d.pos) { [px, py, pz, yaw, pitch] = d.pos; }
     return true;
   } catch (e) { return false; }
@@ -884,7 +934,8 @@ function loadSave() {
 const overlay = document.getElementById("overlay");
 let playing = false;
 
-document.getElementById("btnPlay").addEventListener("click", () => startGame());
+document.getElementById("btnPlay").addEventListener("click", () => { setCreative(false); startGame(); });
+document.getElementById("btnCreative").addEventListener("click", () => { setCreative(true); startGame(); });
 document.getElementById("btnReset").addEventListener("click", resetWorld);
 document.getElementById("btnPause").addEventListener("click", () => { if (playing) pauseGame(); });
 document.getElementById("btnRespawn").addEventListener("click", () => { respawn(); startGame(); });
@@ -947,7 +998,18 @@ window.addEventListener("touchstart", () => {
 window.addEventListener("keydown", e => {
   if (["KeyW","KeyA","KeyS","KeyD","ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Space"].includes(e.code)) e.preventDefault();
   keys[e.code] = true;
-  if (e.code === "Space") jumpHeld = true;
+  if (e.code === "Space") {
+    jumpHeld = true;
+    // duplo espaço no criativo: liga/desliga o voo
+    if (!e.repeat && creative && playing) {
+      const now = performance.now();
+      if (now - lastSpaceTap < 300) {
+        flying = !flying;
+        if (!flying) vy = 0;
+      }
+      lastSpaceTap = now;
+    }
+  }
   if (/^Digit[1-9]$/.test(e.code)) {
     sel = +e.code.slice(5) - 1;
     renderHotbar();
@@ -1080,6 +1142,19 @@ function showTouchControls() {
   const jStop = e => { e.preventDefault(); jumpHeld = false; };
   j.addEventListener("touchend", jStop);
   j.addEventListener("touchcancel", jStop);
+
+  // criativo: 🕊️ liga/desliga o voo, ⬇️ desce
+  const fly = document.getElementById("tFly");
+  fly.addEventListener("touchstart", e => {
+    e.preventDefault();
+    flying = !flying;
+    if (!flying) vy = 0;
+  }, { passive: false });
+  const dn = document.getElementById("tDown");
+  dn.addEventListener("touchstart", e => { e.preventDefault(); descHeld = true; }, { passive: false });
+  const dStop = e => { e.preventDefault(); descHeld = false; };
+  dn.addEventListener("touchend", dStop);
+  dn.addEventListener("touchcancel", dStop);
 }
 if (touchMode) showTouchControls();
 
@@ -1121,7 +1196,7 @@ try {
   initGL();
   hasSave = loadSave();
   if (hasSave) rebuildAll(); else genWorld();
-  buildHotbarIcons();
+  setCreative(creative);
   renderHotbar();
   requestAnimationFrame(frame);
 } catch (err) {
