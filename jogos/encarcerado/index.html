@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Encarcerado</title>
+<title>A Fuga</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body {
@@ -150,7 +150,7 @@ let seen = null;              // fog of war
 let seenT = 0;
 
 const pl = { x: 2, y: 2, a: 0, fuel: 40, disp: 100, hasKey: false, punchT: 0, punchCd: 0 };
-let F = { f: 1, vis: 4, spd: 1.5 };   // parâmetros do andar atual
+let F = { f: 1, vis: 4, spd: 1.5, cone: 1.15, drain: 1 };   // parâmetros do andar atual
 let floorsDone = 0, arrests = 0, punches = 0, t0 = 0, totalMs = 0;
 let arrestT = 0, grace = 0, introT = 0, msgT = 0, msgTxt = '', doorMsgCd = 0, warnFuel = false;
 
@@ -282,7 +282,8 @@ function setupFloor(f) {
   pl.x = startCell[0] + 0.5; pl.y = startCell[1] + 0.5;
   startX = pl.x; startY = pl.y;
   pl.hasKey = false;
-  pl.fuel = Math.min(100, 40 + f * 3);
+  // 1º andar: começa com luz cheia e a escuridão chega aos poucos
+  pl.fuel = f === 1 ? 100 : Math.min(100, 40 + f * 3);
   pl.disp = Math.min(100, pl.disp + 25);
   pl.punchCd = 0; pl.punchT = 0;
   pl.a = Math.random() * TAU;
@@ -326,17 +327,24 @@ function setupFloor(f) {
 
   // inimigos
   enemies = [];
-  const np = 1 + Math.floor((f - 1) / 2);      // 1..5
+  const np = f === 1 ? 1 : 1 + Math.floor((f - 1) / 2);      // 1..5 (andares seguintes)
   for (const [x, y] of spread(np, 5, 5))
     enemies.push({ kind: 'police', x: x + 0.5, y: y + 0.5, a: Math.random() * TAU, path: [], ti: 0, ret: 0, seen: false, bumpCd: 0, daze: 0 });
-  const nr = 2 + Math.floor(f / 2);           // 3..7
+  const nr = f === 1 ? 1 : 2 + Math.floor(f / 2);           // 3..7 (andares seguintes)
   for (const [x, y] of spread(nr, 3, 3))
     enemies.push({ kind: 'rat', x: x + 0.5, y: y + 0.5, a: Math.random() * TAU, dirT: Math.random() * 2, seen: false, bumpCd: 0, daze: 0 });
-  const npr = 1 + Math.floor(f / 3);          // 2..4
+  const npr = f === 1 ? 0 : 1 + Math.floor(f / 3);          // 2..4 (andares seguintes)
   for (const [x, y] of spread(npr, 4, 3))
     enemies.push({ kind: 'prisoner', x: x + 0.5, y: y + 0.5, a: Math.random() * TAU, dirT: Math.random() * 2, seen: false, bumpCd: 0, daze: 0 });
 
-  F = { f, vis: 3.5 + f * 0.28, spd: 1.45 + f * 0.09 };
+  // 1º andar: patrulha lenta, visão estreita e luz que apaga devagarinho
+  F = {
+    f,
+    vis: f === 1 ? 2.6 : 3.5 + f * 0.28,        // distância em que a polícia te vê
+    cone: f === 1 ? 0.7 : 1.15,                 // ângulo do campo de visão da polícia
+    spd: f === 1 ? 1.15 : 1.45 + f * 0.09,      // velocidade da patrulha
+    drain: f === 1 ? 0.4 : 0.9 + f * 0.05       // velocidade com que a luz apaga
+  };
   seen = new Uint8Array(rows * cols);
   seenT = 0; grace = 2.5; introT = 1.8; warnFuel = false;
   doorMsgCd = 0;
@@ -385,7 +393,7 @@ function updPolice(e, dt) {
   const dx = pl.x - e.x, dy = pl.y - e.y, d = Math.hypot(dx, dy);
   if (grace <= 0 && state === 'playing') {
     if (d < 1.5) { doArrest(); return; }
-    if (d < F.vis && angDiff(e.a, Math.atan2(dy, dx)) < 1.15 && los(e.x, e.y, pl.x, pl.y)) { doArrest(); return; }
+    if (d < F.vis && angDiff(e.a, Math.atan2(dy, dx)) < F.cone && los(e.x, e.y, pl.x, pl.y)) { doArrest(); return; }
   }
   e.ret -= dt;
   if (e.ti >= e.path.length || e.ret <= 0) {
@@ -461,7 +469,7 @@ function update(dt) {
   }
 
   // recursos
-  pl.fuel = Math.max(0, pl.fuel - (0.9 + F.f * 0.05) * dt);
+  pl.fuel = Math.max(0, pl.fuel - F.drain * dt);
   pl.disp = Math.min(100, pl.disp + 1.6 * dt);
   pl.punchCd -= dt; pl.punchT -= dt; grace -= dt; doorMsgCd -= dt;
   if (pl.fuel < 20 && !warnFuel) { warnFuel = true; msg('Sua lamparina está quase apagando! Ache mais luz 🕯️'); }
@@ -586,7 +594,7 @@ function render(t) {
       ctx.fillStyle = 'rgba(255,60,60,.10)';
       ctx.beginPath();
       ctx.moveTo(sx, sy);
-      ctx.arc(sx, sy, F.vis * TILE, e.a - 1.15, e.a + 1.15);
+      ctx.arc(sx, sy, F.vis * TILE, e.a - F.cone, e.a + F.cone);
       ctx.closePath(); ctx.fill();
     }
     ctx.font = (e.kind === 'rat' ? 0.55 : 0.7) * TILE + 'px system-ui';
@@ -693,7 +701,7 @@ function render(t) {
     ctx.fillStyle = '#ffd24a'; ctx.font = 'bold 34px system-ui';
     ctx.fillText('ANDAR ' + F.f, W / 2, H / 2 - 12);
     ctx.fillStyle = '#e8defc'; ctx.font = '14px system-ui';
-    ctx.fillText('Ache a chave 🔑 e a porta verde 🚪', W / 2, H / 2 + 14);
+    ctx.fillText(F.f === 1 ? 'Andar tranquilo... por enquanto 😌' : 'Ache a chave 🔑 e a porta verde 🚪', W / 2, H / 2 + 14);
     ctx.globalAlpha = 1;
   }
   if (state === 'arrested') {
@@ -701,7 +709,7 @@ function render(t) {
     ctx.fillRect(0, 0, W, H);
     ctx.textAlign = 'center';
     ctx.fillStyle = '#fff'; ctx.font = 'bold 26px system-ui';
-    ctx.fillText('🚨 PEGADO PELA POLÍCIA!', W / 2, H / 2 - 8);
+    ctx.fillText('🚨 PEGO PELA POLÍCIA!', W / 2, H / 2 - 8);
     ctx.font = '14px system-ui'; ctx.fillStyle = '#ffd0d0';
     ctx.fillText('De volta ao início do andar...', W / 2, H / 2 + 18);
   }
@@ -747,16 +755,16 @@ function showMenu() {
   state = 'menu';
   const best = localStorage.getItem('encarcerado-best');
   panel.innerHTML =
-    '<h1>⛓️ Encarcerado</h1>' +
+    '<h1>🔓 A Fuga</h1>' +
     '<p>Você escapou do seu bloco... mas ainda está preso num <b>presídio-labirinto</b> escuro, com <b>10 andares</b> até a liberdade.</p>' +
     '<ul>' +
-    '<li>🕯️ A escuridão é total — sua visão é <b>limitada</b>. Colete lamparinas pra aumentar a luz... mas ela <b>apaga com o tempo</b>.</li>' +
+    '<li>🕯️ Você começa bem iluminado, mas a <b>escuridão toma conta aos poucos</b>. Colete lamparinas pra renovar a luz!</li>' +
     '<li>🔑 Ache a <b>chave</b> e depois a <b>porta verde</b> pra subir de andar. Cada andar é um labirinto novo.</li>' +
     '<li>👮 A <b>polícia</b> patrulha: se ela te vir, você é <b>preso de volta ao início</b> (e perde luz!).</li>' +
     '<li>🐀🧍 Ratos e outros presos te incomodam. <b>Socar</b> (Espaço/F) resolve, mas cada soco abaixa sua <b>disposição 💪</b>.</li>' +
     '<li>🍞 Comida recupera disposição. Ela também sobe sozinha, devagarinho.</li>' +
     '<li>🗺️ Todo andar esconde um <b>mapa do presídio</b>: quem achar, vê o andar inteiro no minimapa!</li>' +
-    '<li>📈 Cada andar é maior, mais escuro e com mais patrulha. Boa sorte.</li>' +
+    '<li>📈 O 1º andar é tranquilo, mas cada andar seguinte é <b>maior, mais escuro e com mais patrulha</b>. Boa sorte.</li>' +
     '</ul>' +
     '<p class="ctrl">⌨️ <kbd>W A S D</kbd> ou setas para mover · <kbd>Espaço</kbd>/<kbd>F</kbd> socar · clique também soca<br>📱 No celular, use os botões na tela.</p>' +
     '<button class="btn green" id="btnStart">🔓 Começar a fuga</button>' +

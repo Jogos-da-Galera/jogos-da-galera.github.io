@@ -44,5 +44,5 @@
     <path d="M190 0 v70 M220 0 v70 M250 0 v70 M280 0 v70 M310 0 v70"/>
     <path d="M180 18 h140 M180 50 h140"/>
   </g>
-  <text x="240" y="282" text-anchor="middle" font-family="system-ui, sans-serif" font-size="22" font-weight="800" fill="#ffd24a" letter-spacing="4">ENCARCERADO</text>
+  <text x="240" y="282" text-anchor="middle" font-family="system-ui, sans-serif" font-size="22" font-weight="800" fill="#ffd24a" letter-spacing="4">A FUGA</text>
 </svg>

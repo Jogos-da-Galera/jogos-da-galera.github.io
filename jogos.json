@@ -1,7 +1,7 @@
 [
   {
     "id": "encarcerado",
-    "nome": "Encarcerado",
+    "nome": "A Fuga",
     "descricao": "Você escapou do seu bloco... mas ainda está preso num presídio-labirinto escuro! 🕯️ Sua visão é limitada: colete lamparinas pra aumentar a luz (ela apaga com o tempo!), ache a chave 🔑 e a porta verde 🚪 pra subir de andar — são 10 andares, cada um maior e mais perigoso. Fuja da polícia 👮 (se ela te vê, você volta pro início do andar!), socar 🐀🧍 quem te incomodar — cada soco abaixa sua disposição 💪 — e coma 🍞 pra se recuperar. Em cada andar esconde um mapa do presídio 🗺️ que revela o andar inteiro no minimapa — dá pra achar ou fugir sem ele. Consegue escapar em quanto tempo?",
     "categorias": [
       "Aventura",
