@@ -5,7 +5,7 @@
 // abrir cada um uma vez.
 
 // Aumente o valor a cada vez que o site mudar (novos jogos, css, etc.)
-const CACHE_VERSION = "v91";
+const CACHE_VERSION = "v92";
 const CACHE_NAME = `jogos-da-galera-${CACHE_VERSION}`;
 
 // Shell essencial: sem isso nada funciona

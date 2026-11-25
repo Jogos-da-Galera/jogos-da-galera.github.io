@@ -127,6 +127,10 @@
   #touch.creative #tFly { display: flex; }
   #touch.creative #tDown { display: flex; }
   #tFly { right: 110px; bottom: 148px; width: 54px; height: 54px; font-size: 24px; }
+  #tFly.on {
+    background: rgba(123,212,74,.55); border-color: #b6ff8a;
+    box-shadow: 0 0 12px rgba(123,212,74,.8); color: #eaffd8;
+  }
   #tDown { right: 24px; bottom: 212px; width: 54px; height: 54px; font-size: 22px; }
 </style>
 </head>
@@ -211,6 +215,11 @@ let creative = false;             // modo criativo: blocos infinitos + voo
 let flying = false;
 let descHeld = false;             // segurar "descer" no celular
 let lastSpaceTap = 0;
+function setFlying(f) {
+  flying = f;
+  if (!f) vy = 0;
+  document.getElementById("tFly").classList.toggle("on", f);
+}
 let breaking = false, placing = false;
 let lastAct = 0;
 let hitPos = null, hitHits = 0, hitNormal = null;
@@ -882,7 +891,7 @@ function renderHotbar() {
 // aplica o modo (normal/criativo): ícones, badge e controles de voo
 function setCreative(c) {
   creative = c;
-  flying = false;
+  setFlying(false);
   buildHotbarIcons();
   document.getElementById("modeBadge").style.display = creative ? "block" : "none";
   document.getElementById("touch").classList.toggle("creative", c && touchMode);
@@ -1003,10 +1012,7 @@ window.addEventListener("keydown", e => {
     // duplo espaço no criativo: liga/desliga o voo
     if (!e.repeat && creative && playing) {
       const now = performance.now();
-      if (now - lastSpaceTap < 300) {
-        flying = !flying;
-        if (!flying) vy = 0;
-      }
+      if (now - lastSpaceTap < 300) setFlying(!flying);
       lastSpaceTap = now;
     }
   }
@@ -1147,8 +1153,7 @@ function showTouchControls() {
   const fly = document.getElementById("tFly");
   fly.addEventListener("touchstart", e => {
     e.preventDefault();
-    flying = !flying;
-    if (!flying) vy = 0;
+    setFlying(!flying);
   }, { passive: false });
   const dn = document.getElementById("tDown");
   dn.addEventListener("touchstart", e => { e.preventDefault(); descHeld = true; }, { passive: false });
